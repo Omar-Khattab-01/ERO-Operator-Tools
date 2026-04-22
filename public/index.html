@@ -1082,28 +1082,31 @@
         position: sticky;
         top: 0;
         z-index: 3;
-        overflow-x: auto;
-        overflow-y: hidden;
-        white-space: nowrap;
+        overflow: hidden;
+        white-space: normal;
+        flex-wrap: wrap;
         gap: 5px;
         padding: 5px 6px;
         font-size: 10px;
-        -webkit-overflow-scrolling: touch;
       }
       .ats-toolbar .tool-cell {
         display: none;
       }
       .ats-toolbar .tool-cell.mobile-keep {
         display: inline-flex;
+        flex: 1 1 145px;
+        min-width: 0;
+        border-left: 0;
+        padding: 0 4px;
+        white-space: normal;
       }
       .mimic-nav-btn {
+        flex: 0 0 auto;
         height: 28px;
         font-size: 10px;
         padding: 0 8px;
       }
       .zoom-controls {
-        position: sticky;
-        right: 0;
         margin-left: 4px;
         flex: 0 0 auto;
       }
@@ -1136,15 +1139,29 @@
         font-size: 12px;
       }
       .ats-table {
-        display: block;
-        overflow-x: auto;
+        display: table;
+        table-layout: fixed;
+        width: 100%;
+        overflow: hidden;
         font-size: 11px;
-        -webkit-overflow-scrolling: touch;
       }
-      .ats-table thead,
-      .ats-table tbody,
-      .ats-table tr {
-        min-width: 620px;
+      .ats-table th,
+      .ats-table td {
+        padding: 5px 4px;
+        overflow-wrap: anywhere;
+        word-break: normal;
+      }
+      .ats-table th:nth-child(1),
+      .ats-table td:nth-child(1) {
+        width: 46px;
+      }
+      .ats-table th:nth-child(2),
+      .ats-table td:nth-child(2) {
+        width: 56px;
+      }
+      .ats-table th:nth-child(5),
+      .ats-table td:nth-child(5) {
+        width: 54px;
       }
       .legend-row,
       .control-row,
