@@ -17,6 +17,10 @@
       --chip: #0f1622;
     }
     * { box-sizing: border-box; }
+    html {
+      width: 100%;
+      overflow-x: hidden;
+    }
     body {
       margin: 0;
       font-family: "Segoe UI", system-ui, sans-serif;
@@ -41,6 +45,7 @@
     .app.map-mode {
       width: 100vw;
       min-height: 100vh;
+      min-height: 100dvh;
       margin: 0;
       border: 0;
       border-radius: 0;
@@ -167,9 +172,11 @@
       padding: 0;
       overflow: auto;
       min-height: 100vh;
+      min-height: 100dvh;
       background: #d9dde1;
       color: #101418;
       font-family: "Consolas", "Lucida Console", monospace;
+      -webkit-overflow-scrolling: touch;
     }
     .today-board-view {
       padding: 22px;
@@ -362,6 +369,8 @@
       overflow-x: auto;
       overflow-y: hidden;
       background: #46515a;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior-x: contain;
     }
     .ats-svg {
       display: block;
@@ -862,6 +871,14 @@
       color: var(--muted);
       font-size: 13px;
     }
+    .break-strip.active-break {
+      border-color: rgba(255,176,104,.45);
+      background:
+        linear-gradient(90deg, rgba(255,176,104,.12), rgba(255,255,255,.035)),
+        rgba(255,176,104,.04);
+      color: var(--text);
+      box-shadow: 0 0 0 1px rgba(255,176,104,.08) inset;
+    }
     .break-strip.split-break {
       justify-content: stretch;
       border-style: solid;
@@ -1021,6 +1038,120 @@
       .station-node {
         font-size: 11px;
       }
+      .app.map-mode {
+        overflow: hidden;
+      }
+      .app.map-mode .live-map-view {
+        width: 100vw;
+        min-height: 100dvh;
+        overflow-y: auto;
+        overflow-x: hidden;
+        padding-bottom: max(16px, env(safe-area-inset-bottom));
+      }
+      .ats-head {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 8px 10px;
+        align-items: center;
+        padding: 8px;
+      }
+      .ats-logo {
+        min-width: 88px;
+        height: 28px;
+        font-size: 13px;
+      }
+      .ats-head h2 {
+        font-size: 15px;
+        line-height: 1.08;
+        letter-spacing: .01em;
+      }
+      .ats-clock {
+        grid-column: 1 / -1;
+        min-width: 0;
+        width: 100%;
+        padding: 5px 0 0;
+        border: 0;
+        border-top: 1px solid #b8c0c7;
+        font-size: 11px;
+        text-align: left;
+      }
+      .ats-state {
+        display: none;
+      }
+      .ats-toolbar {
+        position: sticky;
+        top: 0;
+        z-index: 3;
+        overflow-x: auto;
+        overflow-y: hidden;
+        white-space: nowrap;
+        gap: 5px;
+        padding: 5px 6px;
+        font-size: 10px;
+        -webkit-overflow-scrolling: touch;
+      }
+      .ats-toolbar .tool-cell {
+        display: none;
+      }
+      .ats-toolbar .tool-cell.mobile-keep {
+        display: inline-flex;
+      }
+      .mimic-nav-btn {
+        height: 28px;
+        font-size: 10px;
+        padding: 0 8px;
+      }
+      .zoom-controls {
+        position: sticky;
+        right: 0;
+        margin-left: 4px;
+        flex: 0 0 auto;
+      }
+      .zoom-controls button,
+      .zoom-controls span {
+        min-width: 38px;
+        height: 28px;
+        font-size: 10px;
+      }
+      .mimic-scroll {
+        width: 100%;
+        min-height: 330px;
+        max-height: 48dvh;
+        border-top: 1px solid #35424b;
+        border-bottom: 1px solid #35424b;
+      }
+      .ats-svg {
+        height: 330px;
+      }
+      .ats-panels {
+        grid-template-columns: 1fr;
+        gap: 8px;
+        padding: 8px;
+      }
+      .ats-panel {
+        min-height: 0;
+        overflow: hidden;
+      }
+      .ats-panel h3 {
+        font-size: 12px;
+      }
+      .ats-table {
+        display: block;
+        overflow-x: auto;
+        font-size: 11px;
+        -webkit-overflow-scrolling: touch;
+      }
+      .ats-table thead,
+      .ats-table tbody,
+      .ats-table tr {
+        min-width: 620px;
+      }
+      .legend-row,
+      .control-row,
+      .note-row {
+        font-size: 11px;
+        padding: 5px 7px;
+      }
       .trip-row,
       .entry-head {
         grid-template-columns: 1fr;
@@ -1120,6 +1251,7 @@
     let liveMapTimer = null;
     let todayBoardTimer = null;
     let liveMapZoom = 1;
+    let liveMapZoomTouched = false;
     let latestLiveMapData = null;
     let pendingLiveMapZoomAnchor = null;
 
@@ -1507,7 +1639,7 @@
       const breakStrip = typeof entry.breakAfterMinutes === 'number' && entry.breakAfterMinutes > 0
         ? isSplitBreak
           ? `
-          <div class="break-strip split-break">
+          <div class="break-strip split-break${isLiveBreak ? ' active-break' : ''}">
             <div class="split-side left">
               <div class="split-label">Clear</div>
               <div class="split-time">${escapeHtml(entry.clearTime || entry.endTime || '')}</div>
@@ -1524,7 +1656,7 @@
           </div>
         `
           : `
-          <div class="break-strip">
+          <div class="break-strip${isLiveBreak ? ' active-break' : ''}">
             <span class="break-pill">Break ${escapeHtml(entry.breakAfterMinutes)} min</span>
             ${isLiveBreak ? `<span>${renderCountdown(live, 'Remaining')}</span>` : ''}
           </div>
@@ -1532,7 +1664,7 @@
         : '';
       return `
         <div class="block-stack">
-          <article class="entry-card${live && live.block === entry.block ? ' active' : ''}">
+          <article class="entry-card${live && live.kind === 'trip' && live.block === entry.block ? ' active' : ''}">
             <div class="entry-head">
               <h4>
                 <span>Trip ${escapeHtml(entry.sequence)}</span>
@@ -1794,6 +1926,7 @@
     }
 
     function setLiveMapZoom(nextZoom) {
+      liveMapZoomTouched = true;
       const scroll = liveMapView.querySelector('.mimic-scroll');
       if (scroll) {
         const oldWidth = Math.round(ATS_MIMIC_WIDTH * liveMapZoom);
@@ -1893,7 +2026,7 @@
           <span>DISPLAY: MAIN LINE 1 MIMIC</span>
           <span class="tool-cell">TRACK 1 WESTBOUND</span>
           <span class="tool-cell">TRACK 2 EASTBOUND</span>
-          <span class="tool-cell">CLICK OCCUPIED BLOCK TO OPEN PADDLE</span>
+          <span class="tool-cell mobile-keep">TAP BLOCK TO OPEN PADDLE</span>
           <span class="tool-cell">AUTO REFRESH 5 SEC</span>
           <span class="zoom-controls" aria-label="Mimic zoom controls">
             <button type="button" data-map-zoom="out">-</button>
@@ -1969,6 +2102,9 @@
       todayBoardView.hidden = true;
       chatForm.closest('.composer').hidden = true;
       liveMapView.hidden = false;
+      if (!liveMapZoomTouched && window.matchMedia('(max-width: 780px)').matches) {
+        liveMapZoom = 0.68;
+      }
       setStatus('Loading map...', true);
       const response = await fetch('/api/live-map');
       const data = await response.json();
