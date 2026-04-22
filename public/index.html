@@ -171,6 +171,59 @@
       color: #101418;
       font-family: "Consolas", "Lucida Console", monospace;
     }
+    .today-board-view {
+      padding: 22px;
+      overflow: auto;
+      min-height: 0;
+      background:
+        radial-gradient(circle at 15% 0%, rgba(255,176,104,.10), transparent 36%),
+        linear-gradient(180deg, rgba(18,23,30,.98), rgba(13,17,23,.98));
+    }
+    .board-page-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+    .board-page-head h2 {
+      margin: 0;
+      font-size: clamp(28px, 4vw, 54px);
+      line-height: .95;
+      letter-spacing: -.04em;
+    }
+    .board-page-head p {
+      margin: 8px 0 0;
+      color: var(--muted);
+    }
+    .board-page-meta {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+    .board-stat {
+      min-width: 92px;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 9px 11px;
+      background: rgba(255,255,255,.025);
+      text-align: right;
+    }
+    .board-stat .k {
+      display: block;
+      color: var(--muted);
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+    .board-stat .v {
+      display: block;
+      margin-top: 2px;
+      color: var(--text);
+      font-size: 20px;
+      font-weight: 800;
+    }
     .ats-head {
       display: flex;
       align-items: center;
@@ -492,6 +545,22 @@
       color: var(--muted);
       font-size: 13px;
       line-height: 1.35;
+    }
+    .today-board-view .board-grid {
+      grid-template-columns: repeat(5, minmax(210px, 1fr));
+      gap: 12px;
+      padding: 0;
+      align-items: start;
+    }
+    .today-board-view .board-section {
+      border-radius: 12px;
+      min-height: calc(100vh - 230px);
+    }
+    .today-board-view .board-section h4 {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      background: rgba(18,23,30,.98);
     }
     .card-head {
       padding: 18px 18px 12px;
@@ -874,6 +943,28 @@
     .muted { color: var(--muted); }
     @media (max-width: 780px) {
       .header { flex-direction: column; align-items: stretch; }
+      .brand {
+        align-items: flex-start;
+      }
+      .brand-badge {
+        width: 38px;
+        height: 38px;
+        border-radius: 10px;
+      }
+      .brand h1 {
+        font-size: 16px;
+      }
+      .brand p {
+        font-size: 13px;
+      }
+      .header-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+      }
+      .header-btn {
+        text-align: center;
+        justify-content: center;
+      }
       .app {
         width: 100vw;
         min-height: 100vh;
@@ -893,6 +984,26 @@
       .board-grid {
         grid-template-columns: 1fr;
       }
+      .today-board-view {
+        padding: 16px;
+      }
+      .board-page-head {
+        display: grid;
+      }
+      .board-page-meta {
+        justify-content: stretch;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+      .board-stat {
+        text-align: left;
+      }
+      .today-board-view .board-grid {
+        grid-template-columns: 1fr;
+      }
+      .today-board-view .board-section {
+        min-height: 0;
+      }
       .action-mimic {
         grid-template-columns: 1fr;
         gap: 10px;
@@ -910,6 +1021,33 @@
       .station-node {
         font-size: 11px;
       }
+      .trip-row,
+      .entry-head {
+        grid-template-columns: 1fr;
+      }
+      .entry-direction,
+      .entry-block,
+      .trip-side.end {
+        justify-self: start;
+        text-align: left;
+      }
+      .break-strip.split-break {
+        grid-template-columns: 1fr;
+      }
+      .split-side.left,
+      .split-side.right {
+        text-align: center;
+      }
+      .modal {
+        width: 100%;
+        max-height: calc(100vh - 20px);
+        border-radius: 18px;
+      }
+      .modal-body,
+      .modal-head {
+        padding-left: 16px;
+        padding-right: 16px;
+      }
     }
   </style>
 </head>
@@ -924,6 +1062,7 @@
         </div>
       </div>
       <div class="header-actions">
+        <button id="homeBtn" class="header-btn" type="button">ERO Tool</button>
         <button id="liveMapBtn" class="header-btn" type="button">Live Map</button>
         <button id="todayBoardBtn" class="header-btn" type="button">Today Board</button>
         <button id="clearBtn" class="header-btn" type="button">Clear</button>
@@ -943,6 +1082,7 @@
           <button class="search-btn" type="submit">Search</button>
         </form>
       </section>
+      <section id="todayBoardView" class="today-board-view" hidden></section>
       <section id="liveMapView" class="live-map-view" hidden></section>
     </main>
   </div>
@@ -963,8 +1103,10 @@
   <script>
     const chat = document.getElementById('chat');
     const liveMapView = document.getElementById('liveMapView');
+    const todayBoardView = document.getElementById('todayBoardView');
     const chatForm = document.getElementById('chatForm');
     const chatInput = document.getElementById('chatInput');
+    const homeBtn = document.getElementById('homeBtn');
     const liveMapBtn = document.getElementById('liveMapBtn');
     const todayBoardBtn = document.getElementById('todayBoardBtn');
     const clearBtn = document.getElementById('clearBtn');
@@ -1006,6 +1148,7 @@
       stopTodayBoardRefresh();
       document.querySelector('.app')?.classList.remove('map-mode');
       liveMapView.hidden = true;
+      todayBoardView.hidden = true;
       chat.hidden = false;
       chatForm.closest('.composer').hidden = false;
       chat.innerHTML = '<div class="message intro"><strong>Enter a paddle number</strong>, for example <strong>7</strong>, <strong>14</strong>, or <strong>1-14</strong>. You can look up multiple paddles and compare them here.</div>';
@@ -1027,13 +1170,19 @@
       }
     }
 
-    function exitLiveMap() {
+    function showToolView(statusText = 'Ready') {
       stopLiveMapRefresh();
+      stopTodayBoardRefresh();
       document.querySelector('.app')?.classList.remove('map-mode');
       liveMapView.hidden = true;
+      todayBoardView.hidden = true;
       chat.hidden = false;
       chatForm.closest('.composer').hidden = false;
-      setStatus('Ready', true);
+      setStatus(statusText, true);
+    }
+
+    function exitLiveMap() {
+      showToolView('Ready');
     }
 
     function normalizePaddleId(value) {
@@ -1492,24 +1641,19 @@
       `;
     }
 
-    function addTodayBoard(data) {
-      stopLiveMapRefresh();
-      stopTodayBoardRefresh();
-      document.querySelector('.app')?.classList.remove('map-mode');
-      liveMapView.hidden = true;
-      chat.hidden = false;
-      chatForm.closest('.composer').hidden = false;
-      chat.querySelectorAll('[data-today-board]').forEach((node) => node.remove());
-      const card = document.createElement('article');
-      card.className = 'card board-card';
-      card.dataset.todayBoard = 'true';
-      card.innerHTML = `
-        <div class="card-head">
+    function renderTodayBoard(data) {
+      todayBoardView.innerHTML = `
+        <div class="board-page-head">
           <div>
-            <h3>Today Board</h3>
-            <p>${escapeHtml(data.serviceLabel)} service</p>
+            <h2>Today Board</h2>
+            <p>${escapeHtml(data.serviceLabel)} service. Fixed dispatch-style view for live trips, breaks, splits, starts, and clears.</p>
           </div>
-          <span class="pill">${escapeHtml(data.counts?.activeNow || 0)} live</span>
+          <div class="board-page-meta" aria-label="Board counts">
+            <div class="board-stat"><span class="k">Active</span><span class="v">${escapeHtml(data.counts?.activeNow || 0)}</span></div>
+            <div class="board-stat"><span class="k">Starting</span><span class="v">${escapeHtml(data.counts?.startingSoon || 0)}</span></div>
+            <div class="board-stat"><span class="k">Split</span><span class="v">${escapeHtml(data.counts?.splitBreaks || 0)}</span></div>
+            <div class="board-stat"><span class="k">Finishing</span><span class="v">${escapeHtml(data.counts?.finishingSoon || 0)}</span></div>
+          </div>
         </div>
         <div class="board-grid">
           ${renderBoardSection('Active now', data.activeNow || [])}
@@ -1519,29 +1663,37 @@
           ${renderBoardSection('Finishing soon', data.finishingSoon || [], 'finalClearStatus')}
         </div>
       `;
-      chat.appendChild(card);
-      chat.scrollTop = chat.scrollHeight;
       refreshCountdowns();
-      todayBoardTimer = setInterval(async () => {
-        try {
-          const response = await fetch('/api/today-board');
-          const nextData = await response.json();
-          if (response.ok && nextData.ok) addTodayBoard(nextData);
-        } catch (_) {
-          setStatus('Board stale', false);
-        }
-      }, 15000);
     }
 
     async function openTodayBoard() {
+      stopLiveMapRefresh();
+      stopTodayBoardRefresh();
+      document.querySelector('.app')?.classList.remove('map-mode');
+      liveMapView.hidden = true;
+      chat.hidden = true;
+      chatForm.closest('.composer').hidden = true;
+      todayBoardView.hidden = false;
       setStatus('Loading board...', true);
       const response = await fetch('/api/today-board');
       const data = await response.json();
       if (!response.ok || !data.ok) {
         throw new Error(data.error || 'Today Board failed.');
       }
-      addTodayBoard(data);
+      renderTodayBoard(data);
       setStatus('Board ready', true);
+      todayBoardTimer = setInterval(async () => {
+        try {
+          const nextResponse = await fetch('/api/today-board');
+          const nextData = await nextResponse.json();
+          if (nextResponse.ok && nextData.ok) {
+            renderTodayBoard(nextData);
+            setStatus('Board ready', true);
+          }
+        } catch (_) {
+          setStatus('Board stale', false);
+        }
+      }, 15000);
       return data;
     }
 
@@ -1814,6 +1966,7 @@
       stopLiveMapRefresh();
       document.querySelector('.app')?.classList.add('map-mode');
       chat.hidden = true;
+      todayBoardView.hidden = true;
       chatForm.closest('.composer').hidden = true;
       liveMapView.hidden = false;
       setStatus('Loading map...', true);
@@ -1841,6 +1994,10 @@
     async function runLookup(message) {
       stopTodayBoardRefresh();
       document.querySelector('.app')?.classList.remove('map-mode');
+      todayBoardView.hidden = true;
+      liveMapView.hidden = true;
+      chat.hidden = false;
+      chatForm.closest('.composer').hidden = false;
       setStatus('Looking up...', true);
       const response = await fetch('/api/chat', {
         method: 'POST',
@@ -1866,7 +2023,7 @@
         throw new Error(data.error || 'Paddle lookup failed.');
       }
       currentLookup = data;
-      addPaddleCard(data);
+      if (!chat.hidden) addPaddleCard(data);
       openPaddleModal(data);
       setStatus('Paddle ready', true);
       return data;
@@ -1893,8 +2050,11 @@
     });
 
     clearBtn.addEventListener('click', () => {
-      stopLiveMapRefresh();
       resetChat();
+    });
+
+    homeBtn.addEventListener('click', () => {
+      showToolView('Ready');
     });
 
     liveMapBtn.addEventListener('click', async () => {
@@ -1911,7 +2071,8 @@
       try {
         await openTodayBoard();
       } catch (error) {
-        addMessage(error.message || 'Today Board failed.');
+        todayBoardView.hidden = false;
+        todayBoardView.innerHTML = `<div class="live-map-error">${escapeHtml(error.message || 'Today Board failed.')}</div>`;
         setStatus('Board failed', false);
       }
     });
