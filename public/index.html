@@ -231,6 +231,48 @@
       font-size: 20px;
       font-weight: 800;
     }
+    .saved-paddles-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 14px;
+      align-items: start;
+    }
+    .saved-paddle-card {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: rgba(255,255,255,.025);
+      padding: 14px;
+      display: grid;
+      gap: 10px;
+    }
+    .saved-paddle-card h3 {
+      margin: 0;
+      font-size: 28px;
+      line-height: 1;
+      letter-spacing: -.03em;
+    }
+    .saved-paddle-card p {
+      margin: 0;
+      color: var(--muted);
+    }
+    .saved-paddle-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .saved-paddle-meta {
+      display: grid;
+      gap: 6px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .saved-empty {
+      border: 1px dashed rgba(255,255,255,.14);
+      border-radius: 16px;
+      padding: 18px;
+      color: var(--muted);
+      background: rgba(255,255,255,.02);
+    }
     .ats-head {
       display: flex;
       align-items: center;
@@ -391,7 +433,7 @@
     }
     .ats-panels {
       display: grid;
-      grid-template-columns: 1.45fr .9fr .75fr .85fr;
+      grid-template-columns: minmax(0, 1.6fr) minmax(220px, .65fr) minmax(260px, .75fr);
       gap: 6px;
       padding: 6px;
       background: #d9dde1;
@@ -438,8 +480,7 @@
     }
     .legend-swatch.occ { background: #18bfc1; }
     .legend-swatch.blocked { background: #d20d17; }
-    .ats-panels .ats-panel:nth-child(3) .control-row:nth-of-type(n+5),
-    .ats-panels .ats-panel:nth-child(4) .note-row:nth-of-type(n+4) {
+    .ats-panels .ats-panel:nth-child(3) .note-row:nth-of-type(n+4) {
       display: none;
     }
     .live-map-error {
@@ -1211,6 +1252,7 @@
       </div>
       <div class="header-actions">
         <button id="homeBtn" class="header-btn" type="button">ERO Tool</button>
+        <button id="todaysPaddleBtn" class="header-btn" type="button">Today's Paddle</button>
         <button id="liveMapBtn" class="header-btn" type="button">Live Map</button>
         <button id="todayBoardBtn" class="header-btn" type="button">Today Board</button>
         <button id="clearBtn" class="header-btn" type="button">Clear</button>
@@ -1221,7 +1263,7 @@
     <main class="main">
       <section id="chat" class="chat">
         <div class="message intro">
-          <strong>Enter a paddle number</strong>, for example <strong>7</strong>, <strong>14</strong>, or <strong>1-14</strong>. You can look up multiple paddles and compare them here.
+          <strong>Enter a paddle number</strong>, for example <strong>14</strong> or <strong>1-14</strong>.
         </div>
       </section>
       <section class="composer" aria-label="Search paddles">
@@ -1230,6 +1272,7 @@
           <button class="search-btn" type="submit">Search</button>
         </form>
       </section>
+      <section id="todaysPaddleView" class="today-board-view" hidden></section>
       <section id="todayBoardView" class="today-board-view" hidden></section>
       <section id="liveMapView" class="live-map-view" hidden></section>
     </main>
@@ -1251,10 +1294,12 @@
   <script>
     const chat = document.getElementById('chat');
     const liveMapView = document.getElementById('liveMapView');
+    const todaysPaddleView = document.getElementById('todaysPaddleView');
     const todayBoardView = document.getElementById('todayBoardView');
     const chatForm = document.getElementById('chatForm');
     const chatInput = document.getElementById('chatInput');
     const homeBtn = document.getElementById('homeBtn');
+    const todaysPaddleBtn = document.getElementById('todaysPaddleBtn');
     const liveMapBtn = document.getElementById('liveMapBtn');
     const todayBoardBtn = document.getElementById('todayBoardBtn');
     const clearBtn = document.getElementById('clearBtn');
@@ -1271,6 +1316,7 @@
     let liveMapZoomTouched = false;
     let latestLiveMapData = null;
     let pendingLiveMapZoomAnchor = null;
+    const todaysPaddleStorageKey = 'ero_todays_paddles_v1';
 
     function escapeHtml(value) {
       return String(value ?? '')
@@ -1297,10 +1343,11 @@
       stopTodayBoardRefresh();
       document.querySelector('.app')?.classList.remove('map-mode');
       liveMapView.hidden = true;
+      todaysPaddleView.hidden = true;
       todayBoardView.hidden = true;
       chat.hidden = false;
       chatForm.closest('.composer').hidden = false;
-      chat.innerHTML = '<div class="message intro"><strong>Enter a paddle number</strong>, for example <strong>7</strong>, <strong>14</strong>, or <strong>1-14</strong>. You can look up multiple paddles and compare them here.</div>';
+      chat.innerHTML = '<div class="message intro"><strong>Enter a paddle number</strong>, for example <strong>14</strong> or <strong>1-14</strong>.</div>';
       currentLookup = null;
       setStatus('Ready', true);
     }
@@ -1324,6 +1371,7 @@
       stopTodayBoardRefresh();
       document.querySelector('.app')?.classList.remove('map-mode');
       liveMapView.hidden = true;
+      todaysPaddleView.hidden = true;
       todayBoardView.hidden = true;
       chat.hidden = false;
       chatForm.closest('.composer').hidden = false;
@@ -1361,6 +1409,63 @@
     function closePaddleModal() {
       paddleOverlay.hidden = true;
       document.body.style.overflow = '';
+    }
+
+    function getOttawaDateKey() {
+      const parts = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'America/Toronto',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      }).formatToParts(new Date());
+      const lookup = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+      return `${lookup.year}-${lookup.month}-${lookup.day}`;
+    }
+
+    function readTodaysPaddleStore() {
+      try {
+        const raw = localStorage.getItem(todaysPaddleStorageKey);
+        const parsed = raw ? JSON.parse(raw) : {};
+        const today = getOttawaDateKey();
+        if (!parsed || typeof parsed !== 'object' || parsed.date !== today) {
+          const next = { date: today, items: [] };
+          localStorage.setItem(todaysPaddleStorageKey, JSON.stringify(next));
+          return next;
+        }
+        return { date: today, items: Array.isArray(parsed.items) ? parsed.items : [] };
+      } catch (_) {
+        return { date: getOttawaDateKey(), items: [] };
+      }
+    }
+
+    function writeTodaysPaddleStore(store) {
+      try {
+        localStorage.setItem(todaysPaddleStorageKey, JSON.stringify(store));
+      } catch (_) {
+        // keep working without storage if blocked
+      }
+    }
+
+    function isSavedToTodaysPaddle(paddleId, serviceDay) {
+      const store = readTodaysPaddleStore();
+      return store.items.some((item) => item.paddleId === paddleId && item.serviceDay === serviceDay);
+    }
+
+    function saveToTodaysPaddle(data) {
+      const store = readTodaysPaddleStore();
+      const items = store.items.filter((item) => !(item.paddleId === data.paddleId && item.serviceDay === data.serviceDay));
+      items.unshift({
+        paddleId: data.paddleId,
+        serviceDay: data.serviceDay,
+        savedAt: new Date().toISOString(),
+      });
+      writeTodaysPaddleStore({ date: store.date, items });
+    }
+
+    function removeFromTodaysPaddle(paddleId, serviceDay) {
+      const store = readTodaysPaddleStore();
+      const items = store.items.filter((item) => !(item.paddleId === paddleId && item.serviceDay === serviceDay));
+      writeTodaysPaddleStore({ date: store.date, items });
     }
 
 
@@ -1744,6 +1849,7 @@
           </div>
           <div class="card-actions">
             <button class="link-btn" type="button" data-open-paddle="${escapeHtml(data.paddleId)}" data-day="${escapeHtml(data.serviceDay)}">Open Paddle</button>
+            <button class="save-btn" type="button" data-save-todays-paddle="${escapeHtml(data.paddleId)}" data-day="${escapeHtml(data.serviceDay)}">${isSavedToTodaysPaddle(data.paddleId, data.serviceDay) ? "Saved to Today's Paddle" : "Save to Today's Paddle"}</button>
           </div>
           <div class="day-actions">
             ${(data.paddleOptions || []).map((option) => `<button class="day-btn" type="button" data-open-paddle="${escapeHtml(data.paddleId)}" data-day="${escapeHtml(option.serviceDay)}">${escapeHtml(option.buttonLabel)}</button>`).join('')}
@@ -1815,6 +1921,74 @@
       refreshCountdowns();
     }
 
+    async function renderTodaysPaddlePage() {
+      const store = readTodaysPaddleStore();
+      const paddles = await Promise.all((store.items || []).map(async (item) => {
+        try {
+          const params = new URLSearchParams({ id: item.paddleId });
+          if (item.serviceDay) params.set('day', item.serviceDay);
+          const response = await fetch(`/api/paddle?${params.toString()}`);
+          const data = await response.json();
+          if (!response.ok || !data.ok) return null;
+          return data;
+        } catch (_) {
+          return null;
+        }
+      }));
+      const validPaddles = paddles.filter(Boolean);
+      todaysPaddleView.innerHTML = `
+        <div class="board-page-head">
+          <div>
+            <h2>Today's Paddle</h2>
+            <p>Saved on this device for ${escapeHtml(store.date)}. No login needed.</p>
+          </div>
+          <div class="board-page-meta" aria-label="Saved paddle counts">
+            <div class="board-stat"><span class="k">Saved</span><span class="v">${escapeHtml(validPaddles.length)}</span></div>
+          </div>
+        </div>
+        ${validPaddles.length ? `
+          <div class="saved-paddles-grid">
+            ${validPaddles.map((data) => {
+              const live = data.liveStatus || null;
+              const next = getNextAction(live);
+              return `
+                <article class="saved-paddle-card">
+                  <div>
+                    <h3>${escapeHtml(data.paddleId)}</h3>
+                    <p>${escapeHtml(data.serviceLabel)} service</p>
+                  </div>
+                  <div class="saved-paddle-meta">
+                    <span>${escapeHtml(next.title || 'Ready')}</span>
+                    ${next.detail ? `<span>${escapeHtml(next.detail)}</span>` : ''}
+                  </div>
+                  <div class="saved-paddle-actions">
+                    <button class="link-btn" type="button" data-open-paddle="${escapeHtml(data.paddleId)}" data-day="${escapeHtml(data.serviceDay)}">Open Paddle</button>
+                    <button class="save-btn" type="button" data-remove-todays-paddle="${escapeHtml(data.paddleId)}" data-day="${escapeHtml(data.serviceDay)}">Remove</button>
+                  </div>
+                </article>
+              `;
+            }).join('')}
+          </div>
+        ` : `
+          <div class="saved-empty">Save a looked-up paddle here and it will stay available on this phone for the rest of today.</div>
+        `}
+      `;
+    }
+
+    async function openTodaysPaddlePage() {
+      stopLiveMapRefresh();
+      stopTodayBoardRefresh();
+      document.querySelector('.app')?.classList.remove('map-mode');
+      liveMapView.hidden = true;
+      todayBoardView.hidden = true;
+      chat.hidden = true;
+      chatForm.closest('.composer').hidden = true;
+      todaysPaddleView.hidden = false;
+      setStatus("Loading today's paddle...", true);
+      await renderTodaysPaddlePage();
+      setStatus("Today's paddle ready", true);
+    }
+
     async function openTodayBoard() {
       stopLiveMapRefresh();
       stopTodayBoardRefresh();
@@ -1871,7 +2045,7 @@
       { id: 'st17', code: 'ST17', label: ['Place', "d'Orleans"] },
       { id: 'st18', code: 'ST18', label: ['Trim'] },
     ];
-    const ATS_RENDER_LEFT = 86;
+    const ATS_RENDER_LEFT = 132;
     const ATS_RENDER_GAP = 146;
     const ATS_RENDER_TRACK_1_Y = 140;
     const ATS_RENDER_TRACK_2_Y = 245;
@@ -2055,12 +2229,10 @@
         <div class="mimic-scroll">
           <svg class="ats-svg" style="width:${scaledWidth}px" viewBox="0 0 ${ATS_MIMIC_WIDTH} ${ATS_MIMIC_HEIGHT}" role="img" aria-label="Line 1 ATS mimic">
             <rect x="0" y="0" width="${ATS_MIMIC_WIDTH}" height="${ATS_MIMIC_HEIGHT}" fill="#46515a" />
-            <rect x="10" y="${ATS_RENDER_TRACK_1_Y - 18}" width="98" height="21" fill="#29333a" stroke="#89949c" stroke-width="1" />
-            <rect x="10" y="${ATS_RENDER_TRACK_2_Y - 18}" width="98" height="21" fill="#29333a" stroke="#89949c" stroke-width="1" />
-            <text x="18" y="${ATS_RENDER_TRACK_1_Y - 7}" fill="#f3f6f8" font-size="11" font-weight="800">TRACK 1</text>
-            <text x="72" y="${ATS_RENDER_TRACK_1_Y - 7}" fill="#f3f6f8" font-size="10">WEST</text>
-            <text x="18" y="${ATS_RENDER_TRACK_2_Y - 7}" fill="#f3f6f8" font-size="11" font-weight="800">TRACK 2</text>
-            <text x="72" y="${ATS_RENDER_TRACK_2_Y - 7}" fill="#f3f6f8" font-size="10">EAST</text>
+            <rect x="8" y="${ATS_RENDER_TRACK_1_Y - 16}" width="98" height="18" fill="#29333a" stroke="#89949c" stroke-width="1" />
+            <rect x="8" y="${ATS_RENDER_TRACK_2_Y - 16}" width="98" height="18" fill="#29333a" stroke="#89949c" stroke-width="1" />
+            <text x="16" y="${ATS_RENDER_TRACK_1_Y - 4}" fill="#f3f6f8" font-size="10" font-weight="800">TRACK 1 WEST</text>
+            <text x="16" y="${ATS_RENDER_TRACK_2_Y - 4}" fill="#f3f6f8" font-size="10" font-weight="800">TRACK 2 EAST</text>
             <line x1="${stationX(0)}" y1="${ATS_RENDER_TRACK_1_Y}" x2="${stationX(ATS_RENDER_STATIONS.length - 1)}" y2="${ATS_RENDER_TRACK_1_Y}" stroke="#eef3f6" stroke-width="2" />
             <line x1="${stationX(0)}" y1="${ATS_RENDER_TRACK_2_Y}" x2="${stationX(ATS_RENDER_STATIONS.length - 1)}" y2="${ATS_RENDER_TRACK_2_Y}" stroke="#eef3f6" stroke-width="2" />
             ${blocksHtml}
@@ -2080,13 +2252,6 @@
             <div class="legend-row"><span class="legend-swatch blocked"></span>Blocked / out of service</div>
             <div class="legend-row"><span style="width:10px;height:10px;border-radius:50%;background:#36c94f;display:inline-block"></span>Signal clear</div>
             <div class="legend-row"><span style="width:10px;height:10px;border-radius:50%;background:#c9161d;display:inline-block"></span>Signal stop</div>
-          </section>
-          <section class="ats-panel">
-            <h3>System Controls</h3>
-            <div class="control-row">[RTE] Route control</div>
-            <div class="control-row">[MAN] Manual control</div>
-            <div class="control-row">[ALM] Alarms</div>
-            <div class="control-row">[LOG] Event log</div>
           </section>
           <section class="ats-panel">
             <h3>Notes</h3>
@@ -2147,6 +2312,7 @@
     async function runLookup(message) {
       stopTodayBoardRefresh();
       document.querySelector('.app')?.classList.remove('map-mode');
+      todaysPaddleView.hidden = true;
       todayBoardView.hidden = true;
       liveMapView.hidden = true;
       chat.hidden = false;
@@ -2210,6 +2376,16 @@
       showToolView('Ready');
     });
 
+    todaysPaddleBtn.addEventListener('click', async () => {
+      try {
+        await openTodaysPaddlePage();
+      } catch (error) {
+        todaysPaddleView.hidden = false;
+        todaysPaddleView.innerHTML = `<div class="live-map-error">${escapeHtml(error.message || "Today's Paddle failed.")}</div>`;
+        setStatus("Today's paddle failed", false);
+      }
+    });
+
     liveMapBtn.addEventListener('click', async () => {
       try {
         await openLiveMap();
@@ -2270,6 +2446,26 @@
           addMessage(error.message || 'Paddle lookup failed.');
           setStatus('Lookup failed', false);
         }
+        return;
+      }
+
+      const saveTodaysPaddleBtn = event.target.closest('[data-save-todays-paddle]');
+      if (saveTodaysPaddleBtn) {
+        const paddleId = saveTodaysPaddleBtn.dataset.saveTodaysPaddle || '';
+        const serviceDay = saveTodaysPaddleBtn.dataset.day || '';
+        if (currentLookup && currentLookup.paddleId === paddleId && currentLookup.serviceDay === serviceDay) {
+          saveToTodaysPaddle(currentLookup);
+          addPaddleCard(currentLookup);
+          setStatus("Saved to today's paddle", true);
+        }
+        return;
+      }
+
+      const removeTodaysPaddleBtn = event.target.closest('[data-remove-todays-paddle]');
+      if (removeTodaysPaddleBtn) {
+        removeFromTodaysPaddle(removeTodaysPaddleBtn.dataset.removeTodaysPaddle || '', removeTodaysPaddleBtn.dataset.day || '');
+        await renderTodaysPaddlePage();
+        setStatus("Removed from today's paddle", true);
         return;
       }
 
