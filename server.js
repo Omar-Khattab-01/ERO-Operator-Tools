@@ -539,6 +539,7 @@ function buildLiveStatus(entries, compareMinutes = getOttawaNowMinutes()) {
     tripId: nextTrip?.tripId || '',
     nextStartStop: nextTrip?.startStop || entry.nextBlockStartPlace || '',
     nextEndStop: nextTrip?.endStop || '',
+    nextTripStartTime: nextTrip?.startTime || '',
     nextStartTime: options.nextStartTime || nextTrip?.startTime || entry.nextBlockStartTime || '',
     targetTime: options.targetTime || nextTrip?.startTime || entry.nextBlockStartTime || '',
     minutesRemaining,

@@ -1553,6 +1553,14 @@
       if (live.kind === 'break') {
         const time = live.nextStartTime || live.targetTime || '';
         if (live.splitBreak) {
+          const secondPieceStartsAtTunneys = String(live.nextStartStop || '').toLowerCase().includes('tunney');
+          if (secondPieceStartsAtTunneys) {
+            return {
+              title: `Head to Bayview to grab a radio${time ? ` by ${time}` : ''}`,
+              detail: `Second piece${live.nextSequence ? ` Trip ${live.nextSequence}` : ''} starts at Tunney's${live.nextTripStartTime ? ` at ${live.nextTripStartTime}` : ''}`,
+              countdownPrefix: 'Back in',
+            };
+          }
           return {
             title: `Split ends${time ? ` at ${time}` : ''}`,
             detail: live.nextStartStop ? `Back at ${live.nextStartStop}` : '',
