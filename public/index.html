@@ -590,6 +590,13 @@
       align-items: flex-start;
       gap: 12px;
     }
+    .card-head-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
     .card-head h3 {
       margin: 0;
       font-size: 38px;
@@ -607,6 +614,25 @@
       border-radius: 999px;
       font-size: 12px;
       white-space: nowrap;
+    }
+    .card-jump-btn {
+      appearance: none;
+      border: 1px solid rgba(255,255,255,.14);
+      border-radius: 999px;
+      background: rgba(9,12,18,.55);
+      color: var(--text);
+      width: 38px;
+      height: 38px;
+      cursor: pointer;
+      font: inherit;
+      font-size: 18px;
+      line-height: 1;
+      display: inline-grid;
+      place-items: center;
+    }
+    .card-jump-btn:disabled {
+      opacity: .45;
+      cursor: default;
     }
     .card-body {
       padding: 0 18px 18px;
@@ -710,6 +736,11 @@
       gap: 16px;
       background: linear-gradient(180deg, rgba(67, 24, 20, .85), rgba(24,28,35,.98));
     }
+    .modal-controls {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+    }
     .close-btn {
       appearance: none;
       border: 1px solid var(--border);
@@ -721,6 +752,14 @@
       cursor: pointer;
       font: inherit;
       font-weight: 700;
+    }
+    .jump-btn {
+      font-size: 20px;
+      line-height: 1;
+    }
+    .jump-btn:disabled {
+      opacity: .45;
+      cursor: default;
     }
     .modal-body {
       padding: 18px 22px 24px;
@@ -968,6 +1007,141 @@
       color: var(--text);
       padding: 12px 14px;
       font: inherit;
+    }
+    .section-card {
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      background: rgba(255,255,255,.02);
+      padding: 16px;
+    }
+    .stack-form {
+      display: grid;
+      gap: 12px;
+    }
+    .field-stack {
+      display: grid;
+      gap: 6px;
+    }
+    .field-label {
+      font-size: 12px;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .text-input, .select-input {
+      width: 100%;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: rgba(30,36,44,.92);
+      color: var(--text);
+      padding: 12px 14px;
+      font: inherit;
+    }
+    .text-input.input-error {
+      border-color: rgba(255,120,120,.7);
+      box-shadow: 0 0 0 1px rgba(255,120,120,.35);
+    }
+    .btn {
+      appearance: none;
+      border: 1px solid rgba(255,255,255,.14);
+      background: linear-gradient(180deg, #de4a31, #bc301f);
+      color: var(--text);
+      border-radius: 14px;
+      padding: 12px 16px;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .section-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 14px;
+    }
+    .checkbox-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--muted);
+      margin-top: 10px;
+    }
+    .auth-notice {
+      margin-bottom: 14px;
+      border-radius: 14px;
+      padding: 12px 14px;
+      font-size: 14px;
+      line-height: 1.4;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,.03);
+    }
+    .auth-notice.warn {
+      border-color: rgba(255,176,104,.28);
+      color: var(--accent-2);
+      background: rgba(255,176,104,.06);
+    }
+    .auth-notice.ok {
+      border-color: rgba(116,255,173,.24);
+      color: #74ffad;
+      background: rgba(116,255,173,.06);
+    }
+    .my-work-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+      gap: 14px;
+      align-items: start;
+    }
+    .work-day-section {
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      background: rgba(255,255,255,.025);
+      overflow: hidden;
+    }
+    .work-day-section h3 {
+      margin: 0;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+      font-size: 16px;
+    }
+    .work-day-body {
+      padding: 14px;
+      display: grid;
+      gap: 10px;
+    }
+    .work-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: rgba(17,22,28,.72);
+    }
+    .work-item-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+    .work-empty {
+      color: var(--muted);
+      border: 1px dashed rgba(255,255,255,.14);
+      border-radius: 14px;
+      padding: 14px;
+    }
+    .overlay-page-copy {
+      color: var(--muted);
+      margin: 8px 0 0;
+    }
+    .linkish-btn {
+      appearance: none;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(10,14,20,.45);
+      color: #a9c6ff;
+      border-radius: 999px;
+      padding: 9px 13px;
+      font: inherit;
+      cursor: pointer;
     }
     .muted { color: var(--muted); }
     @media (max-width: 780px) {
@@ -1246,9 +1420,11 @@
       </div>
       <div class="header-actions">
         <button id="homeBtn" class="header-btn" type="button">Paddle Lookup</button>
+        <button id="myWorkBtn" class="header-btn" type="button">My Work</button>
         <button id="todaysPaddleBtn" class="header-btn" type="button">Today's Paddle</button>
         <button id="liveMapBtn" class="header-btn" type="button">Line 1 Map</button>
         <button id="todayBoardBtn" class="header-btn" type="button">Board</button>
+        <button id="accountBtn" class="header-btn" type="button">Account</button>
         <button id="clearBtn" class="header-btn" type="button">Clear</button>
         <span id="statusPill" class="header-btn status-pill">Ready</span>
       </div>
@@ -1266,6 +1442,7 @@
           <button class="search-btn" type="submit">Search</button>
         </form>
       </section>
+      <section id="myWorkView" class="today-board-view" hidden></section>
       <section id="todaysPaddleView" class="today-board-view" hidden></section>
       <section id="todayBoardView" class="today-board-view" hidden></section>
       <section id="liveMapView" class="live-map-view" hidden></section>
@@ -1279,12 +1456,31 @@
           <h2 id="paddleTitle">Paddle</h2>
           <p id="paddleMeta" class="muted"></p>
         </div>
-        <button id="closePaddleBtn" class="close-btn" type="button">x</button>
+        <div class="modal-controls">
+          <button id="jumpToCurrentBtn" class="close-btn jump-btn" type="button" title="Jump to current trip">↓</button>
+          <button id="closePaddleBtn" class="close-btn" type="button">x</button>
+        </div>
       </header>
       <div id="paddleBody" class="modal-body"></div>
     </section>
   </div>
 
+  <div id="accountOverlay" class="overlay" hidden>
+    <section class="modal">
+      <header class="modal-head">
+        <div>
+          <h2 id="accountTitle">Account</h2>
+          <p id="accountMeta" class="muted"></p>
+        </div>
+        <div class="modal-controls">
+          <button id="closeAccountBtn" class="close-btn" type="button">x</button>
+        </div>
+      </header>
+      <div id="accountBody" class="modal-body"></div>
+    </section>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script>
     const chat = document.getElementById('chat');
     const liveMapView = document.getElementById('liveMapView');
@@ -1293,16 +1489,24 @@
     const chatForm = document.getElementById('chatForm');
     const chatInput = document.getElementById('chatInput');
     const homeBtn = document.getElementById('homeBtn');
+    const myWorkBtn = document.getElementById('myWorkBtn');
     const todaysPaddleBtn = document.getElementById('todaysPaddleBtn');
     const liveMapBtn = document.getElementById('liveMapBtn');
     const todayBoardBtn = document.getElementById('todayBoardBtn');
+    const accountBtn = document.getElementById('accountBtn');
     const clearBtn = document.getElementById('clearBtn');
     const statusPill = document.getElementById('statusPill');
+    const myWorkView = document.getElementById('myWorkView');
     const paddleOverlay = document.getElementById('paddleOverlay');
     const paddleTitle = document.getElementById('paddleTitle');
     const paddleMeta = document.getElementById('paddleMeta');
     const paddleBody = document.getElementById('paddleBody');
+    const jumpToCurrentBtn = document.getElementById('jumpToCurrentBtn');
     const closePaddleBtn = document.getElementById('closePaddleBtn');
+    const accountOverlay = document.getElementById('accountOverlay');
+    const accountMeta = document.getElementById('accountMeta');
+    const accountBody = document.getElementById('accountBody');
+    const closeAccountBtn = document.getElementById('closeAccountBtn');
     let currentLookup = null;
     let liveMapTimer = null;
     let todayBoardTimer = null;
@@ -1311,6 +1515,14 @@
     let latestLiveMapData = null;
     let pendingLiveMapZoomAnchor = null;
     const todaysPaddleStorageKey = 'ero_todays_paddles_v1';
+    let supabaseEnabled = false;
+    let supabaseClient = null;
+    let currentUser = null;
+    let currentProfile = null;
+    let accountAuthMode = 'signin';
+    let accountResetMode = false;
+    let accountRecoveryMode = false;
+    let accountNotice = { text: '', type: '' };
 
     function escapeHtml(value) {
       return String(value ?? '')
@@ -1337,6 +1549,7 @@
       stopTodayBoardRefresh();
       document.querySelector('.app')?.classList.remove('map-mode');
       liveMapView.hidden = true;
+      myWorkView.hidden = true;
       todaysPaddleView.hidden = true;
       todayBoardView.hidden = true;
       chat.hidden = false;
@@ -1365,6 +1578,7 @@
       stopTodayBoardRefresh();
       document.querySelector('.app')?.classList.remove('map-mode');
       liveMapView.hidden = true;
+      myWorkView.hidden = true;
       todaysPaddleView.hidden = true;
       todayBoardView.hidden = true;
       chat.hidden = false;
@@ -1460,6 +1674,636 @@
       const store = readTodaysPaddleStore();
       const items = store.items.filter((item) => !(item.paddleId === paddleId && item.serviceDay === serviceDay));
       writeTodaysPaddleStore({ date: store.date, items });
+    }
+
+    function profileColumnForServiceDay(serviceDay) {
+      const map = {
+        mon_thu: 'mon_thu_paddles',
+        friday: 'friday_paddles',
+        saturday: 'saturday_paddles',
+        sunday: 'sunday_paddles',
+      };
+      return map[serviceDay] || 'mon_thu_paddles';
+    }
+
+    function getSavedProfilePaddles(serviceDay) {
+      if (!currentProfile) return [];
+      const key = profileColumnForServiceDay(serviceDay);
+      return Array.isArray(currentProfile[key]) ? currentProfile[key] : [];
+    }
+
+    function isSavedToMyWork(paddleId, serviceDay) {
+      return getSavedProfilePaddles(serviceDay).includes(paddleId);
+    }
+
+    function setAccountNotice(text = '', type = '') {
+      accountNotice = { text, type };
+    }
+
+    function renderAccountNotice() {
+      if (!accountNotice.text) return '';
+      return `<div class="auth-notice ${escapeHtml(accountNotice.type || '')}">${escapeHtml(accountNotice.text)}</div>`;
+    }
+
+    function getAuthRedirectUrl() {
+      return `${window.location.origin}${window.location.pathname}`;
+    }
+
+    function isRecoveryUrl() {
+      const hash = String(window.location.hash || '');
+      const search = String(window.location.search || '');
+      return /type=recovery/i.test(hash) || /type=recovery/i.test(search);
+    }
+
+    function clearAccountFieldErrors() {
+      accountBody.querySelectorAll('.input-error').forEach((node) => node.classList.remove('input-error'));
+    }
+
+    function markAccountFieldError(id) {
+      const node = document.getElementById(id);
+      if (node) node.classList.add('input-error');
+    }
+
+    function updateAccountButton() {
+      if (!supabaseEnabled) {
+        accountBtn.textContent = 'Accounts Off';
+        myWorkBtn.textContent = 'My Work';
+        return;
+      }
+      accountBtn.textContent = currentUser ? 'Settings' : 'Account';
+    }
+
+    function closeAccountModal() {
+      accountOverlay.hidden = true;
+      document.body.style.overflow = '';
+    }
+
+    function openAccountModal() {
+      renderAccountModal();
+      accountOverlay.hidden = false;
+      document.body.style.overflow = 'hidden';
+    }
+
+    async function fetchSupabaseConfig() {
+      try {
+        const response = await fetch('/api/supabase-config');
+        const data = await response.json();
+        if (!response.ok || !data.ok || !data.enabled) return null;
+        return data;
+      } catch (_) {
+        return null;
+      }
+    }
+
+    async function ensureProfileRow() {
+      if (!supabaseClient || !currentUser) return;
+      if (currentProfile) return;
+      const fallbackName = currentUser.user_metadata?.display_name || currentUser.user_metadata?.username || '';
+      const { data } = await supabaseClient
+        .from('ero_user_profiles')
+        .upsert({
+          user_id: currentUser.id,
+          display_name: fallbackName || null,
+        }, { onConflict: 'user_id' })
+        .select('*')
+        .single();
+      currentProfile = data || {
+        user_id: currentUser.id,
+        display_name: fallbackName || null,
+        mon_thu_paddles: [],
+        friday_paddles: [],
+        saturday_paddles: [],
+        sunday_paddles: [],
+      };
+    }
+
+    async function loadProfile() {
+      if (!supabaseClient || !currentUser) {
+        currentProfile = null;
+        updateAccountButton();
+        return;
+      }
+      const { data, error } = await supabaseClient
+        .from('ero_user_profiles')
+        .select('*')
+        .eq('user_id', currentUser.id)
+        .maybeSingle();
+      if (error) {
+        currentProfile = null;
+      } else if (data) {
+        currentProfile = data;
+      } else {
+        currentProfile = null;
+        await ensureProfileRow();
+      }
+      updateAccountButton();
+    }
+
+    async function saveCurrentProfile() {
+      if (!supabaseClient || !currentUser || !currentProfile) return { ok: false, error: 'Not signed in.' };
+      const payload = {
+        user_id: currentUser.id,
+        display_name: currentProfile.display_name || null,
+        mon_thu_paddles: getSavedProfilePaddles('mon_thu'),
+        friday_paddles: getSavedProfilePaddles('friday'),
+        saturday_paddles: getSavedProfilePaddles('saturday'),
+        sunday_paddles: getSavedProfilePaddles('sunday'),
+      };
+      const { data, error } = await supabaseClient
+        .from('ero_user_profiles')
+        .upsert(payload, { onConflict: 'user_id' })
+        .select('*')
+        .single();
+      if (error) return { ok: false, error: error.message || 'Could not save profile.' };
+      currentProfile = data;
+      return { ok: true };
+    }
+
+    async function savePaddleToMyWork(paddleId, serviceDay) {
+      if (!currentUser) {
+        setAccountNotice('Sign in first to save paddles to My Work.', 'warn');
+        openAccountModal();
+        return false;
+      }
+      await ensureProfileRow();
+      const key = profileColumnForServiceDay(serviceDay);
+      currentProfile[key] = [...new Set([...(currentProfile[key] || []), paddleId])];
+      const result = await saveCurrentProfile();
+      if (!result.ok) {
+        setStatus('Save failed', false);
+        setAccountNotice(result.error, 'warn');
+        return false;
+      }
+      setStatus('Saved to My Work', true);
+      return true;
+    }
+
+    async function removePaddleFromMyWork(paddleId, serviceDay) {
+      if (!currentUser || !currentProfile) return false;
+      const key = profileColumnForServiceDay(serviceDay);
+      currentProfile[key] = (currentProfile[key] || []).filter((item) => item !== paddleId);
+      const result = await saveCurrentProfile();
+      if (!result.ok) {
+        setStatus('Remove failed', false);
+        return false;
+      }
+      setStatus('Removed from My Work', true);
+      return true;
+    }
+
+    async function signInWithPassword() {
+      clearAccountFieldErrors();
+      const email = document.getElementById('authEmail')?.value?.trim() || '';
+      const password = document.getElementById('authPassword')?.value || '';
+      if (!email || !password) {
+        if (!email) markAccountFieldError('authEmail');
+        if (!password) markAccountFieldError('authPassword');
+        setAccountNotice('Enter your email and password first.', 'warn');
+        renderAccountModal();
+        return;
+      }
+      const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+      if (error) {
+        markAccountFieldError('authEmail');
+        markAccountFieldError('authPassword');
+        setAccountNotice(error.message || 'Sign in failed.', 'warn');
+        renderAccountModal();
+        return;
+      }
+      setAccountNotice('', '');
+      closeAccountModal();
+    }
+
+    async function signUpWithPassword() {
+      clearAccountFieldErrors();
+      const displayName = document.getElementById('authDisplayName')?.value?.trim() || '';
+      const email = document.getElementById('authEmail')?.value?.trim() || '';
+      const password = document.getElementById('authPassword')?.value || '';
+      const passwordConfirm = document.getElementById('authPasswordConfirm')?.value || '';
+      if (!displayName || !email || !password || !passwordConfirm) {
+        if (!displayName) markAccountFieldError('authDisplayName');
+        if (!email) markAccountFieldError('authEmail');
+        if (!password) markAccountFieldError('authPassword');
+        if (!passwordConfirm) markAccountFieldError('authPasswordConfirm');
+        setAccountNotice('Enter your name, email, and both password fields.', 'warn');
+        renderAccountModal();
+        return;
+      }
+      if (password !== passwordConfirm) {
+        markAccountFieldError('authPassword');
+        markAccountFieldError('authPasswordConfirm');
+        setAccountNotice('Passwords do not match.', 'warn');
+        renderAccountModal();
+        return;
+      }
+      const { data, error } = await supabaseClient.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            display_name: displayName,
+            username: displayName,
+          },
+        },
+      });
+      if (error) {
+        setAccountNotice(error.message || 'Could not create the account.', 'warn');
+        renderAccountModal();
+        return;
+      }
+      if (data?.user?.id) {
+        currentProfile = {
+          user_id: data.user.id,
+          display_name: displayName,
+          mon_thu_paddles: [],
+          friday_paddles: [],
+          saturday_paddles: [],
+          sunday_paddles: [],
+        };
+        await saveCurrentProfile();
+      }
+      accountAuthMode = 'signin';
+      setAccountNotice('Account created. You can sign in now.', 'ok');
+      renderAccountModal();
+    }
+
+    async function sendPasswordResetEmail() {
+      clearAccountFieldErrors();
+      const email = document.getElementById('resetEmail')?.value?.trim() || '';
+      if (!email) {
+        markAccountFieldError('resetEmail');
+        setAccountNotice('Enter your email first.', 'warn');
+        renderAccountModal();
+        return;
+      }
+      const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
+        redirectTo: getAuthRedirectUrl(),
+      });
+      if (error) {
+        setAccountNotice(error.message || 'Could not send reset email.', 'warn');
+        renderAccountModal();
+        return;
+      }
+      setAccountNotice('Password reset email sent.', 'ok');
+      renderAccountModal();
+    }
+
+    async function sendSignedInPasswordResetEmail() {
+      const email = currentUser?.email || '';
+      if (!email) {
+        setAccountNotice('No account email was found.', 'warn');
+        renderAccountModal();
+        return;
+      }
+      const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
+        redirectTo: getAuthRedirectUrl(),
+      });
+      if (error) {
+        setAccountNotice(error.message || 'Could not send reset email.', 'warn');
+        renderAccountModal();
+        return;
+      }
+      setAccountNotice('Password reset email sent.', 'ok');
+      renderAccountModal();
+    }
+
+    async function setNewPassword() {
+      clearAccountFieldErrors();
+      const password = document.getElementById('recoveryPassword')?.value || '';
+      const confirm = document.getElementById('recoveryPasswordConfirm')?.value || '';
+      if (!password || !confirm) {
+        if (!password) markAccountFieldError('recoveryPassword');
+        if (!confirm) markAccountFieldError('recoveryPasswordConfirm');
+        setAccountNotice('Enter your new password in both fields.', 'warn');
+        renderAccountModal();
+        return;
+      }
+      if (password !== confirm) {
+        markAccountFieldError('recoveryPassword');
+        markAccountFieldError('recoveryPasswordConfirm');
+        setAccountNotice('Passwords do not match.', 'warn');
+        renderAccountModal();
+        return;
+      }
+      const { error } = await supabaseClient.auth.updateUser({ password });
+      if (error) {
+        setAccountNotice(error.message || 'Could not update password.', 'warn');
+        renderAccountModal();
+        return;
+      }
+      accountRecoveryMode = false;
+      setAccountNotice('Password updated.', 'ok');
+      closeAccountModal();
+    }
+
+    async function saveSettings() {
+      if (!currentUser) return;
+      await ensureProfileRow();
+      const displayName = document.getElementById('profileDisplayName')?.value?.trim() || '';
+      currentProfile.display_name = displayName || null;
+      const result = await saveCurrentProfile();
+      if (!result.ok) {
+        setAccountNotice(result.error, 'warn');
+        renderAccountModal();
+        return;
+      }
+      await supabaseClient.auth.updateUser({
+        data: {
+          display_name: displayName,
+          username: displayName,
+        },
+      });
+      setAccountNotice('Settings saved.', 'ok');
+      renderAccountModal();
+    }
+
+    async function signOutUser() {
+      if (!supabaseClient) return;
+      await supabaseClient.auth.signOut();
+      setAccountNotice('Signed out.', 'ok');
+      closeAccountModal();
+    }
+
+    async function handleSession(session) {
+      currentUser = session?.user || null;
+      if (!currentUser) {
+        currentProfile = null;
+      } else {
+        await loadProfile();
+      }
+      updateAccountButton();
+      if (!accountOverlay.hidden) {
+        renderAccountModal();
+      }
+      if (!myWorkView.hidden) {
+        await renderMyWorkPage();
+      }
+    }
+
+    async function initSupabase() {
+      const config = await fetchSupabaseConfig();
+      supabaseEnabled = Boolean(config && window.supabase && typeof window.supabase.createClient === 'function');
+      updateAccountButton();
+      if (!supabaseEnabled) return;
+      supabaseClient = window.supabase.createClient(config.url, config.anonKey);
+      accountRecoveryMode = isRecoveryUrl();
+      const { data } = await supabaseClient.auth.getSession();
+      await handleSession(data.session);
+      if (accountRecoveryMode) openAccountModal();
+      supabaseClient.auth.onAuthStateChange(async (event, session) => {
+        if (event === 'PASSWORD_RECOVERY') {
+          accountRecoveryMode = true;
+          openAccountModal();
+        }
+        await handleSession(session);
+      });
+    }
+
+    function renderAccountModal() {
+      if (!supabaseEnabled) {
+        accountMeta.textContent = 'Accounts are not configured yet.';
+        accountBody.innerHTML = `
+          <section class="section-card">
+            <div class="muted">Add <strong>SUPABASE_URL</strong> and <strong>SUPABASE_ANON_KEY</strong> to enable accounts.</div>
+          </section>
+        `;
+        wireAccountEvents();
+        return;
+      }
+      if (accountRecoveryMode) {
+        accountMeta.textContent = 'Set a new password for your account.';
+        accountBody.innerHTML = `
+          <section class="section-card">
+            ${renderAccountNotice()}
+            <div class="stack-form">
+              <label class="field-stack">
+                <span class="field-label">New Password</span>
+                <input id="recoveryPassword" class="text-input" type="password" autocomplete="new-password" placeholder="Enter a new password">
+              </label>
+              <label class="field-stack">
+                <span class="field-label">Confirm Password</span>
+                <input id="recoveryPasswordConfirm" class="text-input" type="password" autocomplete="new-password" placeholder="Enter it again">
+              </label>
+            </div>
+            <div class="section-actions">
+              <button id="setNewPasswordBtn" class="btn" type="button">Set New Password</button>
+            </div>
+          </section>
+        `;
+        wireAccountEvents();
+        return;
+      }
+      if (!currentUser) {
+        const isSignup = accountAuthMode === 'signup';
+        const isReset = accountResetMode;
+        accountMeta.textContent = isSignup
+          ? 'Create an account to save paddles by service day.'
+          : isReset
+            ? 'Reset your password by email.'
+            : 'Sign in to save paddles to My Work.';
+        accountBody.innerHTML = isSignup ? `
+          <section class="section-card">
+            ${renderAccountNotice()}
+            <div class="stack-form">
+              <label class="field-stack">
+                <span class="field-label">Name</span>
+                <input id="authDisplayName" class="text-input" type="text" autocomplete="nickname" placeholder="Your name">
+              </label>
+              <label class="field-stack">
+                <span class="field-label">Email</span>
+                <input id="authEmail" class="text-input" type="email" autocomplete="email" placeholder="you@example.com">
+              </label>
+              <label class="field-stack">
+                <span class="field-label">Password</span>
+                <input id="authPassword" class="text-input" type="password" autocomplete="new-password" placeholder="Create a password">
+              </label>
+              <label class="field-stack">
+                <span class="field-label">Confirm Password</span>
+                <input id="authPasswordConfirm" class="text-input" type="password" autocomplete="new-password" placeholder="Enter it again">
+              </label>
+            </div>
+            <div class="section-actions">
+              <button id="signUpBtn" class="btn" type="button">Create Account</button>
+              <button id="switchToSignInBtn" class="linkish-btn" type="button">Back to Sign In</button>
+            </div>
+          </section>
+        ` : isReset ? `
+          <section class="section-card">
+            ${renderAccountNotice()}
+            <div class="stack-form">
+              <label class="field-stack">
+                <span class="field-label">Email</span>
+                <input id="resetEmail" class="text-input" type="email" autocomplete="email" placeholder="you@example.com">
+              </label>
+            </div>
+            <div class="section-actions">
+              <button id="sendResetBtn" class="btn" type="button">Send Reset Email</button>
+              <button id="switchToSignInBtn" class="linkish-btn" type="button">Back to Sign In</button>
+            </div>
+          </section>
+        ` : `
+          <section class="section-card">
+            ${renderAccountNotice()}
+            <div class="stack-form">
+              <label class="field-stack">
+                <span class="field-label">Email</span>
+                <input id="authEmail" class="text-input" type="email" autocomplete="email" placeholder="you@example.com">
+              </label>
+              <label class="field-stack">
+                <span class="field-label">Password</span>
+                <input id="authPassword" class="text-input" type="password" autocomplete="current-password" placeholder="Password">
+              </label>
+            </div>
+            <div class="section-actions">
+              <button id="signInBtn" class="btn" type="button">Sign In</button>
+              <button id="forgotPasswordBtn" class="linkish-btn" type="button">Forgot Password?</button>
+              <button id="switchToSignUpBtn" class="linkish-btn" type="button">Create Account</button>
+            </div>
+          </section>
+        `;
+        wireAccountEvents();
+        return;
+      }
+      accountMeta.textContent = `Signed in as ${currentUser.email || 'account user'}`;
+      accountBody.innerHTML = `
+        <section class="section-card">
+          ${renderAccountNotice()}
+          <div class="stack-form">
+            <label class="field-stack">
+              <span class="field-label">Display Name</span>
+              <input id="profileDisplayName" class="text-input" type="text" value="${escapeHtml(currentProfile?.display_name || currentUser?.user_metadata?.display_name || '')}" placeholder="Your name">
+            </label>
+          </div>
+          <div class="section-actions">
+            <button id="saveSettingsBtn" class="btn" type="button">Save Settings</button>
+            <button id="requestPasswordResetBtn" class="linkish-btn" type="button">Reset Password</button>
+            <button id="signOutBtn" class="linkish-btn" type="button">Sign Out</button>
+          </div>
+        </section>
+      `;
+      wireAccountEvents();
+    }
+
+    function wireAccountEvents() {
+      const signInBtn = document.getElementById('signInBtn');
+      const signUpBtn = document.getElementById('signUpBtn');
+      const switchToSignUpBtn = document.getElementById('switchToSignUpBtn');
+      const switchToSignInBtn = document.getElementById('switchToSignInBtn');
+      const forgotPasswordBtn = document.getElementById('forgotPasswordBtn');
+      const sendResetBtn = document.getElementById('sendResetBtn');
+      const setNewPasswordBtn = document.getElementById('setNewPasswordBtn');
+      const saveSettingsBtn = document.getElementById('saveSettingsBtn');
+      const requestPasswordResetBtn = document.getElementById('requestPasswordResetBtn');
+      const signOutBtn = document.getElementById('signOutBtn');
+      if (signInBtn) signInBtn.addEventListener('click', signInWithPassword);
+      if (signUpBtn) signUpBtn.addEventListener('click', signUpWithPassword);
+      if (switchToSignUpBtn) switchToSignUpBtn.addEventListener('click', () => {
+        accountAuthMode = 'signup';
+        accountResetMode = false;
+        setAccountNotice('', '');
+        renderAccountModal();
+        wireAccountEvents();
+      });
+      if (switchToSignInBtn) switchToSignInBtn.addEventListener('click', () => {
+        accountAuthMode = 'signin';
+        accountResetMode = false;
+        setAccountNotice('', '');
+        renderAccountModal();
+        wireAccountEvents();
+      });
+      if (forgotPasswordBtn) forgotPasswordBtn.addEventListener('click', () => {
+        accountResetMode = true;
+        setAccountNotice('', '');
+        renderAccountModal();
+        wireAccountEvents();
+      });
+      if (sendResetBtn) sendResetBtn.addEventListener('click', sendPasswordResetEmail);
+      if (setNewPasswordBtn) setNewPasswordBtn.addEventListener('click', setNewPassword);
+      if (saveSettingsBtn) saveSettingsBtn.addEventListener('click', saveSettings);
+      if (requestPasswordResetBtn) requestPasswordResetBtn.addEventListener('click', sendSignedInPasswordResetEmail);
+      if (signOutBtn) signOutBtn.addEventListener('click', signOutUser);
+    }
+
+    async function renderMyWorkPage() {
+      if (!supabaseEnabled) {
+        myWorkView.innerHTML = `
+          <div class="board-page-head">
+            <div>
+              <h2>My Work</h2>
+              <p class="overlay-page-copy">Accounts are not configured yet.</p>
+            </div>
+          </div>
+          <div class="saved-empty">Add Supabase first, then My Work will be available here.</div>
+        `;
+        return;
+      }
+      if (!currentUser) {
+        myWorkView.innerHTML = `
+          <div class="board-page-head">
+            <div>
+              <h2>My Work</h2>
+              <p class="overlay-page-copy">Save Mon-Thu, Friday, Saturday, and Sunday paddles to your account.</p>
+            </div>
+          </div>
+          <div class="saved-empty">
+            Sign in to save your work by service day.
+            <div class="section-actions">
+              <button class="btn" type="button" data-open-account-modal>Open Account</button>
+            </div>
+          </div>
+        `;
+        return;
+      }
+      const days = [
+        { key: 'mon_thu', label: 'Mon-Thu' },
+        { key: 'friday', label: 'Friday' },
+        { key: 'saturday', label: 'Saturday' },
+        { key: 'sunday', label: 'Sunday' },
+      ];
+      myWorkView.innerHTML = `
+        <div class="board-page-head">
+          <div>
+            <h2>My Work</h2>
+            <p class="overlay-page-copy">${escapeHtml(currentProfile?.display_name || currentUser.email || 'Signed in')} saved paddles by service day.</p>
+          </div>
+        </div>
+        <div class="my-work-grid">
+          ${days.map((day) => {
+            const items = getSavedProfilePaddles(day.key);
+            return `
+              <section class="work-day-section">
+                <h3>${escapeHtml(day.label)}</h3>
+                <div class="work-day-body">
+                  ${items.length ? items.map((paddleId) => `
+                    <div class="work-item">
+                      <strong>${escapeHtml(paddleId)}</strong>
+                      <div class="work-item-actions">
+                        <button class="linkish-btn" type="button" data-open-paddle="${escapeHtml(paddleId)}" data-day="${escapeHtml(day.key)}">Open</button>
+                        <button class="linkish-btn" type="button" data-remove-my-work="${escapeHtml(paddleId)}" data-day="${escapeHtml(day.key)}">Remove</button>
+                      </div>
+                    </div>
+                  `).join('') : '<div class="work-empty">Nothing saved yet.</div>'}
+                </div>
+              </section>
+            `;
+          }).join('')}
+        </div>
+      `;
+    }
+
+    async function openMyWorkPage() {
+      stopLiveMapRefresh();
+      stopTodayBoardRefresh();
+      document.querySelector('.app')?.classList.remove('map-mode');
+      liveMapView.hidden = true;
+      todaysPaddleView.hidden = true;
+      todayBoardView.hidden = true;
+      chat.hidden = true;
+      chatForm.closest('.composer').hidden = true;
+      myWorkView.hidden = false;
+      setStatus('Loading My Work...', true);
+      await renderMyWorkPage();
+      setStatus('My Work ready', true);
     }
 
 
@@ -1777,12 +2621,17 @@
     function renderEntryCard(entry, live) {
       const tripRows = (entry.trips || []).map((trip, index) => renderTripRow(entry, trip, live, index)).join('');
       const directionLabel = deriveEntryDirection(entry);
-      const isLiveBreak = Boolean(live && live.kind === 'break' && String(live.block || '') === String(entry.block || ''));
+      const isLiveBreak = Boolean(
+        live
+        && live.kind === 'break'
+        && String(live.block || '') === String(entry.block || '')
+        && String(live.sequence || '') === String(entry.sequence || '')
+      );
       const isSplitBreak = typeof entry.breakAfterMinutes === 'number' && entry.breakAfterMinutes >= 90;
       const breakStrip = typeof entry.breakAfterMinutes === 'number' && entry.breakAfterMinutes > 0
         ? isSplitBreak
           ? `
-          <div class="break-strip split-break${isLiveBreak ? ' active-break' : ''}">
+          <div class="break-strip split-break${isLiveBreak ? ' active-break' : ''}" data-break-block="${escapeHtml(entry.block)}" data-break-sequence="${escapeHtml(entry.sequence)}">
             <div class="split-side left">
               <div class="split-label">Clear</div>
               <div class="split-time">${escapeHtml(entry.clearTime || entry.endTime || '')}</div>
@@ -1799,7 +2648,7 @@
           </div>
         `
           : `
-          <div class="break-strip${isLiveBreak ? ' active-break' : ''}">
+          <div class="break-strip${isLiveBreak ? ' active-break' : ''}" data-break-block="${escapeHtml(entry.block)}" data-break-sequence="${escapeHtml(entry.sequence)}">
             <span class="break-pill">Break ${escapeHtml(entry.breakAfterMinutes)} min</span>
             ${isLiveBreak ? `<span>${renderCountdown(live, 'Remaining')}</span>` : ''}
           </div>
@@ -1807,7 +2656,7 @@
         : '';
       return `
         <div class="block-stack">
-          <article class="entry-card${live && live.kind === 'trip' && live.block === entry.block ? ' active' : ''}">
+          <article class="entry-card${live && live.kind === 'trip' && String(live.block || '') === String(entry.block || '') && String(live.sequence || '') === String(entry.sequence || '') ? ' active' : ''}" data-entry-block="${escapeHtml(entry.block)}" data-entry-sequence="${escapeHtml(entry.sequence)}">
             <div class="entry-head">
               <h4>
                 <span>Trip ${escapeHtml(entry.sequence)}</span>
@@ -1840,32 +2689,101 @@
         </div>
         ${entries}
       `;
+      jumpToCurrentBtn.disabled = !Boolean(findCurrentPaddleTarget(live));
       paddleOverlay.hidden = false;
       document.body.style.overflow = 'hidden';
       refreshCountdowns();
     }
 
+    function findCurrentPaddleTargetInRoot(root, live) {
+      if (!root || !live) return null;
+      if (live.kind === 'break') {
+        const breakNode = root.querySelector(`.break-strip.active-break[data-break-block="${CSS.escape(String(live.block || ''))}"][data-break-sequence="${CSS.escape(String(live.sequence || ''))}"]`);
+        if (breakNode) return breakNode;
+      }
+      if (live.kind === 'trip') {
+        const liveEntry = root.querySelector(`.entry-card.active[data-entry-block="${CSS.escape(String(live.block || ''))}"][data-entry-sequence="${CSS.escape(String(live.sequence || ''))}"]`);
+        if (liveEntry) return liveEntry;
+      }
+      if (live.kind === 'prestart' || live.kind === 'clearing') {
+        const entryNode = root.querySelector(`.entry-card[data-entry-block="${CSS.escape(String(live.block || ''))}"][data-entry-sequence="${CSS.escape(String(live.sequence || ''))}"]`);
+        if (entryNode) return entryNode;
+      }
+      return root.querySelector('.entry-card.active')
+        || root.querySelector('.break-strip.active-break')
+        || null;
+    }
+
+    function findCurrentPaddleTarget(live) {
+      return findCurrentPaddleTargetInRoot(paddleBody, live);
+    }
+
+    function readLiveStatusFromCard(card) {
+      if (!card) return null;
+      return {
+        kind: card.dataset.liveKind || '',
+        block: card.dataset.liveBlock || '',
+        sequence: card.dataset.liveSequence || '',
+      };
+    }
+
+    function updateCardJumpButtonState(button, state) {
+      if (!button) return;
+      button.dataset.jumpState = state;
+      button.textContent = state === 'top' ? '↑' : '↓';
+      button.title = state === 'top' ? 'Back to top of paddle' : 'Jump to current trip';
+    }
+
+    function handleInlinePaddleJump(button) {
+      const card = button.closest('[data-paddle-card]');
+      if (!card) return;
+      const state = button.dataset.jumpState || 'current';
+      if (state === 'top') {
+        card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        updateCardJumpButtonState(button, 'current');
+        return;
+      }
+      const live = readLiveStatusFromCard(card);
+      const target = findCurrentPaddleTargetInRoot(card, live);
+      if (!target) return;
+      target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      updateCardJumpButtonState(button, 'top');
+    }
+
+    function jumpToCurrentPaddlePosition() {
+      const target = findCurrentPaddleTarget(currentLookup?.liveStatus || null);
+      if (!target) return;
+      target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
     function renderFullPaddleCard(data, actionsHtml = '', extraClass = '') {
       const live = data.liveStatus || null;
       const entries = (data.entries || []).map((entry) => renderEntryCard(entry, live)).join('');
+      const showInlineJump = extraClass.includes('saved-paddle-inline');
+      const myWorkButton = currentUser
+        ? `<button class="save-btn" type="button" data-save-my-work="${escapeHtml(data.paddleId)}" data-day="${escapeHtml(data.serviceDay)}">${isSavedToMyWork(data.paddleId, data.serviceDay) ? 'Saved to My Work' : 'Save to My Work'}</button>`
+        : '';
       return `
-        <article class="card ${extraClass}" data-paddle-card="${escapeHtml(data.paddleId)}" data-service-day="${escapeHtml(data.serviceDay)}">
+        <article class="card ${extraClass}" data-paddle-card="${escapeHtml(data.paddleId)}" data-service-day="${escapeHtml(data.serviceDay)}" data-live-kind="${escapeHtml(live?.kind || '')}" data-live-block="${escapeHtml(live?.block || '')}" data-live-sequence="${escapeHtml(live?.sequence || '')}">
           <div class="card-head">
             <div>
               <h3>${escapeHtml(data.paddleId)}</h3>
               <p>${escapeHtml(data.serviceLabel)} service</p>
             </div>
-            <span class="pill">${escapeHtml(formatPaddleStatusPill(live))}</span>
+            <div class="card-head-right">
+              ${showInlineJump ? `<button class="card-jump-btn" type="button" data-inline-paddle-jump ${live ? '' : 'disabled'} title="Jump to current trip">↓</button>` : ''}
+              <span class="pill">${escapeHtml(formatPaddleStatusPill(live))}</span>
+            </div>
           </div>
           <div class="card-body">
             ${renderNextActionBox(live)}
             <div class="summary-grid">
-              ${renderPieceSummaryItems(data)}
-              ${renderSplitSummaryItems(data)}
-              <div class="summary-item"><div class="k">Blocks</div><div class="v">${escapeHtml(data.entries?.length || 0)}</div></div>
-              <div class="summary-item"><div class="k">Effective</div><div class="v">${escapeHtml(data.effective || 'N/A')}</div></div>
-            </div>
-            ${actionsHtml ? `<div class="card-actions">${actionsHtml}</div>` : ''}
+            ${renderPieceSummaryItems(data)}
+            ${renderSplitSummaryItems(data)}
+            <div class="summary-item"><div class="k">Blocks</div><div class="v">${escapeHtml(data.entries?.length || 0)}</div></div>
+            <div class="summary-item"><div class="k">Effective</div><div class="v">${escapeHtml(data.effective || 'N/A')}</div></div>
+          </div>
+            ${(actionsHtml || myWorkButton) ? `<div class="card-actions">${actionsHtml}${myWorkButton}</div>` : ''}
             ${entries}
           </div>
         </article>
@@ -1898,6 +2816,7 @@
           <div class="card-actions">
             <button class="link-btn" type="button" data-open-paddle="${escapeHtml(data.paddleId)}" data-day="${escapeHtml(data.serviceDay)}">Open Paddle</button>
             <button class="save-btn" type="button" data-save-todays-paddle="${escapeHtml(data.paddleId)}" data-day="${escapeHtml(data.serviceDay)}">${isSavedToTodaysPaddle(data.paddleId, data.serviceDay) ? "Saved to Today's Paddle" : "Save to Today's Paddle"}</button>
+            ${currentUser ? `<button class="save-btn" type="button" data-save-my-work="${escapeHtml(data.paddleId)}" data-day="${escapeHtml(data.serviceDay)}">${isSavedToMyWork(data.paddleId, data.serviceDay) ? 'Saved to My Work' : 'Save to My Work'}</button>` : ''}
           </div>
           <div class="day-actions">
             ${(data.paddleOptions || []).map((option) => `<button class="day-btn" type="button" data-open-paddle="${escapeHtml(data.paddleId)}" data-day="${escapeHtml(option.serviceDay)}">${escapeHtml(option.buttonLabel)}</button>`).join('')}
@@ -1988,7 +2907,7 @@
         <div class="board-page-head">
           <div>
             <h2>Today's Paddle</h2>
-            <p>Saved on this device for ${escapeHtml(store.date)}. No login needed.</p>
+            <p>Saved on this device for ${escapeHtml(store.date)}.</p>
           </div>
           <div class="board-page-meta" aria-label="Saved paddle counts">
             <div class="board-stat"><span class="k">Saved</span><span class="v">${escapeHtml(validPaddles.length)}</span></div>
@@ -2015,6 +2934,7 @@
       stopTodayBoardRefresh();
       document.querySelector('.app')?.classList.remove('map-mode');
       liveMapView.hidden = true;
+      myWorkView.hidden = true;
       todayBoardView.hidden = true;
       chat.hidden = true;
       chatForm.closest('.composer').hidden = true;
@@ -2029,6 +2949,7 @@
       stopTodayBoardRefresh();
       document.querySelector('.app')?.classList.remove('map-mode');
       liveMapView.hidden = true;
+      myWorkView.hidden = true;
       chat.hidden = true;
       chatForm.closest('.composer').hidden = true;
       todayBoardView.hidden = false;
@@ -2316,6 +3237,7 @@
       stopLiveMapRefresh();
       document.querySelector('.app')?.classList.add('map-mode');
       chat.hidden = true;
+      myWorkView.hidden = true;
       todayBoardView.hidden = true;
       chatForm.closest('.composer').hidden = true;
       liveMapView.hidden = false;
@@ -2347,6 +3269,7 @@
     async function runLookup(message) {
       stopTodayBoardRefresh();
       document.querySelector('.app')?.classList.remove('map-mode');
+      myWorkView.hidden = true;
       todaysPaddleView.hidden = true;
       todayBoardView.hidden = true;
       liveMapView.hidden = true;
@@ -2411,6 +3334,16 @@
       showToolView('Ready');
     });
 
+    myWorkBtn.addEventListener('click', async () => {
+      try {
+        await openMyWorkPage();
+      } catch (error) {
+        myWorkView.hidden = false;
+        myWorkView.innerHTML = `<div class="live-map-error">${escapeHtml(error.message || 'My Work failed.')}</div>`;
+        setStatus('My Work failed', false);
+      }
+    });
+
     todaysPaddleBtn.addEventListener('click', async () => {
       try {
         await openTodaysPaddlePage();
@@ -2441,13 +3374,23 @@
       }
     });
 
+    accountBtn.addEventListener('click', () => {
+      openAccountModal();
+    });
+
     closePaddleBtn.addEventListener('click', closePaddleModal);
+    jumpToCurrentBtn.addEventListener('click', jumpToCurrentPaddlePosition);
+    closeAccountBtn.addEventListener('click', closeAccountModal);
     paddleOverlay.addEventListener('click', (event) => {
       if (event.target === paddleOverlay) closePaddleModal();
+    });
+    accountOverlay.addEventListener('click', (event) => {
+      if (event.target === accountOverlay) closeAccountModal();
     });
 
     refreshCountdowns();
     setInterval(refreshCountdowns, 1000);
+    initSupabase();
 
     document.addEventListener('click', async (event) => {
       const exitLiveMapBtn = event.target.closest('[data-exit-live-map]');
@@ -2473,6 +3416,12 @@
         return;
       }
 
+      const inlinePaddleJumpBtn = event.target.closest('[data-inline-paddle-jump]');
+      if (inlinePaddleJumpBtn) {
+        handleInlinePaddleJump(inlinePaddleJumpBtn);
+        return;
+      }
+
       const openPaddleBtn = event.target.closest('[data-open-paddle]');
       if (openPaddleBtn) {
         try {
@@ -2481,6 +3430,12 @@
           addMessage(error.message || 'Paddle lookup failed.');
           setStatus('Lookup failed', false);
         }
+        return;
+      }
+
+      const openAccountModalBtn = event.target.closest('[data-open-account-modal]');
+      if (openAccountModalBtn) {
+        openAccountModal();
         return;
       }
 
@@ -2496,11 +3451,45 @@
         return;
       }
 
+      const saveMyWorkBtn = event.target.closest('[data-save-my-work]');
+      if (saveMyWorkBtn) {
+        const paddleId = saveMyWorkBtn.dataset.saveMyWork || '';
+        const serviceDay = saveMyWorkBtn.dataset.day || '';
+        const saved = await savePaddleToMyWork(paddleId, serviceDay);
+        if (saved) {
+          if (currentLookup && currentLookup.paddleId === paddleId && currentLookup.serviceDay === serviceDay && !chat.hidden) {
+            addPaddleCard(currentLookup);
+          }
+          if (!todaysPaddleView.hidden) {
+            await renderTodaysPaddlePage();
+          }
+          if (!myWorkView.hidden) {
+            await renderMyWorkPage();
+          }
+        }
+        return;
+      }
+
       const removeTodaysPaddleBtn = event.target.closest('[data-remove-todays-paddle]');
       if (removeTodaysPaddleBtn) {
         removeFromTodaysPaddle(removeTodaysPaddleBtn.dataset.removeTodaysPaddle || '', removeTodaysPaddleBtn.dataset.day || '');
         await renderTodaysPaddlePage();
         setStatus("Removed from today's paddle", true);
+        return;
+      }
+
+      const removeMyWorkBtn = event.target.closest('[data-remove-my-work]');
+      if (removeMyWorkBtn) {
+        await removePaddleFromMyWork(removeMyWorkBtn.dataset.removeMyWork || '', removeMyWorkBtn.dataset.day || '');
+        if (!myWorkView.hidden) {
+          await renderMyWorkPage();
+        }
+        if (!todaysPaddleView.hidden) {
+          await renderTodaysPaddlePage();
+        }
+        if (currentLookup && !chat.hidden) {
+          addPaddleCard(currentLookup);
+        }
         return;
       }
 
