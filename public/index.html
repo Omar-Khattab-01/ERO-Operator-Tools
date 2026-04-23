@@ -1181,15 +1181,38 @@
         font-size: 11px;
         padding: 5px 7px;
       }
-      .trip-row,
       .entry-head {
         grid-template-columns: 1fr;
       }
       .entry-direction,
-      .entry-block,
-      .trip-side.end {
+      .entry-block {
         justify-self: start;
         text-align: left;
+      }
+      .trip-row {
+        grid-template-columns: minmax(0, 1fr) 92px minmax(0, 1fr);
+        gap: 8px;
+        align-items: center;
+        padding: 10px 10px;
+      }
+      .trip-side.end {
+        justify-self: end;
+        text-align: right;
+      }
+      .trip-stop {
+        font-size: 14px;
+      }
+      .trip-time {
+        font-size: 18px;
+      }
+      .trip-duration {
+        font-size: 11px;
+      }
+      .trip-rail {
+        width: 100%;
+      }
+      .trip-train {
+        font-size: 14px;
       }
       .break-strip.split-break {
         grid-template-columns: 1fr;
