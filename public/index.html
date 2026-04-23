@@ -233,38 +233,9 @@
     }
     .saved-paddles-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      grid-template-columns: 1fr;
       gap: 14px;
       align-items: start;
-    }
-    .saved-paddle-card {
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      background: rgba(255,255,255,.025);
-      padding: 14px;
-      display: grid;
-      gap: 10px;
-    }
-    .saved-paddle-card h3 {
-      margin: 0;
-      font-size: 28px;
-      line-height: 1;
-      letter-spacing: -.03em;
-    }
-    .saved-paddle-card p {
-      margin: 0;
-      color: var(--muted);
-    }
-    .saved-paddle-actions {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-    .saved-paddle-meta {
-      display: grid;
-      gap: 6px;
-      color: var(--muted);
-      font-size: 13px;
     }
     .saved-empty {
       border: 1px dashed rgba(255,255,255,.14);
@@ -1668,7 +1639,11 @@
         const data = await response.json();
         if (!response.ok || !data.ok) throw new Error(data.error || 'Paddle refresh failed.');
         currentLookup = data;
-        addPaddleCard(data);
+        if (card.closest('#todaysPaddleView')) {
+          await renderTodaysPaddlePage();
+        } else {
+          addPaddleCard(data);
+        }
         if (!paddleOverlay.hidden && currentLookup?.paddleId === data.paddleId && currentLookup?.serviceDay === data.serviceDay) {
           openPaddleModal(data);
         }
@@ -1824,6 +1799,33 @@
       refreshCountdowns();
     }
 
+    function renderFullPaddleCard(data, actionsHtml = '', extraClass = '') {
+      const live = data.liveStatus || null;
+      const entries = (data.entries || []).map((entry) => renderEntryCard(entry, live)).join('');
+      return `
+        <article class="card ${extraClass}" data-paddle-card="${escapeHtml(data.paddleId)}" data-service-day="${escapeHtml(data.serviceDay)}">
+          <div class="card-head">
+            <div>
+              <h3>${escapeHtml(data.paddleId)}</h3>
+              <p>${escapeHtml(data.serviceLabel)} service</p>
+            </div>
+            <span class="pill">${escapeHtml(formatPaddleStatusPill(live))}</span>
+          </div>
+          <div class="card-body">
+            ${renderNextActionBox(live)}
+            <div class="summary-grid">
+              ${renderPieceSummaryItems(data)}
+              ${renderSplitSummaryItems(data)}
+              <div class="summary-item"><div class="k">Blocks</div><div class="v">${escapeHtml(data.entries?.length || 0)}</div></div>
+              <div class="summary-item"><div class="k">Effective</div><div class="v">${escapeHtml(data.effective || 'N/A')}</div></div>
+            </div>
+            ${actionsHtml ? `<div class="card-actions">${actionsHtml}</div>` : ''}
+            ${entries}
+          </div>
+        </article>
+      `;
+    }
+
     function addPaddleCard(data) {
       const live = data.liveStatus || null;
       chat.querySelectorAll(`[data-paddle-card="${CSS.escape(data.paddleId)}"][data-service-day="${CSS.escape(data.serviceDay)}"]`).forEach((node) => node.remove());
@@ -1949,24 +1951,11 @@
         ${validPaddles.length ? `
           <div class="saved-paddles-grid">
             ${validPaddles.map((data) => {
-              const live = data.liveStatus || null;
-              const next = getNextAction(live);
-              return `
-                <article class="saved-paddle-card">
-                  <div>
-                    <h3>${escapeHtml(data.paddleId)}</h3>
-                    <p>${escapeHtml(data.serviceLabel)} service</p>
-                  </div>
-                  <div class="saved-paddle-meta">
-                    <span>${escapeHtml(next.title || 'Ready')}</span>
-                    ${next.detail ? `<span>${escapeHtml(next.detail)}</span>` : ''}
-                  </div>
-                  <div class="saved-paddle-actions">
-                    <button class="link-btn" type="button" data-open-paddle="${escapeHtml(data.paddleId)}" data-day="${escapeHtml(data.serviceDay)}">Open Paddle</button>
-                    <button class="save-btn" type="button" data-remove-todays-paddle="${escapeHtml(data.paddleId)}" data-day="${escapeHtml(data.serviceDay)}">Remove</button>
-                  </div>
-                </article>
-              `;
+              return renderFullPaddleCard(
+                data,
+                `<button class="save-btn" type="button" data-remove-todays-paddle="${escapeHtml(data.paddleId)}" data-day="${escapeHtml(data.serviceDay)}">Remove from Today's Paddle</button>`,
+                'saved-paddle-inline'
+              );
             }).join('')}
           </div>
         ` : `
