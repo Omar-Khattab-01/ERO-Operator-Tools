@@ -1245,10 +1245,10 @@
         </div>
       </div>
       <div class="header-actions">
-        <button id="homeBtn" class="header-btn" type="button">ERO Tool</button>
+        <button id="homeBtn" class="header-btn" type="button">Paddle Lookup</button>
         <button id="todaysPaddleBtn" class="header-btn" type="button">Today's Paddle</button>
-        <button id="liveMapBtn" class="header-btn" type="button">Live Map</button>
-        <button id="todayBoardBtn" class="header-btn" type="button">Today Board</button>
+        <button id="liveMapBtn" class="header-btn" type="button">Line 1 Map</button>
+        <button id="todayBoardBtn" class="header-btn" type="button">Board</button>
         <button id="clearBtn" class="header-btn" type="button">Clear</button>
         <span id="statusPill" class="header-btn status-pill">Ready</span>
       </div>
@@ -1518,13 +1518,28 @@
         };
       }
       if (live.kind === 'prestart') {
+        const startsAtTunneys = String(live.nextStartStop || '').toLowerCase().includes('tunney');
         if (live.phase === 'report') {
+          if (startsAtTunneys) {
+            return {
+              title: `Head to Bayview to grab a radio${live.reportTime ? ` by ${live.reportTime}` : ''}`,
+              detail: live.sequence ? `Trip ${live.sequence} at ${live.nextStartTime || live.targetTime || ''}`.trim() : '',
+              countdownPrefix: 'Report in',
+            };
+          }
           const place = live.reportPlaceName || live.nextStartStop || 'report point';
           const time = live.reportTime || live.targetTime || '';
           return {
             title: `Report at ${place}${time ? ` at ${time}` : ''}`,
             detail: live.sequence && live.directionLabel ? `Trip ${live.sequence} - ${live.directionLabel}` : '',
             countdownPrefix: 'Report in',
+          };
+        }
+        if (startsAtTunneys) {
+          return {
+            title: `Make your way to Tunney's for Trip ${live.sequence || ''}${live.nextStartTime ? ` at ${live.nextStartTime}` : ''}`.trim(),
+            detail: live.block ? `Block ${live.block}` : '',
+            countdownPrefix: 'Depart in',
           };
         }
         const place = live.nextStartStop || 'start point';
@@ -2225,7 +2240,7 @@
           </div>
         </div>
         <div class="ats-toolbar">
-          <button type="button" class="mimic-nav-btn" data-exit-live-map>ERO TOOL</button>
+          <button type="button" class="mimic-nav-btn" data-exit-live-map>PADDLE LOOKUP</button>
           <span>DISPLAY: MAIN LINE 1 MIMIC</span>
           <span class="tool-cell">TRACK 1 WESTBOUND</span>
           <span class="tool-cell">TRACK 2 EASTBOUND</span>
