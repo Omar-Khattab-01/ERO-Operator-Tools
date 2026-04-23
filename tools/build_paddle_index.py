@@ -65,7 +65,8 @@ def normalize_time(value: str) -> str:
 
 def normalize_summary_line(value: str) -> str:
     text = clean_line(value)
-    text = re.sub(r"(\d)\s*:\s*(\d)\s*(\d)", r"\1:\2\3", text)
+    text = re.sub(r"\s*:\s*", ":", text)
+    text = re.sub(r"(?<!\d)(\d)\s+(\d:\d{2})(?!\d)", r"\1\2", text)
     text = re.sub(r"(\d{1,2}:\d)\s+(\d)", r"\1\2", text)
     return text
 
