@@ -3043,7 +3043,9 @@
         </div>
         ${entries}
       `;
-      jumpToCurrentBtn.hidden = source !== 'todays';
+      jumpToCurrentBtn.hidden = false;
+      jumpToCurrentBtn.textContent = '↓';
+      jumpToCurrentBtn.title = 'Jump to current trip';
       jumpToCurrentBtn.disabled = !Boolean(findCurrentPaddleTarget(live));
       paddleOverlay.hidden = false;
       document.body.style.overflow = 'hidden';
