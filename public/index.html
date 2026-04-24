@@ -629,6 +629,13 @@
       align-items: flex-start;
       gap: 12px;
     }
+    .saved-paddle-inline .card-head {
+      position: sticky;
+      top: 0;
+      z-index: 3;
+      background: rgba(24, 28, 35, 0.96);
+      backdrop-filter: blur(10px);
+    }
     .card-head-right {
       display: flex;
       align-items: center;
@@ -2045,6 +2052,10 @@
         setAccountNotice(result.error, 'warn');
         return false;
       }
+      syncTodaysPaddleFromMyWork();
+      if (!todaysPaddleView.hidden) {
+        await renderTodaysPaddlePage();
+      }
       setStatus('Saved to My Work', true);
       return true;
     }
@@ -2057,6 +2068,10 @@
       if (!result.ok) {
         setStatus('Remove failed', false);
         return false;
+      }
+      syncTodaysPaddleFromMyWork();
+      if (!todaysPaddleView.hidden) {
+        await renderTodaysPaddlePage();
       }
       setStatus('Removed from My Work', true);
       return true;
@@ -2982,20 +2997,27 @@
       button.title = state === 'top' ? 'Back to top of paddle' : 'Jump to current trip';
     }
 
+    function updateCardJumpButtonStateClean(button, state) {
+      if (!button) return;
+      button.dataset.jumpState = state;
+      button.innerHTML = state === 'top' ? '&uarr;' : '&darr;';
+      button.title = state === 'top' ? 'Back to top of paddle' : 'Jump to current trip';
+    }
+
     function handleInlinePaddleJump(button) {
       const card = button.closest('[data-paddle-card]');
       if (!card) return;
       const state = button.dataset.jumpState || 'current';
       if (state === 'top') {
         card.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        updateCardJumpButtonState(button, 'current');
+        updateCardJumpButtonStateClean(button, 'current');
         return;
       }
       const live = readLiveStatusFromCard(card);
       const target = findCurrentPaddleTargetInRoot(card, live);
       if (!target) return;
       target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      updateCardJumpButtonState(button, 'top');
+      updateCardJumpButtonStateClean(button, 'top');
     }
 
     function jumpToCurrentPaddlePosition() {
