@@ -2932,7 +2932,7 @@
     }
 
 
-    function renderTripRow(entry, trip, live, index) {
+    function renderTripRow(entry, trip, live, index, showReturnJump = false) {
       const isActiveTrip = Boolean(live && live.kind === 'trip' && String(live.block || '') === String(entry.block || '') && String(live.tripId || '') === String(trip.tripId || ''));
       return `
         <div class="trip-row${isActiveTrip ? ' active-trip' : ''}" data-trip-start="${escapeHtml(trip.startTime || '')}" data-trip-end="${escapeHtml(trip.endTime || '')}">
@@ -2944,15 +2944,15 @@
             <div class="trip-duration">${typeof trip.durationMinutes === 'number' ? `${escapeHtml(trip.durationMinutes)} min` : 'In service'}</div>
             <div class="trip-rail"><span class="trip-train"><svg class="otrain-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="6" width="14" height="9" rx="2" fill="#ffb068"/><rect x="7" y="8" width="4" height="3" rx="0.8" fill="#1c2128"/><rect x="13" y="8" width="4" height="3" rx="0.8" fill="#1c2128"/><path d="M8 18h8" stroke="#ffb068" stroke-width="1.8" stroke-linecap="round"/><circle cx="9" cy="17" r="1.3" fill="#f2f4f8"/><circle cx="15" cy="17" r="1.3" fill="#f2f4f8"/></svg></span></div>
           </div>
-          <div class="trip-side end">
-            <div class="trip-stop">${escapeHtml(trip.endStop || '')}</div>
-            <div class="trip-time">${escapeHtml(trip.endTime || '')}</div>
-            <div class="trip-subtext">${isActiveTrip ? 'Live now' : '&nbsp;'}</div>
-            ${isActiveTrip ? '<div class="trip-live-actions"><button class="trip-jump-btn" type="button" data-inline-paddle-jump data-jump-state="top" title="Back to top of paddle">&#8593;</button></div>' : ''}
+            <div class="trip-side end">
+              <div class="trip-stop">${escapeHtml(trip.endStop || '')}</div>
+              <div class="trip-time">${escapeHtml(trip.endTime || '')}</div>
+              <div class="trip-subtext">${isActiveTrip ? 'Live now' : '&nbsp;'}</div>
+              ${isActiveTrip && showReturnJump ? '<div class="trip-live-actions"><button class="trip-jump-btn" type="button" data-inline-paddle-jump data-jump-state="top" title="Back to top of paddle">&#8593;</button></div>' : ''}
+            </div>
           </div>
-        </div>
-      `;
-    }
+        `;
+      }
 
     function deriveEntryDirection(entry) {
       const firstTrip = (entry.trips || [])[0] || null;
@@ -2969,8 +2969,8 @@
       return '';
     }
 
-    function renderEntryCard(entry, live) {
-      const tripRows = (entry.trips || []).map((trip, index) => renderTripRow(entry, trip, live, index)).join('');
+    function renderEntryCard(entry, live, showReturnJump = false) {
+      const tripRows = (entry.trips || []).map((trip, index) => renderTripRow(entry, trip, live, index, showReturnJump)).join('');
       const directionLabel = deriveEntryDirection(entry);
       const isLiveBreak = Boolean(
         live
@@ -2981,12 +2981,12 @@
       const isSplitBreak = typeof entry.breakAfterMinutes === 'number' && entry.breakAfterMinutes >= 90;
       const breakStrip = typeof entry.breakAfterMinutes === 'number' && entry.breakAfterMinutes > 0
         ? isSplitBreak
-          ? `
-          <div class="break-strip split-break${isLiveBreak ? ' active-break' : ''}" data-break-block="${escapeHtml(entry.block)}" data-break-sequence="${escapeHtml(entry.sequence)}">
-            ${isLiveBreak ? '<div class="break-strip-head"><span></span><button class="trip-jump-btn" type="button" data-inline-paddle-jump data-jump-state="top" title="Back to top of paddle">&#8593;</button></div>' : ''}
-            <div class="split-side left">
-              <div class="split-label">Clear</div>
-              <div class="split-time">${escapeHtml(entry.clearTime || entry.endTime || '')}</div>
+            ? `
+            <div class="break-strip split-break${isLiveBreak ? ' active-break' : ''}" data-break-block="${escapeHtml(entry.block)}" data-break-sequence="${escapeHtml(entry.sequence)}">
+              ${isLiveBreak && showReturnJump ? '<div class="break-strip-head"><span></span><button class="trip-jump-btn" type="button" data-inline-paddle-jump data-jump-state="top" title="Back to top of paddle">&#8593;</button></div>' : ''}
+              <div class="split-side left">
+                <div class="split-label">Clear</div>
+                <div class="split-time">${escapeHtml(entry.clearTime || entry.endTime || '')}</div>
             </div>
             <div class="split-center">
               <div class="break-title">Split break</div>
@@ -3000,12 +3000,12 @@
           </div>
         `
           : `
-          <div class="break-strip${isLiveBreak ? ' active-break' : ''}" data-break-block="${escapeHtml(entry.block)}" data-break-sequence="${escapeHtml(entry.sequence)}">
-            ${isLiveBreak
-              ? `<div class="break-strip-head"><span class="break-pill">Break ${escapeHtml(entry.breakAfterMinutes)} min</span><button class="trip-jump-btn" type="button" data-inline-paddle-jump data-jump-state="top" title="Back to top of paddle">&#8593;</button></div><span>${renderCountdown(live, 'Remaining')}</span>`
-              : `<span class="break-pill">Break ${escapeHtml(entry.breakAfterMinutes)} min</span>`}
-          </div>
-        `
+            <div class="break-strip${isLiveBreak ? ' active-break' : ''}" data-break-block="${escapeHtml(entry.block)}" data-break-sequence="${escapeHtml(entry.sequence)}">
+              ${isLiveBreak
+                ? `<div class="break-strip-head"><span class="break-pill">Break ${escapeHtml(entry.breakAfterMinutes)} min</span>${showReturnJump ? '<button class="trip-jump-btn" type="button" data-inline-paddle-jump data-jump-state="top" title="Back to top of paddle">&#8593;</button>' : ''}</div><span>${renderCountdown(live, 'Remaining')}</span>`
+                : `<span class="break-pill">Break ${escapeHtml(entry.breakAfterMinutes)} min</span>`}
+            </div>
+          `
         : '';
       return `
         <div class="block-stack">
@@ -3031,7 +3031,7 @@
       paddleMeta.textContent = `${data.serviceLabel} service${data.effective ? ` | effective ${data.effective}` : ''}`;
       const live = data.liveStatus || null;
       const summaryCard = renderNextActionBox(live);
-      const entries = (data.entries || []).map((entry) => renderEntryCard(entry, live)).join('');
+      const entries = (data.entries || []).map((entry) => renderEntryCard(entry, live, source === 'todays')).join('');
       paddleBody.innerHTML = `
         ${summaryCard}
         <div class="summary-grid">
@@ -3126,7 +3126,7 @@
 
     function renderFullPaddleCard(data, actionsHtml = '', extraClass = '') {
       const live = data.liveStatus || null;
-      const entries = (data.entries || []).map((entry) => renderEntryCard(entry, live)).join('');
+      const entries = (data.entries || []).map((entry) => renderEntryCard(entry, live, extraClass.includes('saved-paddle-inline'))).join('');
       const showInlineJump = extraClass.includes('saved-paddle-inline');
       const inlineJumpButton = showInlineJump
         ? `<button class="active-box-jump" type="button" data-inline-paddle-jump ${live ? '' : 'disabled'} title="Jump to current trip">&#8595;</button>`
