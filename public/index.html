@@ -1028,6 +1028,28 @@
       text-transform: uppercase;
       color: var(--muted);
     }
+    .field-inline {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .toggle-inline {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--muted);
+      text-transform: none;
+      letter-spacing: 0;
+      cursor: pointer;
+      user-select: none;
+    }
+    .toggle-inline input {
+      margin: 0;
+      accent-color: var(--accent-2);
+    }
     .text-input, .select-input {
       width: 100%;
       border-radius: 14px;
@@ -2077,7 +2099,7 @@
             ${renderAccountNotice()}
             <div class="stack-form">
               <label class="field-stack">
-                <span class="field-label">New Password</span>
+                <span class="field-label field-inline">New Password <span class="toggle-inline"><input id="toggleRecoveryPasswords" type="checkbox"> Show password</span></span>
                 <input id="recoveryPassword" class="text-input" type="password" autocomplete="new-password" placeholder="Enter a new password">
               </label>
               <label class="field-stack">
@@ -2114,7 +2136,7 @@
                 <input id="authEmail" class="text-input" type="email" autocomplete="email" placeholder="you@example.com">
               </label>
               <label class="field-stack">
-                <span class="field-label">Password</span>
+                <span class="field-label field-inline">Password <span class="toggle-inline"><input id="toggleSignupPasswords" type="checkbox"> Show password</span></span>
                 <input id="authPassword" class="text-input" type="password" autocomplete="new-password" placeholder="Create a password">
               </label>
               <label class="field-stack">
@@ -2150,7 +2172,7 @@
                 <input id="authEmail" class="text-input" type="email" autocomplete="email" placeholder="you@example.com">
               </label>
               <label class="field-stack">
-                <span class="field-label">Password</span>
+                <span class="field-label field-inline">Password <span class="toggle-inline"><input id="toggleSigninPassword" type="checkbox"> Show password</span></span>
                 <input id="authPassword" class="text-input" type="password" autocomplete="current-password" placeholder="Password">
               </label>
             </div>
@@ -2185,6 +2207,17 @@
     }
 
     function wireAccountEvents() {
+      const wirePasswordToggle = (toggleId, inputIds) => {
+        const toggle = document.getElementById(toggleId);
+        if (!toggle) return;
+        toggle.addEventListener('change', () => {
+          inputIds.forEach((inputId) => {
+            const input = document.getElementById(inputId);
+            if (!input) return;
+            input.type = toggle.checked ? 'text' : 'password';
+          });
+        });
+      };
       const signInBtn = document.getElementById('signInBtn');
       const signUpBtn = document.getElementById('signUpBtn');
       const switchToSignUpBtn = document.getElementById('switchToSignUpBtn');
@@ -2195,6 +2228,9 @@
       const saveSettingsBtn = document.getElementById('saveSettingsBtn');
       const requestPasswordResetBtn = document.getElementById('requestPasswordResetBtn');
       const signOutBtn = document.getElementById('signOutBtn');
+      wirePasswordToggle('toggleSigninPassword', ['authPassword']);
+      wirePasswordToggle('toggleSignupPasswords', ['authPassword', 'authPasswordConfirm']);
+      wirePasswordToggle('toggleRecoveryPasswords', ['recoveryPassword', 'recoveryPasswordConfirm']);
       if (signInBtn) signInBtn.addEventListener('click', signInWithPassword);
       if (signUpBtn) signUpBtn.addEventListener('click', signUpWithPassword);
       if (switchToSignUpBtn) switchToSignUpBtn.addEventListener('click', () => {

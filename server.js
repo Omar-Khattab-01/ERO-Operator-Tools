@@ -5,7 +5,13 @@ const path = require('path');
 const express = require('express');
 
 const PORT = Number(process.env.PORT || 7860);
-const SUPABASE_URL = String(process.env.SUPABASE_URL || '').trim();
+function normalizeSupabaseUrl(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  return raw.replace(/\/rest\/v1\/?$/i, '').replace(/\/+$/, '');
+}
+
+const SUPABASE_URL = normalizeSupabaseUrl(process.env.SUPABASE_URL);
 const SUPABASE_ANON_KEY = String(process.env.SUPABASE_ANON_KEY || '').trim();
 
 const app = express();
