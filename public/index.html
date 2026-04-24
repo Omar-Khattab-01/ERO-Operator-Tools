@@ -3094,15 +3094,28 @@
     function handleInlinePaddleJump(button) {
       const card = button.closest('[data-paddle-card]');
       if (!card) return;
+      const modalBodyRoot = button.closest('#paddleOverlay')?.querySelector('.modal-body') || null;
       const state = button.dataset.jumpState || 'current';
       if (state === 'top') {
-        card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        if (modalBodyRoot) {
+          modalBodyRoot.scrollTo({ top: 0, behavior: 'smooth' });
+        } else {
+          card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
         return;
       }
       const live = readLiveStatusFromCard(card);
       const target = findCurrentPaddleTargetInRoot(card, live);
       if (!target) return;
-      target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      if (modalBodyRoot) {
+        const modalRect = modalBodyRoot.getBoundingClientRect();
+        const targetRect = target.getBoundingClientRect();
+        const offset = Math.max(24, modalBodyRoot.clientHeight * 0.18);
+        const nextTop = modalBodyRoot.scrollTop + (targetRect.top - modalRect.top) - offset;
+        modalBodyRoot.scrollTo({ top: Math.max(0, nextTop), behavior: 'smooth' });
+      } else {
+        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
     }
 
     function jumpToCurrentPaddlePosition() {
