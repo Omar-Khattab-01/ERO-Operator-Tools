@@ -690,6 +690,36 @@
       padding: 14px 16px;
       margin-bottom: 14px;
     }
+    .active-box-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+    }
+    .active-box-copy {
+      flex: 1;
+      min-width: 0;
+    }
+    .active-box-jump {
+      appearance: none;
+      border: 1px solid rgba(255,255,255,.14);
+      border-radius: 999px;
+      background: rgba(9,12,18,.55);
+      color: var(--text);
+      width: 38px;
+      height: 38px;
+      cursor: pointer;
+      font: inherit;
+      font-size: 18px;
+      line-height: 1;
+      display: inline-grid;
+      place-items: center;
+      flex: 0 0 auto;
+    }
+    .active-box-jump:disabled {
+      opacity: .45;
+      cursor: default;
+    }
     .active-box .label {
       font-size: 12px;
       color: var(--muted);
@@ -2707,7 +2737,7 @@
       return { title: live.label || 'Paddle loaded.', detail: '', countdownPrefix: '' };
     }
 
-    function renderNextActionBox(live) {
+    function renderNextActionBox(live, jumpButtonHtml = '') {
       if (!live) return '<div class="muted" style="margin-bottom:14px;">Paddle loaded.</div>';
       const action = getNextAction(live);
       const mimic = live.kind === 'trip' ? `
@@ -2727,8 +2757,13 @@
       ` : '';
       return `
         <div class="active-box">
-          <div class="title">${escapeHtml(action.title)}</div>
-          ${action.detail ? `<div class="action-detail">${escapeHtml(action.detail)}</div>` : ''}
+          <div class="active-box-head">
+            <div class="active-box-copy">
+              <div class="title">${escapeHtml(action.title)}</div>
+              ${action.detail ? `<div class="action-detail">${escapeHtml(action.detail)}</div>` : ''}
+            </div>
+            ${jumpButtonHtml}
+          </div>
           ${mimic}
           ${renderCountdown(live, action.countdownPrefix)}
         </div>
@@ -3030,6 +3065,9 @@
       const live = data.liveStatus || null;
       const entries = (data.entries || []).map((entry) => renderEntryCard(entry, live)).join('');
       const showInlineJump = extraClass.includes('saved-paddle-inline');
+      const inlineJumpButton = showInlineJump
+        ? `<button class="active-box-jump" type="button" data-inline-paddle-jump ${live ? '' : 'disabled'} title="Jump to current trip">&#8595;</button>`
+        : '';
       const myWorkButton = currentUser
         ? `<button class="save-btn" type="button" data-save-my-work="${escapeHtml(data.paddleId)}" data-day="${escapeHtml(data.serviceDay)}">${isSavedToMyWork(data.paddleId, data.serviceDay) ? 'Saved to My Work' : 'Save to My Work'}</button>`
         : '';
@@ -3041,12 +3079,11 @@
               <p>${escapeHtml(data.serviceLabel)} service</p>
             </div>
             <div class="card-head-right">
-              ${showInlineJump ? `<button class="card-jump-btn" type="button" data-inline-paddle-jump ${live ? '' : 'disabled'} title="Jump to current trip">↓</button>` : ''}
               <span class="pill">${escapeHtml(formatPaddleStatusPill(live))}</span>
             </div>
           </div>
           <div class="card-body">
-            ${renderNextActionBox(live)}
+            ${renderNextActionBox(live, inlineJumpButton)}
             <div class="summary-grid">
             ${renderPieceSummaryItems(data)}
             ${renderSplitSummaryItems(data)}
