@@ -14,6 +14,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 let paddleIndexCache = null;
 
+
 const SERVICE_DAY_META = {
   mon_thu: { label: 'Mon-Thu', buttonLabel: 'Mon-Thu' },
   friday: { label: 'Friday', buttonLabel: 'Friday' },
