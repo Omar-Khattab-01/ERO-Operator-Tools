@@ -139,22 +139,11 @@
       gap: 10px;
       flex-wrap: wrap;
     }
-    .work-chooser {
+    .field-grid {
       display: grid;
-      grid-template-columns: minmax(180px, 220px) minmax(220px, 1fr) auto;
+      grid-template-columns: minmax(0, 1fr) auto;
       gap: 12px;
       align-items: end;
-      padding: 14px 16px;
-      border: 1px solid rgba(255,255,255,.08);
-      border-radius: 18px;
-      background: rgba(12, 17, 23, 0.42);
-      margin-bottom: 16px;
-    }
-    .work-chooser-actions {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      justify-content: flex-end;
     }
     .select-input {
       width: 100%;
@@ -176,6 +165,10 @@
       background: var(--chip);
       color: #a9c6ff;
       font-size: 14px;
+    }
+    .saved-chip.is-work-chip {
+      color: var(--text);
+      border-color: rgba(255,255,255,.14);
     }
     .chip-remove {
       appearance: none;
@@ -1248,11 +1241,8 @@
         text-align: center;
         justify-content: center;
       }
-      .work-chooser {
+      .field-grid {
         grid-template-columns: 1fr;
-      }
-      .work-chooser-actions {
-        justify-content: stretch;
       }
       .app {
         width: 100vw;
@@ -1609,6 +1599,8 @@
     let supabaseClient = null;
     let currentUser = null;
     let currentProfile = null;
+    let accountOptions = null;
+    let myWorkDraft = null;
     let accountAuthMode = 'signin';
     let accountResetMode = false;
     let accountRecoveryMode = false;
@@ -1802,6 +1794,38 @@
       return Array.isArray(currentProfile[key]) ? currentProfile[key] : [];
     }
 
+    function cloneMyWorkDraftFromProfile() {
+      myWorkDraft = {
+        mon_thu: [...getSavedProfilePaddles('mon_thu')],
+        friday: [...getSavedProfilePaddles('friday')],
+        saturday: [...getSavedProfilePaddles('saturday')],
+        sunday: [...getSavedProfilePaddles('sunday')],
+      };
+      return myWorkDraft;
+    }
+
+    function getDraftPaddlesForDay(serviceDay) {
+      if (!myWorkDraft) cloneMyWorkDraftFromProfile();
+      return Array.isArray(myWorkDraft?.[serviceDay]) ? myWorkDraft[serviceDay] : [];
+    }
+
+    function addPaddleToMyWorkDraft(serviceDay, paddleId) {
+      const normalized = normalizePaddleId(paddleId);
+      if (!/^\d+-\d+$/.test(normalized)) {
+        return { ok: false, error: 'Enter a valid paddle number like 14 or 1-14.' };
+      }
+      if (!myWorkDraft) cloneMyWorkDraftFromProfile();
+      const items = new Set(getDraftPaddlesForDay(serviceDay));
+      items.add(normalized);
+      myWorkDraft[serviceDay] = Array.from(items).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+      return { ok: true, paddleId: normalized };
+    }
+
+    function removePaddleFromMyWorkDraft(serviceDay, paddleId) {
+      if (!myWorkDraft) cloneMyWorkDraftFromProfile();
+      myWorkDraft[serviceDay] = getDraftPaddlesForDay(serviceDay).filter((item) => item !== paddleId);
+    }
+
     function isSavedToMyWork(paddleId, serviceDay) {
       return getSavedProfilePaddles(serviceDay).includes(paddleId);
     }
@@ -1865,6 +1889,19 @@
       }
     }
 
+    async function fetchAccountOptions() {
+      if (accountOptions) return accountOptions;
+      try {
+        const response = await fetch('/api/account-options');
+        const data = await response.json();
+        if (!response.ok || !data.ok) return null;
+        accountOptions = data.paddleOptions || null;
+        return accountOptions;
+      } catch (_) {
+        return null;
+      }
+    }
+
     async function ensureProfileRow() {
       if (!supabaseClient || !currentUser) return;
       if (currentProfile) return;
@@ -1890,6 +1927,7 @@
     async function loadProfile() {
       if (!supabaseClient || !currentUser) {
         currentProfile = null;
+        myWorkDraft = null;
         updateAccountButton();
         return;
       }
@@ -1906,6 +1944,7 @@
         currentProfile = null;
         await ensureProfileRow();
       }
+      myWorkDraft = null;
       updateAccountButton();
     }
 
@@ -1926,7 +1965,19 @@
         .single();
       if (error) return { ok: false, error: error.message || 'Could not save profile.' };
       currentProfile = data;
+      myWorkDraft = null;
       return { ok: true };
+    }
+
+    async function saveMyWorkDraft() {
+      if (!currentUser) return { ok: false, error: 'Sign in first to save your work.' };
+      await ensureProfileRow();
+      if (!myWorkDraft) cloneMyWorkDraftFromProfile();
+      currentProfile.mon_thu_paddles = [...getDraftPaddlesForDay('mon_thu')];
+      currentProfile.friday_paddles = [...getDraftPaddlesForDay('friday')];
+      currentProfile.saturday_paddles = [...getDraftPaddlesForDay('saturday')];
+      currentProfile.sunday_paddles = [...getDraftPaddlesForDay('sunday')];
+      return saveCurrentProfile();
     }
 
     async function savePaddleToMyWork(paddleId, serviceDay) {
@@ -2351,7 +2402,32 @@
       if (signOutBtn) signOutBtn.addEventListener('click', signOutUser);
     }
 
-    async function renderMyWorkPage(selectedDayOverride = '') {
+    function renderMyWorkDaySection(day, options = [], currentValue = '') {
+      const items = getDraftPaddlesForDay(day.key);
+      const placeholder = `Type or choose a ${day.label.toLowerCase()} paddle`;
+      return `
+        <section class="section-card">
+          <div class="field-label">${escapeHtml(day.label)} Work</div>
+          <div class="field-grid">
+            <label class="field-stack">
+              <span class="field-label">Add ${escapeHtml(day.label)} Paddle</span>
+              <input id="${escapeHtml(day.key)}PaddleInput" class="text-input" type="text" list="${escapeHtml(day.key)}PaddleOptions" value="${escapeHtml(currentValue)}" placeholder="${escapeHtml(placeholder)}" />
+              <datalist id="${escapeHtml(day.key)}PaddleOptions">${options.map((paddleId) => `<option value="${escapeHtml(paddleId)}"></option>`).join('')}</datalist>
+            </label>
+            <div class="section-actions">
+              <button class="linkish-btn" type="button" data-add-my-work-day="${escapeHtml(day.key)}">Add</button>
+            </div>
+          </div>
+          <div class="saved-list">
+            ${items.length
+              ? items.map((paddleId) => `<span class="saved-chip is-work-chip">${escapeHtml(paddleId)} <button class="chip-remove" type="button" data-remove-my-work-draft="${escapeHtml(paddleId)}" data-day="${escapeHtml(day.key)}">×</button></span>`).join('')
+              : '<div class="work-empty">Nothing saved yet.</div>'}
+          </div>
+        </section>
+      `;
+    }
+
+    async function renderMyWorkPage() {
       if (!supabaseEnabled) {
         myWorkView.innerHTML = `
           <div class="board-page-head">
@@ -2387,14 +2463,10 @@
         { key: 'saturday', label: 'Saturday' },
         { key: 'sunday', label: 'Sunday' },
       ];
-      const availableDayKeys = days.filter((day) => getSavedProfilePaddles(day.key).length).map((day) => day.key);
-      const selectedDay = selectedDayOverride && days.some((day) => day.key === selectedDayOverride)
-        ? selectedDayOverride
-        : availableDayKeys.includes(getCurrentServiceDayKey())
-          ? getCurrentServiceDayKey()
-          : (availableDayKeys[0] || days[0].key);
-      const selectedPaddles = getSavedProfilePaddles(selectedDay);
-      const selectedPaddleId = selectedPaddles[0] || '';
+      if (!myWorkDraft) cloneMyWorkDraftFromProfile();
+      const paddleOptions = await fetchAccountOptions() || {};
+      const lookupServiceDay = currentLookup?.serviceDay || '';
+      const lookupPaddleId = currentLookup?.paddleId || '';
       myWorkView.innerHTML = `
         <div class="board-page-head">
           <div>
@@ -2402,51 +2474,16 @@
             <p class="overlay-page-copy">${escapeHtml(currentProfile?.display_name || currentUser.email || 'Signed in')} saved paddles by service day.</p>
           </div>
         </div>
-        <section class="work-chooser">
-          <label class="field-stack">
-            <span class="field-label">Service Day</span>
-            <select id="myWorkDaySelect" class="select-input">
-              ${days.map((day) => `<option value="${escapeHtml(day.key)}" ${day.key === selectedDay ? 'selected' : ''}>${escapeHtml(day.label)}</option>`).join('')}
-            </select>
-          </label>
-          <label class="field-stack">
-            <span class="field-label">Saved Paddle</span>
-            <select id="myWorkPaddleSelect" class="select-input" ${selectedPaddles.length ? '' : 'disabled'}>
-              ${selectedPaddles.length
-                ? selectedPaddles.map((paddleId) => `<option value="${escapeHtml(paddleId)}">${escapeHtml(paddleId)}</option>`).join('')
-                : '<option value="">No saved paddles for this day</option>'}
-            </select>
-          </label>
-          <div class="work-chooser-actions">
-            <button class="link-btn" type="button" data-open-selected-my-work ${selectedPaddleId ? '' : 'disabled'}>Open Paddle</button>
-            <button class="save-btn" type="button" data-save-selected-to-today ${selectedPaddleId ? '' : 'disabled'}>Save to Today&apos;s Paddle</button>
+        <section class="section-card">
+          ${days.map((day) => renderMyWorkDaySection(day, paddleOptions[day.key] || [], lookupServiceDay === day.key ? lookupPaddleId : '')).join('')}
+          <div class="section-actions">
+            <button id="saveMyWorkDraftBtn" class="btn" type="button">Save Work</button>
           </div>
         </section>
-        <div class="my-work-grid">
-          ${days.map((day) => {
-            const items = getSavedProfilePaddles(day.key);
-            return `
-              <section class="work-day-section">
-                <h3>${escapeHtml(day.label)}</h3>
-                <div class="work-day-body">
-                  ${items.length ? items.map((paddleId) => `
-                    <div class="work-item">
-                      <strong>${escapeHtml(paddleId)}</strong>
-                      <div class="work-item-actions">
-                        <button class="linkish-btn" type="button" data-open-paddle="${escapeHtml(paddleId)}" data-day="${escapeHtml(day.key)}">Open</button>
-                        <button class="linkish-btn" type="button" data-remove-my-work="${escapeHtml(paddleId)}" data-day="${escapeHtml(day.key)}">Remove</button>
-                      </div>
-                    </div>
-                  `).join('') : '<div class="work-empty">Nothing saved yet.</div>'}
-                </div>
-              </section>
-            `;
-          }).join('')}
-        </div>
       `;
     }
 
-    async function openMyWorkPage(selectedDayOverride = '') {
+    async function openMyWorkPage() {
       stopLiveMapRefresh();
       stopTodayBoardRefresh();
       document.querySelector('.app')?.classList.remove('map-mode');
@@ -2457,8 +2494,9 @@
       chat.hidden = true;
       chatForm.closest('.composer').hidden = true;
       myWorkView.hidden = false;
+      myWorkDraft = null;
       setStatus('Loading My Work...', true);
-      await renderMyWorkPage(selectedDayOverride);
+      await renderMyWorkPage();
       setStatus('My Work ready', true);
     }
 
@@ -3557,13 +3595,6 @@
     setInterval(refreshCountdowns, 1000);
     initSupabase();
 
-    document.addEventListener('change', async (event) => {
-      const daySelect = event.target.closest('#myWorkDaySelect');
-      if (daySelect) {
-        await renderMyWorkPage(daySelect.value || '');
-      }
-    });
-
     document.addEventListener('click', async (event) => {
       const exitLiveMapBtn = event.target.closest('[data-exit-live-map]');
       if (exitLiveMapBtn) {
@@ -3623,41 +3654,37 @@
         return;
       }
 
-      const openSelectedMyWorkBtn = event.target.closest('[data-open-selected-my-work]');
-      if (openSelectedMyWorkBtn) {
-        const daySelect = document.getElementById('myWorkDaySelect');
-        const paddleSelect = document.getElementById('myWorkPaddleSelect');
-        const serviceDay = daySelect?.value || '';
-        const paddleId = paddleSelect?.value || '';
-        if (!serviceDay || !paddleId) return;
-        try {
-          await openPaddle(paddleId, serviceDay);
-        } catch (error) {
-          setStatus(error.message || 'Paddle lookup failed.', false);
+      const addMyWorkDayBtn = event.target.closest('[data-add-my-work-day]');
+      if (addMyWorkDayBtn) {
+        const serviceDay = addMyWorkDayBtn.dataset.addMyWorkDay || '';
+        const input = document.getElementById(`${serviceDay}PaddleInput`);
+        const result = addPaddleToMyWorkDraft(serviceDay, input?.value || '');
+        if (!result.ok) {
+          setStatus(result.error, false);
+          return;
         }
+        await renderMyWorkPage();
+        setStatus('Paddle added to My Work', true);
         return;
       }
 
-      const saveSelectedToTodayBtn = event.target.closest('[data-save-selected-to-today]');
-      if (saveSelectedToTodayBtn) {
-        const daySelect = document.getElementById('myWorkDaySelect');
-        const paddleSelect = document.getElementById('myWorkPaddleSelect');
-        const serviceDay = daySelect?.value || '';
-        const paddleId = paddleSelect?.value || '';
-        if (!serviceDay || !paddleId) return;
-        try {
-          const data = await fetchPaddleData(paddleId, serviceDay);
-          saveToTodaysPaddle(data);
-          setStatus("Saved to today's paddle", true);
-          if (!todaysPaddleView.hidden) {
-            await renderTodaysPaddlePage();
-          }
-          if (!myWorkView.hidden) {
-            await renderMyWorkPage(serviceDay);
-          }
-        } catch (error) {
-          setStatus(error.message || "Could not save today's paddle.", false);
+      const removeMyWorkDraftBtn = event.target.closest('[data-remove-my-work-draft]');
+      if (removeMyWorkDraftBtn) {
+        removePaddleFromMyWorkDraft(removeMyWorkDraftBtn.dataset.day || '', removeMyWorkDraftBtn.dataset.removeMyWorkDraft || '');
+        await renderMyWorkPage();
+        setStatus('Paddle removed from My Work', true);
+        return;
+      }
+
+      const saveMyWorkDraftBtn = event.target.closest('#saveMyWorkDraftBtn');
+      if (saveMyWorkDraftBtn) {
+        const result = await saveMyWorkDraft();
+        if (!result.ok) {
+          setStatus(result.error || 'Could not save work.', false);
+          return;
         }
+        await renderMyWorkPage();
+        setStatus('My Work saved', true);
         return;
       }
 
