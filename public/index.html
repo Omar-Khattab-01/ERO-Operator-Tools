@@ -1768,6 +1768,7 @@
         paddleId: data.paddleId,
         serviceDay: data.serviceDay,
         savedAt: new Date().toISOString(),
+        source: 'manual',
       });
       writeTodaysPaddleStore({ date: store.date, items });
     }
@@ -1776,6 +1777,52 @@
       const store = readTodaysPaddleStore();
       const items = store.items.filter((item) => !(item.paddleId === paddleId && item.serviceDay === serviceDay));
       writeTodaysPaddleStore({ date: store.date, items });
+    }
+
+    function hasTodaysPaddleItems() {
+      const store = readTodaysPaddleStore();
+      return Array.isArray(store.items) && store.items.length > 0;
+    }
+
+    function syncTodaysPaddleFromMyWork() {
+      if (!currentProfile) return false;
+      const serviceDay = getCurrentServiceDayKey();
+      const todayPaddles = getSavedProfilePaddles(serviceDay);
+      const store = readTodaysPaddleStore();
+      const manualItems = (store.items || []).filter((item) => {
+        if (!item || typeof item !== 'object') return false;
+        if (item.source === 'my_work' && item.serviceDay === serviceDay) return false;
+        return true;
+      });
+      const seen = new Set();
+      const myWorkItems = todayPaddles.map((paddleId) => ({
+        paddleId,
+        serviceDay,
+        savedAt: new Date().toISOString(),
+        source: 'my_work',
+      })).filter((item) => {
+        const key = `${item.serviceDay}:${item.paddleId}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+      const mergedManualItems = manualItems.filter((item) => {
+        const key = `${item.serviceDay}:${item.paddleId}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+      writeTodaysPaddleStore({
+        date: store.date,
+        items: [...myWorkItems, ...mergedManualItems],
+      });
+      return myWorkItems.length > 0;
+    }
+
+    async function maybeOpenTodaysPaddleOnBoot() {
+      if (accountRecoveryMode) return;
+      if (!hasTodaysPaddleItems()) return;
+      await openTodaysPaddlePage();
     }
 
     function profileColumnForServiceDay(serviceDay) {
@@ -1945,6 +1992,7 @@
         await ensureProfileRow();
       }
       myWorkDraft = null;
+      syncTodaysPaddleFromMyWork();
       updateAccountButton();
     }
 
@@ -1977,7 +2025,9 @@
       currentProfile.friday_paddles = [...getDraftPaddlesForDay('friday')];
       currentProfile.saturday_paddles = [...getDraftPaddlesForDay('saturday')];
       currentProfile.sunday_paddles = [...getDraftPaddlesForDay('sunday')];
-      return saveCurrentProfile();
+      const result = await saveCurrentProfile();
+      if (result.ok) syncTodaysPaddleFromMyWork();
+      return result;
     }
 
     async function savePaddleToMyWork(paddleId, serviceDay) {
@@ -2205,7 +2255,10 @@
       const config = await fetchSupabaseConfig();
       supabaseEnabled = Boolean(config && window.supabase && typeof window.supabase.createClient === 'function');
       updateAccountButton();
-      if (!supabaseEnabled) return;
+      if (!supabaseEnabled) {
+        await maybeOpenTodaysPaddleOnBoot();
+        return;
+      }
       supabaseClient = window.supabase.createClient(config.url, config.anonKey);
       accountRecoveryMode = isRecoveryUrl();
       const { data } = await supabaseClient.auth.getSession();
@@ -2218,6 +2271,7 @@
         }
         await handleSession(session);
       });
+      await maybeOpenTodaysPaddleOnBoot();
     }
 
     function renderAccountModal() {
