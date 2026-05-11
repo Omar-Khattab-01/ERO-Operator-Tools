@@ -5,6 +5,15 @@ create table if not exists public.ero_user_profiles (
   friday_paddles text[] not null default '{}',
   saturday_paddles text[] not null default '{}',
   sunday_paddles text[] not null default '{}',
+  same_work_schedule boolean not null default true,
+  week1_mon_thu_paddles text[] not null default '{}',
+  week1_friday_paddles text[] not null default '{}',
+  week1_saturday_paddles text[] not null default '{}',
+  week1_sunday_paddles text[] not null default '{}',
+  week2_mon_thu_paddles text[] not null default '{}',
+  week2_friday_paddles text[] not null default '{}',
+  week2_saturday_paddles text[] not null default '{}',
+  week2_sunday_paddles text[] not null default '{}',
   created_at timestamptz not null default timezone('utc', now()),
   updated_at timestamptz not null default timezone('utc', now())
 );

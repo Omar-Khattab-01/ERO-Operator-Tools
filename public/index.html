@@ -40,7 +40,7 @@
       backdrop-filter: blur(10px);
       min-height: calc(100vh - 32px);
       display: grid;
-      grid-template-rows: auto 1fr;
+      grid-template-rows: auto auto 1fr;
     }
     .app.map-mode {
       width: 100vw;
@@ -52,6 +52,32 @@
     }
     .app.map-mode > .header {
       display: none;
+    }
+    .app.map-mode > .oc-meta-bar {
+      display: none;
+    }
+    .oc-meta-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px 12px;
+      padding: 8px 22px;
+      border-bottom: 1px solid var(--border);
+      background: linear-gradient(90deg, rgba(255,255,255,.055), rgba(255,255,255,.02));
+    }
+    .oc-meta-pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: 5px 10px;
+      border: 1px solid rgba(255,255,255,.14);
+      border-radius: 999px;
+      background: rgba(255,255,255,.04);
+      font-size: 12px;
+      line-height: 1.2;
+      white-space: nowrap;
+      color: var(--text);
+      font-weight: 650;
     }
     .header {
       display: grid;
@@ -1197,6 +1223,11 @@
       color: var(--muted);
       margin-top: 10px;
     }
+    .checkbox-row input {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--accent);
+    }
     .auth-notice {
       margin-bottom: 14px;
       border-radius: 14px;
@@ -1215,6 +1246,36 @@
       border-color: rgba(116,255,173,.24);
       color: #74ffad;
       background: rgba(116,255,173,.06);
+    }
+    .toast-stack {
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      display: grid;
+      gap: 10px;
+      z-index: 70;
+      width: min(360px, calc(100vw - 36px));
+      pointer-events: none;
+    }
+    .app-toast {
+      border: 1px solid rgba(255,176,104,.28);
+      border-radius: 18px;
+      padding: 13px 15px;
+      background: linear-gradient(180deg, rgba(34, 41, 50, .98), rgba(21, 26, 34, .98));
+      box-shadow: 0 18px 38px rgba(0,0,0,.32);
+      color: var(--text);
+      font-size: 14px;
+      line-height: 1.35;
+      animation: toastIn 160ms ease-out;
+    }
+    .app-toast strong {
+      display: block;
+      margin-bottom: 3px;
+      color: #ffe0c2;
+    }
+    @keyframes toastIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
     }
     .my-work-grid {
       display: grid;
@@ -1238,6 +1299,24 @@
       padding: 14px;
       display: grid;
       gap: 10px;
+    }
+    .work-week-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 14px;
+      align-items: start;
+    }
+    .work-week-card {
+      display: grid;
+      gap: 14px;
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 14px;
+      background: rgba(255,255,255,.025);
+    }
+    .work-week-card h3 {
+      margin: 0;
+      font-size: 16px;
     }
     .work-item {
       display: flex;
@@ -1280,6 +1359,22 @@
       .header {
         grid-template-columns: 1fr;
         align-items: stretch;
+      }
+      .oc-meta-bar {
+        flex-wrap: nowrap;
+        gap: 6px;
+        padding: 7px 10px;
+        overflow-x: auto;
+        scrollbar-width: none;
+      }
+      .oc-meta-bar::-webkit-scrollbar {
+        display: none;
+      }
+      .oc-meta-pill {
+        flex: 0 0 auto;
+        min-height: 24px;
+        padding: 4px 8px;
+        font-size: 10px;
       }
       .brand {
         align-items: flex-start;
@@ -1553,6 +1648,7 @@
 </head>
 <body>
   <div class="app">
+    <div id="ocMetaBar" class="oc-meta-bar" role="note" aria-label="OC week and pay information"></div>
     <header class="header">
       <div class="brand">
         <div class="brand-badge">ER</div>
@@ -1595,6 +1691,7 @@
       <section id="liveMapView" class="live-map-view" hidden></section>
     </main>
   </div>
+  <div id="toastStack" class="toast-stack" aria-live="polite" aria-atomic="true"></div>
 
   <div id="paddleOverlay" class="overlay" hidden>
     <section class="modal">
@@ -1643,6 +1740,8 @@
     const accountBtn = document.getElementById('accountBtn');
     const clearBtn = document.getElementById('clearBtn');
     const statusPill = document.getElementById('statusPill');
+    const ocMetaBar = document.getElementById('ocMetaBar');
+    const toastStack = document.getElementById('toastStack');
     const myWorkView = document.getElementById('myWorkView');
     const paddleOverlay = document.getElementById('paddleOverlay');
     const paddleTitle = document.getElementById('paddleTitle');
@@ -1662,6 +1761,40 @@
     let latestLiveMapData = null;
     let pendingLiveMapZoomAnchor = null;
     const todaysPaddleStorageKey = 'ero_todays_paddles_v1';
+    const timeZone = 'America/Toronto';
+    const msPerDay = 24 * 60 * 60 * 1000;
+    const anchorSundayUtc = Date.UTC(2026, 3, 26);
+    const anchorWeek = 2;
+    const payWeek = 1;
+    const thursdayIndex = 4;
+    const dayNames = {
+      Sun: 'Sunday',
+      Mon: 'Monday',
+      Tue: 'Tuesday',
+      Wed: 'Wednesday',
+      Thu: 'Thursday',
+      Fri: 'Friday',
+      Sat: 'Saturday',
+    };
+    const weekdayToIndex = {
+      Sun: 0,
+      Mon: 1,
+      Tue: 2,
+      Wed: 3,
+      Thu: 4,
+      Fri: 5,
+      Sat: 6,
+    };
+    const serviceDays = [
+      { key: 'mon_thu', label: 'Mon-Thu' },
+      { key: 'friday', label: 'Friday' },
+      { key: 'saturday', label: 'Saturday' },
+      { key: 'sunday', label: 'Sunday' },
+    ];
+    const workWeeks = [
+      { key: 'week1', number: 1, label: 'Week 1' },
+      { key: 'week2', number: 2, label: 'Week 2' },
+    ];
     let supabaseEnabled = false;
     let supabaseClient = null;
     let currentUser = null;
@@ -1768,9 +1901,78 @@
       return map[serviceDay] || serviceDay;
     }
 
+    function getTorontoDateParts(date) {
+      const formatter = new Intl.DateTimeFormat('en-CA', {
+        timeZone,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        weekday: 'short',
+      });
+      const values = {};
+      formatter.formatToParts(date).forEach((part) => {
+        if (part.type !== 'literal') values[part.type] = part.value;
+      });
+      return {
+        year: Number(values.year),
+        month: Number(values.month),
+        day: Number(values.day),
+        weekday: values.weekday,
+      };
+    }
+
+    function torontoPartsToUtcMs(parts) {
+      return Date.UTC(parts.year, parts.month - 1, parts.day);
+    }
+
+    function getWeekNumber(parts = getTorontoDateParts(new Date())) {
+      const weekdayIndex = weekdayToIndex[parts.weekday] ?? 0;
+      const currentDayUtc = torontoPartsToUtcMs(parts);
+      const sundayUtc = currentDayUtc - (weekdayIndex * msPerDay);
+      const weekOffset = Math.round((sundayUtc - anchorSundayUtc) / (7 * msPerDay));
+      const normalized = (anchorWeek - 1 + weekOffset) % 2;
+      return normalized < 0 ? normalized + 3 : normalized + 1;
+    }
+
+    function addDaysParts(parts, daysToAdd) {
+      const nextUtc = torontoPartsToUtcMs(parts) + (daysToAdd * msPerDay);
+      return getTorontoDateParts(new Date(nextUtc + 12 * 60 * 60 * 1000));
+    }
+
+    function formatPayDate(parts) {
+      return new Intl.DateTimeFormat('en-CA', {
+        timeZone,
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      }).format(new Date(Date.UTC(parts.year, parts.month - 1, parts.day, 12)));
+    }
+
+    function findNextPayDateParts(todayParts) {
+      for (let offset = 0; offset < 28; offset += 1) {
+        const candidate = addDaysParts(todayParts, offset);
+        if (weekdayToIndex[candidate.weekday] !== thursdayIndex) continue;
+        if (getWeekNumber(candidate) !== payWeek) continue;
+        return candidate;
+      }
+      return null;
+    }
+
+    function renderOcMetaBar() {
+      if (!ocMetaBar) return;
+      const todayParts = getTorontoDateParts(new Date());
+      const tomorrowParts = addDaysParts(todayParts, 1);
+      const payDateParts = findNextPayDateParts(todayParts);
+      ocMetaBar.innerHTML = `
+        <div class="oc-meta-pill">Today: ${escapeHtml(dayNames[todayParts.weekday] || todayParts.weekday)} ${escapeHtml(getWeekNumber(todayParts))}</div>
+        <div class="oc-meta-pill">Tomorrow: ${escapeHtml(dayNames[tomorrowParts.weekday] || tomorrowParts.weekday)} ${escapeHtml(getWeekNumber(tomorrowParts))}</div>
+        <div class="oc-meta-pill">Next Pay: ${escapeHtml(payDateParts ? formatPayDate(payDateParts) : 'Unavailable')}</div>
+      `;
+    }
+
     function getCurrentServiceDayKey() {
       const weekday = new Intl.DateTimeFormat('en-CA', {
-        timeZone: 'America/Toronto',
+        timeZone,
         weekday: 'short',
       }).format(new Date()).toLowerCase();
       if (weekday === 'fri') return 'friday';
@@ -1779,10 +1981,28 @@
       return 'mon_thu';
     }
 
+    function getCurrentWorkWeekKey() {
+      return `week${getWeekNumber()}`;
+    }
+
     function setStatus(text, good = true) {
       statusPill.textContent = text;
       statusPill.style.color = good ? '#74ffad' : '#ffb068';
       statusPill.style.borderColor = good ? 'rgba(116,255,173,.22)' : 'rgba(255,176,104,.22)';
+    }
+
+    function showToast(title, detail = '') {
+      if (!toastStack) return;
+      const toast = document.createElement('div');
+      toast.className = 'app-toast';
+      toast.innerHTML = `<strong>${escapeHtml(title)}</strong>${detail ? `<span>${escapeHtml(detail)}</span>` : ''}`;
+      toastStack.appendChild(toast);
+      window.setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(8px)';
+        toast.style.transition = 'opacity 160ms ease, transform 160ms ease';
+        window.setTimeout(() => toast.remove(), 180);
+      }, 3200);
     }
 
     function closePaddleModal() {
@@ -1793,7 +2013,7 @@
 
     function getOttawaDateKey() {
       const parts = new Intl.DateTimeFormat('en-CA', {
-        timeZone: 'America/Toronto',
+        timeZone,
         year: 'numeric',
         month: '2-digit',
         day: '2-digit',
@@ -1808,9 +2028,7 @@
         const parsed = raw ? JSON.parse(raw) : {};
         const today = getOttawaDateKey();
         if (!parsed || typeof parsed !== 'object' || parsed.date !== today) {
-          const next = { date: today, items: [] };
-          localStorage.setItem(todaysPaddleStorageKey, JSON.stringify(next));
-          return next;
+          return { date: today, items: [] };
         }
         return { date: today, items: Array.isArray(parsed.items) ? parsed.items : [] };
       } catch (_) {
@@ -1857,6 +2075,7 @@
     function syncTodaysPaddleFromMyWork() {
       if (!currentProfile) return false;
       const serviceDay = getCurrentServiceDayKey();
+      const workWeek = getCurrentWorkWeekKey();
       const todayPaddles = getSavedProfilePaddles(serviceDay);
       const store = readTodaysPaddleStore();
       const manualItems = (store.items || []).filter((item) => {
@@ -1868,6 +2087,7 @@
       const myWorkItems = todayPaddles.map((paddleId) => ({
         paddleId,
         serviceDay,
+        workWeek,
         savedAt: new Date().toISOString(),
         source: 'my_work',
       })).filter((item) => {
@@ -1891,6 +2111,7 @@
 
     async function maybeOpenTodaysPaddleOnBoot() {
       if (accountRecoveryMode) return;
+      syncTodaysPaddleFromMyWork();
       if (!hasTodaysPaddleItems()) return;
       await openTodaysPaddlePage();
     }
@@ -1905,42 +2126,120 @@
       return map[serviceDay] || 'mon_thu_paddles';
     }
 
-    function getSavedProfilePaddles(serviceDay) {
+    function weekProfileColumnForServiceDay(weekKey, serviceDay) {
+      return `${weekKey}_${profileColumnForServiceDay(serviceDay)}`;
+    }
+
+    function getProfileArray(key) {
+      return Array.isArray(currentProfile?.[key]) ? currentProfile[key] : [];
+    }
+
+    function hasWeekWorkColumns() {
+      if (!currentProfile) return false;
+      return workWeeks.some((week) => serviceDays.some((day) => Array.isArray(currentProfile[weekProfileColumnForServiceDay(week.key, day.key)])));
+    }
+
+    function isSameWorkSchedule() {
+      if (!currentProfile) return true;
+      if (typeof currentProfile.same_work_schedule === 'boolean') return currentProfile.same_work_schedule;
+      return !hasWeekWorkColumns();
+    }
+
+    function getSavedProfilePaddles(serviceDay, weekKey = getCurrentWorkWeekKey()) {
       if (!currentProfile) return [];
-      const key = profileColumnForServiceDay(serviceDay);
-      return Array.isArray(currentProfile[key]) ? currentProfile[key] : [];
+      const legacyItems = getProfileArray(profileColumnForServiceDay(serviceDay));
+      if (!hasWeekWorkColumns()) return legacyItems;
+      if (isSameWorkSchedule()) {
+        const sameItems = getProfileArray(weekProfileColumnForServiceDay('week1', serviceDay));
+        return sameItems.length ? sameItems : legacyItems;
+      }
+      return getProfileArray(weekProfileColumnForServiceDay(weekKey, serviceDay));
+    }
+
+    function applyMyWorkDraftToProfile() {
+      if (!currentProfile) return;
+      if (!myWorkDraft) cloneMyWorkDraftFromProfile();
+      const sameWork = Boolean(myWorkDraft.sameWork);
+      currentProfile.same_work_schedule = sameWork;
+      serviceDays.forEach((day) => {
+        const week1Items = [...getDraftPaddlesForDay(day.key, 'week1')];
+        const week2Items = sameWork ? [...week1Items] : [...getDraftPaddlesForDay(day.key, 'week2')];
+        currentProfile[weekProfileColumnForServiceDay('week1', day.key)] = week1Items;
+        currentProfile[weekProfileColumnForServiceDay('week2', day.key)] = week2Items;
+        currentProfile[profileColumnForServiceDay(day.key)] = [...getSavedProfilePaddles(day.key, getCurrentWorkWeekKey())];
+      });
+    }
+
+    function buildProfilePayload() {
+      const sameWork = isSameWorkSchedule();
+      const payload = {
+        user_id: currentUser.id,
+        display_name: currentProfile.display_name || null,
+        same_work_schedule: sameWork,
+      };
+      serviceDays.forEach((day) => {
+        const week1Items = [...getProfileArray(weekProfileColumnForServiceDay('week1', day.key))];
+        const week2Items = sameWork ? [...week1Items] : [...getProfileArray(weekProfileColumnForServiceDay('week2', day.key))];
+        payload[weekProfileColumnForServiceDay('week1', day.key)] = week1Items;
+        payload[weekProfileColumnForServiceDay('week2', day.key)] = week2Items;
+        payload[profileColumnForServiceDay(day.key)] = [...getSavedProfilePaddles(day.key, getCurrentWorkWeekKey())];
+      });
+      return payload;
     }
 
     function cloneMyWorkDraftFromProfile() {
+      const sameWork = isSameWorkSchedule();
       myWorkDraft = {
-        mon_thu: [...getSavedProfilePaddles('mon_thu')],
-        friday: [...getSavedProfilePaddles('friday')],
-        saturday: [...getSavedProfilePaddles('saturday')],
-        sunday: [...getSavedProfilePaddles('sunday')],
+        sameWork,
+        week1: {},
+        week2: {},
       };
+      serviceDays.forEach((day) => {
+        myWorkDraft.week1[day.key] = [...getSavedProfilePaddles(day.key, 'week1')];
+        myWorkDraft.week2[day.key] = sameWork
+          ? [...myWorkDraft.week1[day.key]]
+          : [...getSavedProfilePaddles(day.key, 'week2')];
+      });
       return myWorkDraft;
     }
 
-    function getDraftPaddlesForDay(serviceDay) {
+    function getDraftPaddlesForDay(serviceDay, weekKey = getCurrentWorkWeekKey()) {
       if (!myWorkDraft) cloneMyWorkDraftFromProfile();
-      return Array.isArray(myWorkDraft?.[serviceDay]) ? myWorkDraft[serviceDay] : [];
+      const resolvedWeek = myWorkDraft.sameWork ? 'week1' : weekKey;
+      return Array.isArray(myWorkDraft?.[resolvedWeek]?.[serviceDay]) ? myWorkDraft[resolvedWeek][serviceDay] : [];
     }
 
-    function addPaddleToMyWorkDraft(serviceDay, paddleId) {
+    function setDraftSameWork(enabled) {
+      if (!myWorkDraft) cloneMyWorkDraftFromProfile();
+      myWorkDraft.sameWork = Boolean(enabled);
+      if (myWorkDraft.sameWork) {
+        serviceDays.forEach((day) => {
+          myWorkDraft.week2[day.key] = [...getDraftPaddlesForDay(day.key, 'week1')];
+        });
+      }
+    }
+
+    function addPaddleToMyWorkDraft(serviceDay, paddleId, weekKey = getCurrentWorkWeekKey()) {
       const normalized = normalizePaddleId(paddleId);
       if (!/^\d+-\d+$/.test(normalized)) {
         return { ok: false, error: 'Enter a valid paddle number like 14 or 1-14.' };
       }
       if (!myWorkDraft) cloneMyWorkDraftFromProfile();
-      const items = new Set(getDraftPaddlesForDay(serviceDay));
-      items.add(normalized);
-      myWorkDraft[serviceDay] = Array.from(items).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+      const targetWeeks = myWorkDraft.sameWork ? ['week1', 'week2'] : [weekKey];
+      targetWeeks.forEach((targetWeek) => {
+        const items = new Set(getDraftPaddlesForDay(serviceDay, targetWeek));
+        items.add(normalized);
+        myWorkDraft[targetWeek][serviceDay] = Array.from(items).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+      });
       return { ok: true, paddleId: normalized };
     }
 
-    function removePaddleFromMyWorkDraft(serviceDay, paddleId) {
+    function removePaddleFromMyWorkDraft(serviceDay, paddleId, weekKey = getCurrentWorkWeekKey()) {
       if (!myWorkDraft) cloneMyWorkDraftFromProfile();
-      myWorkDraft[serviceDay] = getDraftPaddlesForDay(serviceDay).filter((item) => item !== paddleId);
+      const targetWeeks = myWorkDraft.sameWork ? ['week1', 'week2'] : [weekKey];
+      targetWeeks.forEach((targetWeek) => {
+        myWorkDraft[targetWeek][serviceDay] = getDraftPaddlesForDay(serviceDay, targetWeek).filter((item) => item !== paddleId);
+      });
     }
 
     function isSavedToMyWork(paddleId, serviceDay) {
@@ -2020,10 +2319,10 @@
     }
 
     async function ensureProfileRow() {
-      if (!supabaseClient || !currentUser) return;
-      if (currentProfile) return;
+      if (!supabaseClient || !currentUser) return false;
+      if (currentProfile) return true;
       const fallbackName = currentUser.user_metadata?.display_name || currentUser.user_metadata?.username || '';
-      const { data } = await supabaseClient
+      const { data, error } = await supabaseClient
         .from('ero_user_profiles')
         .upsert({
           user_id: currentUser.id,
@@ -2031,14 +2330,13 @@
         }, { onConflict: 'user_id' })
         .select('*')
         .single();
-      currentProfile = data || {
-        user_id: currentUser.id,
-        display_name: fallbackName || null,
-        mon_thu_paddles: [],
-        friday_paddles: [],
-        saturday_paddles: [],
-        sunday_paddles: [],
-      };
+      if (error || !data) {
+        currentProfile = null;
+        setAccountNotice(error?.message || 'Could not load your saved work.', 'warn');
+        return false;
+      }
+      currentProfile = data;
+      return true;
     }
 
     async function loadProfile() {
@@ -2068,14 +2366,7 @@
 
     async function saveCurrentProfile() {
       if (!supabaseClient || !currentUser || !currentProfile) return { ok: false, error: 'Not signed in.' };
-      const payload = {
-        user_id: currentUser.id,
-        display_name: currentProfile.display_name || null,
-        mon_thu_paddles: getSavedProfilePaddles('mon_thu'),
-        friday_paddles: getSavedProfilePaddles('friday'),
-        saturday_paddles: getSavedProfilePaddles('saturday'),
-        sunday_paddles: getSavedProfilePaddles('sunday'),
-      };
+      const payload = buildProfilePayload();
       const { data, error } = await supabaseClient
         .from('ero_user_profiles')
         .upsert(payload, { onConflict: 'user_id' })
@@ -2089,12 +2380,10 @@
 
     async function saveMyWorkDraft() {
       if (!currentUser) return { ok: false, error: 'Sign in first to save your work.' };
-      await ensureProfileRow();
+      const ready = await ensureProfileRow();
+      if (!ready || !currentProfile) return { ok: false, error: accountNotice.text || 'Could not load your saved work.' };
       if (!myWorkDraft) cloneMyWorkDraftFromProfile();
-      currentProfile.mon_thu_paddles = [...getDraftPaddlesForDay('mon_thu')];
-      currentProfile.friday_paddles = [...getDraftPaddlesForDay('friday')];
-      currentProfile.saturday_paddles = [...getDraftPaddlesForDay('saturday')];
-      currentProfile.sunday_paddles = [...getDraftPaddlesForDay('sunday')];
+      applyMyWorkDraftToProfile();
       const result = await saveCurrentProfile();
       if (result.ok) syncTodaysPaddleFromMyWork();
       return result;
@@ -2106,9 +2395,19 @@
         openAccountModal();
         return false;
       }
-      await ensureProfileRow();
-      const key = profileColumnForServiceDay(serviceDay);
-      currentProfile[key] = [...new Set([...(currentProfile[key] || []), paddleId])];
+      const ready = await ensureProfileRow();
+      if (!ready || !currentProfile) {
+        setStatus('Save failed', false);
+        return false;
+      }
+      const sameWork = isSameWorkSchedule();
+      const targetWeeks = sameWork ? ['week1', 'week2'] : [getCurrentWorkWeekKey()];
+      targetWeeks.forEach((weekKey) => {
+        const key = weekProfileColumnForServiceDay(weekKey, serviceDay);
+        currentProfile[key] = [...new Set([...getProfileArray(key), paddleId])].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+      });
+      currentProfile.same_work_schedule = sameWork;
+      currentProfile[profileColumnForServiceDay(serviceDay)] = [...getSavedProfilePaddles(serviceDay)];
       const result = await saveCurrentProfile();
       if (!result.ok) {
         setStatus('Save failed', false);
@@ -2120,13 +2419,19 @@
         await renderTodaysPaddlePage();
       }
       setStatus('Saved to My Work', true);
+      showToast('Saved to My Work', `${paddleId} is saved for ${formatServiceLabel(serviceDay)} ${sameWork ? 'both weeks' : `Week ${getWeekNumber()}`}.`);
       return true;
     }
 
     async function removePaddleFromMyWork(paddleId, serviceDay) {
       if (!currentUser || !currentProfile) return false;
-      const key = profileColumnForServiceDay(serviceDay);
-      currentProfile[key] = (currentProfile[key] || []).filter((item) => item !== paddleId);
+      const sameWork = isSameWorkSchedule();
+      const targetWeeks = sameWork ? ['week1', 'week2'] : [getCurrentWorkWeekKey()];
+      targetWeeks.forEach((weekKey) => {
+        const key = weekProfileColumnForServiceDay(weekKey, serviceDay);
+        currentProfile[key] = getProfileArray(key).filter((item) => item !== paddleId);
+      });
+      currentProfile[profileColumnForServiceDay(serviceDay)] = getSavedProfilePaddles(serviceDay).filter((item) => item !== paddleId);
       const result = await saveCurrentProfile();
       if (!result.ok) {
         setStatus('Remove failed', false);
@@ -2204,10 +2509,19 @@
         currentProfile = {
           user_id: data.user.id,
           display_name: displayName,
+          same_work_schedule: true,
           mon_thu_paddles: [],
           friday_paddles: [],
           saturday_paddles: [],
           sunday_paddles: [],
+          week1_mon_thu_paddles: [],
+          week1_friday_paddles: [],
+          week1_saturday_paddles: [],
+          week1_sunday_paddles: [],
+          week2_mon_thu_paddles: [],
+          week2_friday_paddles: [],
+          week2_saturday_paddles: [],
+          week2_sunday_paddles: [],
         };
         await saveCurrentProfile();
       }
@@ -2287,7 +2601,11 @@
 
     async function saveSettings() {
       if (!currentUser) return;
-      await ensureProfileRow();
+      const ready = await ensureProfileRow();
+      if (!ready || !currentProfile) {
+        renderAccountModal();
+        return;
+      }
       const displayName = document.getElementById('profileDisplayName')?.value?.trim() || '';
       currentProfile.display_name = displayName || null;
       const result = await saveCurrentProfile();
@@ -2534,28 +2852,39 @@
       if (signOutBtn) signOutBtn.addEventListener('click', signOutUser);
     }
 
-    function renderMyWorkDaySection(day, options = [], currentValue = '') {
-      const items = getDraftPaddlesForDay(day.key);
+    function renderMyWorkDaySection(day, weekKey, options = [], currentValue = '') {
+      const items = getDraftPaddlesForDay(day.key, weekKey);
       const placeholder = `Type or choose a ${day.label.toLowerCase()} paddle`;
+      const inputId = `${weekKey}_${day.key}PaddleInput`;
+      const optionsId = `${weekKey}_${day.key}PaddleOptions`;
       return `
         <section class="section-card">
           <div class="field-label">${escapeHtml(day.label)} Work</div>
           <div class="field-grid">
             <label class="field-stack">
               <span class="field-label">Add ${escapeHtml(day.label)} Paddle</span>
-              <input id="${escapeHtml(day.key)}PaddleInput" class="text-input" type="text" list="${escapeHtml(day.key)}PaddleOptions" value="${escapeHtml(currentValue)}" placeholder="${escapeHtml(placeholder)}" />
-              <datalist id="${escapeHtml(day.key)}PaddleOptions">${options.map((paddleId) => `<option value="${escapeHtml(paddleId)}"></option>`).join('')}</datalist>
+              <input id="${escapeHtml(inputId)}" class="text-input" type="text" list="${escapeHtml(optionsId)}" value="${escapeHtml(currentValue)}" placeholder="${escapeHtml(placeholder)}" />
+              <datalist id="${escapeHtml(optionsId)}">${options.map((paddleId) => `<option value="${escapeHtml(paddleId)}"></option>`).join('')}</datalist>
             </label>
             <div class="section-actions">
-              <button class="linkish-btn" type="button" data-add-my-work-day="${escapeHtml(day.key)}">Add</button>
+              <button class="linkish-btn" type="button" data-add-my-work-day="${escapeHtml(day.key)}" data-week="${escapeHtml(weekKey)}">Add</button>
             </div>
           </div>
           <div class="saved-list">
             ${items.length
-              ? items.map((paddleId) => `<span class="saved-chip is-work-chip">${escapeHtml(paddleId)} <button class="chip-remove" type="button" data-remove-my-work-draft="${escapeHtml(paddleId)}" data-day="${escapeHtml(day.key)}">×</button></span>`).join('')
+              ? items.map((paddleId) => `<span class="saved-chip is-work-chip">${escapeHtml(paddleId)} <button class="chip-remove" type="button" data-remove-my-work-draft="${escapeHtml(paddleId)}" data-day="${escapeHtml(day.key)}" data-week="${escapeHtml(weekKey)}">x</button></span>`).join('')
               : '<div class="work-empty">Nothing saved yet.</div>'}
           </div>
         </section>
+      `;
+    }
+
+    function renderMyWorkWeekCard(week, days, paddleOptions, lookupServiceDay, lookupPaddleId) {
+      return `
+        <div class="work-week-card">
+          <h3>${escapeHtml(week.label)}</h3>
+          ${days.map((day) => renderMyWorkDaySection(day, week.key, paddleOptions[day.key] || [], lookupServiceDay === day.key ? lookupPaddleId : '')).join('')}
+        </div>
       `;
     }
 
@@ -2589,25 +2918,28 @@
         `;
         return;
       }
-      const days = [
-        { key: 'mon_thu', label: 'Mon-Thu' },
-        { key: 'friday', label: 'Friday' },
-        { key: 'saturday', label: 'Saturday' },
-        { key: 'sunday', label: 'Sunday' },
-      ];
       if (!myWorkDraft) cloneMyWorkDraftFromProfile();
       const paddleOptions = await fetchAccountOptions() || {};
       const lookupServiceDay = currentLookup?.serviceDay || '';
       const lookupPaddleId = currentLookup?.paddleId || '';
+      const currentWeekLabel = `Week ${getWeekNumber()}`;
       myWorkView.innerHTML = `
         <div class="board-page-head">
           <div>
             <h2>My Work</h2>
-            <p class="overlay-page-copy">${escapeHtml(currentProfile?.display_name || currentUser.email || 'Signed in')} saved paddles by service day.</p>
+            <p class="overlay-page-copy">${escapeHtml(currentProfile?.display_name || currentUser.email || 'Signed in')} saved paddles by OC week. Current schedule: ${escapeHtml(currentWeekLabel)}.</p>
           </div>
         </div>
         <section class="section-card">
-          ${days.map((day) => renderMyWorkDaySection(day, paddleOptions[day.key] || [], lookupServiceDay === day.key ? lookupPaddleId : '')).join('')}
+          <label class="checkbox-row">
+            <input id="sameWorkScheduleToggle" type="checkbox" ${myWorkDraft.sameWork ? 'checked' : ''}>
+            <span>Use the same work for Week 1 and Week 2</span>
+          </label>
+          <div class="work-week-grid">
+            ${myWorkDraft.sameWork
+              ? renderMyWorkWeekCard({ key: 'week1', label: 'Both Weeks' }, serviceDays, paddleOptions, lookupServiceDay, lookupPaddleId)
+              : workWeeks.map((week) => renderMyWorkWeekCard(week, serviceDays, paddleOptions, lookupServiceDay, lookupPaddleId)).join('')}
+          </div>
           <div class="section-actions">
             <button id="saveMyWorkDraftBtn" class="btn" type="button">Save Work</button>
           </div>
@@ -2642,7 +2974,7 @@
 
     function getOttawaNowSeconds() {
       const parts = new Intl.DateTimeFormat('en-CA', {
-        timeZone: 'America/Toronto',
+        timeZone,
         hour: '2-digit',
         minute: '2-digit',
         second: '2-digit',
@@ -3259,6 +3591,7 @@
     }
 
     async function renderTodaysPaddlePage() {
+      syncTodaysPaddleFromMyWork();
       const store = readTodaysPaddleStore();
       const paddles = await Promise.all((store.items || []).map(async (item) => {
         try {
@@ -3312,6 +3645,7 @@
       chatForm.closest('.composer').hidden = true;
       todaysPaddleView.hidden = false;
       setStatus("Loading today's paddle...", true);
+      syncTodaysPaddleFromMyWork();
       await renderTodaysPaddlePage();
       setStatus("Today's paddle ready", true);
     }
@@ -3530,7 +3864,7 @@
         const status = trainStatusFor(train, index);
         return `<tr><td>${escapeHtml(label)}</td><td>${escapeHtml(directionText)}</td><td>${escapeHtml(current)}</td><td>${escapeHtml(next)}</td><td>${escapeHtml(status)}</td></tr>`;
       }).join('');
-      const clock = new Date().toLocaleString('en-CA', { timeZone: 'America/Toronto', weekday: 'short', month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      const clock = new Date().toLocaleString('en-CA', { timeZone, weekday: 'short', month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
       liveMapView.innerHTML = `
         <div class="ats-head">
@@ -3772,6 +4106,7 @@
     });
 
     refreshCountdowns();
+    renderOcMetaBar();
     setInterval(refreshCountdowns, 1000);
     initSupabase();
 
@@ -3834,15 +4169,24 @@
           saveToTodaysPaddle(currentLookup);
           addPaddleCard(currentLookup);
           setStatus("Saved to today's paddle", true);
+          showToast("Saved to Today's Paddle", `${paddleId} will open here for the rest of today.`);
         }
+        return;
+      }
+
+      const sameWorkScheduleToggle = event.target.closest('#sameWorkScheduleToggle');
+      if (sameWorkScheduleToggle) {
+        setDraftSameWork(sameWorkScheduleToggle.checked);
+        await renderMyWorkPage();
         return;
       }
 
       const addMyWorkDayBtn = event.target.closest('[data-add-my-work-day]');
       if (addMyWorkDayBtn) {
         const serviceDay = addMyWorkDayBtn.dataset.addMyWorkDay || '';
-        const input = document.getElementById(`${serviceDay}PaddleInput`);
-        const result = addPaddleToMyWorkDraft(serviceDay, input?.value || '');
+        const weekKey = addMyWorkDayBtn.dataset.week || getCurrentWorkWeekKey();
+        const input = document.getElementById(`${weekKey}_${serviceDay}PaddleInput`);
+        const result = addPaddleToMyWorkDraft(serviceDay, input?.value || '', weekKey);
         if (!result.ok) {
           setStatus(result.error, false);
           return;
@@ -3854,7 +4198,7 @@
 
       const removeMyWorkDraftBtn = event.target.closest('[data-remove-my-work-draft]');
       if (removeMyWorkDraftBtn) {
-        removePaddleFromMyWorkDraft(removeMyWorkDraftBtn.dataset.day || '', removeMyWorkDraftBtn.dataset.removeMyWorkDraft || '');
+        removePaddleFromMyWorkDraft(removeMyWorkDraftBtn.dataset.day || '', removeMyWorkDraftBtn.dataset.removeMyWorkDraft || '', removeMyWorkDraftBtn.dataset.week || getCurrentWorkWeekKey());
         await renderMyWorkPage();
         setStatus('Paddle removed from My Work', true);
         return;
@@ -3869,6 +4213,7 @@
         }
         await renderMyWorkPage();
         setStatus('My Work saved', true);
+        showToast('My Work saved', myWorkDraft?.sameWork ? 'Your Week 1 and Week 2 work are using the same paddles.' : 'Your Week 1 and Week 2 paddles are saved.');
         return;
       }
 
