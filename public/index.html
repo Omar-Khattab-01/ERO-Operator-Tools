@@ -2187,6 +2187,26 @@
       return payload;
     }
 
+    function buildLegacyProfilePayload() {
+      return {
+        user_id: currentUser.id,
+        display_name: currentProfile.display_name || null,
+        mon_thu_paddles: getProfileArray('mon_thu_paddles'),
+        friday_paddles: getProfileArray('friday_paddles'),
+        saturday_paddles: getProfileArray('saturday_paddles'),
+        sunday_paddles: getProfileArray('sunday_paddles'),
+      };
+    }
+
+    function isMissingWeeklyColumnError(error) {
+      const message = String(error?.message || error?.details || error?.hint || '').toLowerCase();
+      return message.includes('same_work_schedule')
+        || message.includes('week1_')
+        || message.includes('week2_')
+        || message.includes('column')
+        || message.includes('schema cache');
+    }
+
     function cloneMyWorkDraftFromProfile() {
       const sameWork = isSameWorkSchedule();
       myWorkDraft = {
@@ -2367,15 +2387,29 @@
     async function saveCurrentProfile() {
       if (!supabaseClient || !currentUser || !currentProfile) return { ok: false, error: 'Not signed in.' };
       const payload = buildProfilePayload();
-      const { data, error } = await supabaseClient
+      let usedLegacyFallback = false;
+      let { data, error } = await supabaseClient
         .from('ero_user_profiles')
         .upsert(payload, { onConflict: 'user_id' })
         .select('*')
         .single();
+      if (error && isMissingWeeklyColumnError(error)) {
+        const fallback = await supabaseClient
+          .from('ero_user_profiles')
+          .upsert(buildLegacyProfilePayload(), { onConflict: 'user_id' })
+          .select('*')
+          .single();
+        data = fallback.data;
+        error = fallback.error;
+        if (!error) {
+          usedLegacyFallback = true;
+          setAccountNotice('Saved using the current database columns. Apply the Week 1 / Week 2 migration to save separate weeks.', 'warn');
+        }
+      }
       if (error) return { ok: false, error: error.message || 'Could not save profile.' };
       currentProfile = data;
       myWorkDraft = null;
-      return { ok: true };
+      return { ok: true, usedLegacyFallback };
     }
 
     async function saveMyWorkDraft() {
@@ -2412,6 +2446,7 @@
       if (!result.ok) {
         setStatus('Save failed', false);
         setAccountNotice(result.error, 'warn');
+        showToast('Save failed', result.error || 'Your work was not saved. Please try again.');
         return false;
       }
       syncTodaysPaddleFromMyWork();
@@ -2419,7 +2454,9 @@
         await renderTodaysPaddlePage();
       }
       setStatus('Saved to My Work', true);
-      showToast('Saved to My Work', `${paddleId} is saved for ${formatServiceLabel(serviceDay)} ${sameWork ? 'both weeks' : `Week ${getWeekNumber()}`}.`);
+      showToast('Saved to My Work', result.usedLegacyFallback
+        ? `${paddleId} was saved. Week 1 / Week 2 split needs the database migration.`
+        : `${paddleId} is saved for ${formatServiceLabel(serviceDay)} ${sameWork ? 'both weeks' : `Week ${getWeekNumber()}`}.`);
       return true;
     }
 
@@ -4206,14 +4243,18 @@
 
       const saveMyWorkDraftBtn = event.target.closest('#saveMyWorkDraftBtn');
       if (saveMyWorkDraftBtn) {
+        const savedSameWork = Boolean(myWorkDraft?.sameWork);
         const result = await saveMyWorkDraft();
         if (!result.ok) {
           setStatus(result.error || 'Could not save work.', false);
+          showToast('Save failed', result.error || 'Your work was not saved. Please try again.');
           return;
         }
         await renderMyWorkPage();
         setStatus('My Work saved', true);
-        showToast('My Work saved', myWorkDraft?.sameWork ? 'Your Week 1 and Week 2 work are using the same paddles.' : 'Your Week 1 and Week 2 paddles are saved.');
+        showToast('My Work saved', result.usedLegacyFallback
+          ? 'Saved with the current database columns. Apply the Week 1 / Week 2 migration to save separate weeks.'
+          : savedSameWork ? 'Your Week 1 and Week 2 work are using the same paddles.' : 'Your Week 1 and Week 2 paddles are saved.');
         return;
       }
 
