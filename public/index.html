@@ -1344,6 +1344,62 @@
       color: var(--muted);
       margin: 8px 0 0;
     }
+    .defect-page-grid {
+      display: grid;
+      grid-template-columns: minmax(280px, .86fr) minmax(0, 1.14fr);
+      gap: 14px;
+      align-items: start;
+    }
+    .defect-list {
+      display: grid;
+      gap: 10px;
+    }
+    .defect-report {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 13px;
+      background: rgba(17,22,28,.72);
+    }
+    .defect-report-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+    .defect-report-title {
+      font-weight: 800;
+      color: #ffe0c2;
+    }
+    .defect-report-date {
+      color: var(--muted);
+      font-size: 12px;
+      text-align: right;
+    }
+    .defect-report-body {
+      color: var(--text);
+      line-height: 1.4;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+    .defect-admin-list {
+      display: grid;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .defect-admin-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 10px 12px;
+      background: rgba(17,22,28,.58);
+    }
+    .defect-admin-row span {
+      overflow-wrap: anywhere;
+    }
     .linkish-btn {
       appearance: none;
       border: 1px solid rgba(255,255,255,.14);
@@ -1430,6 +1486,9 @@
       }
       .board-page-head {
         display: grid;
+      }
+      .defect-page-grid {
+        grid-template-columns: 1fr;
       }
       .board-page-meta {
         justify-content: stretch;
@@ -1662,6 +1721,7 @@
           <button id="homeBtn" class="header-btn is-primary is-active" type="button">Paddle Lookup</button>
           <button id="myWorkBtn" class="header-btn is-primary" type="button">My Work</button>
           <button id="todaysPaddleBtn" class="header-btn is-primary" type="button">Today's Paddle</button>
+          <button id="lrvDefectsBtn" class="header-btn is-primary" type="button" hidden>LRV Defects</button>
           <button id="liveMapBtn" class="header-btn is-primary" type="button">Line 1 Map</button>
           <button id="todayBoardBtn" class="header-btn is-primary" type="button">Board</button>
         </div>
@@ -1687,6 +1747,7 @@
       </section>
       <section id="myWorkView" class="tool-page-view" hidden></section>
       <section id="todaysPaddleView" class="tool-page-view" hidden></section>
+      <section id="lrvDefectsView" class="tool-page-view" hidden></section>
       <section id="todayBoardView" class="today-board-screen" hidden></section>
       <section id="liveMapView" class="live-map-view" hidden></section>
     </main>
@@ -1729,12 +1790,14 @@
     const chat = document.getElementById('chat');
     const liveMapView = document.getElementById('liveMapView');
     const todaysPaddleView = document.getElementById('todaysPaddleView');
+    const lrvDefectsView = document.getElementById('lrvDefectsView');
     const todayBoardView = document.getElementById('todayBoardView');
     const chatForm = document.getElementById('chatForm');
     const chatInput = document.getElementById('chatInput');
     const homeBtn = document.getElementById('homeBtn');
     const myWorkBtn = document.getElementById('myWorkBtn');
     const todaysPaddleBtn = document.getElementById('todaysPaddleBtn');
+    const lrvDefectsBtn = document.getElementById('lrvDefectsBtn');
     const liveMapBtn = document.getElementById('liveMapBtn');
     const todayBoardBtn = document.getElementById('todayBoardBtn');
     const accountBtn = document.getElementById('accountBtn');
@@ -1807,9 +1870,17 @@
     let accountResetMode = false;
     let accountRecoveryMode = false;
     let accountNotice = { text: '', type: '' };
+    const lrvDefectAdminEmail = 'omar.hosam2000@gmail.com';
+    const lrvNumbers = Array.from({ length: 67 }, (_, index) => index + 1);
+    let lrvDefectAccessAllowed = false;
+    let lrvDefectAccessLoaded = false;
+    let lrvDefectReports = [];
+    let lrvDefectAccessList = [];
+    let selectedLrvNumber = 1;
+    let selectedLrvCab = 'MC1';
 
     function setActiveNav(targetId = 'homeBtn') {
-      [homeBtn, myWorkBtn, todaysPaddleBtn, liveMapBtn, todayBoardBtn].forEach((button) => {
+      [homeBtn, myWorkBtn, todaysPaddleBtn, lrvDefectsBtn, liveMapBtn, todayBoardBtn].forEach((button) => {
         if (!button) return;
         button.classList.toggle('is-active', button.id === targetId);
       });
@@ -1843,6 +1914,7 @@
       liveMapView.hidden = true;
       myWorkView.hidden = true;
       todaysPaddleView.hidden = true;
+      lrvDefectsView.hidden = true;
       todayBoardView.hidden = true;
       chat.hidden = false;
       chatForm.closest('.composer').hidden = false;
@@ -1873,6 +1945,7 @@
       liveMapView.hidden = true;
       myWorkView.hidden = true;
       todaysPaddleView.hidden = true;
+      lrvDefectsView.hidden = true;
       todayBoardView.hidden = true;
       chat.hidden = false;
       chatForm.closest('.composer').hidden = false;
@@ -2298,9 +2371,247 @@
       if (!supabaseEnabled) {
         accountBtn.textContent = 'Accounts Off';
         myWorkBtn.textContent = 'My Work';
+        lrvDefectsBtn.hidden = true;
         return;
       }
       accountBtn.textContent = currentUser ? 'Settings' : 'Account';
+      lrvDefectsBtn.hidden = !lrvDefectAccessAllowed;
+    }
+
+    function currentUserEmail() {
+      return String(currentUser?.email || '').trim().toLowerCase();
+    }
+
+    function isLrvDefectAdmin() {
+      return currentUserEmail() === lrvDefectAdminEmail;
+    }
+
+    function formatLrvNumber(value) {
+      return String(Number(value) || 1).padStart(2, '0');
+    }
+
+    function formatReportDate(value) {
+      if (!value) return 'Unknown date';
+      return new Intl.DateTimeFormat('en-CA', {
+        timeZone,
+        year: 'numeric',
+        month: 'short',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+      }).format(new Date(value));
+    }
+
+    function renderLrvOptions(selected = selectedLrvNumber) {
+      return lrvNumbers
+        .map((number) => `<option value="${number}" ${Number(selected) === number ? 'selected' : ''}>LRV ${formatLrvNumber(number)}</option>`)
+        .join('');
+    }
+
+    async function loadLrvDefectAccessState(force = false) {
+      if (!supabaseClient || !currentUser) {
+        lrvDefectAccessAllowed = false;
+        lrvDefectAccessLoaded = true;
+        lrvDefectAccessList = [];
+        updateAccountButton();
+        return false;
+      }
+      if (lrvDefectAccessLoaded && !force) return lrvDefectAccessAllowed;
+      if (isLrvDefectAdmin()) {
+        lrvDefectAccessAllowed = true;
+        lrvDefectAccessLoaded = true;
+        await loadLrvDefectAccessList();
+        updateAccountButton();
+        return true;
+      }
+      const { data, error } = await supabaseClient
+        .from('ero_lrv_defect_access')
+        .select('email')
+        .eq('email', currentUserEmail())
+        .maybeSingle();
+      lrvDefectAccessAllowed = Boolean(data && !error);
+      lrvDefectAccessLoaded = true;
+      updateAccountButton();
+      return lrvDefectAccessAllowed;
+    }
+
+    async function loadLrvDefectAccessList() {
+      if (!supabaseClient || !isLrvDefectAdmin()) {
+        lrvDefectAccessList = [];
+        return [];
+      }
+      const { data, error } = await supabaseClient
+        .from('ero_lrv_defect_access')
+        .select('email, created_at')
+        .order('email', { ascending: true });
+      if (error) {
+        lrvDefectAccessList = [];
+        return [];
+      }
+      lrvDefectAccessList = Array.isArray(data) ? data : [];
+      return lrvDefectAccessList;
+    }
+
+    async function loadLrvDefectReports() {
+      if (!supabaseClient || !lrvDefectAccessAllowed) {
+        lrvDefectReports = [];
+        return [];
+      }
+      const { data, error } = await supabaseClient
+        .from('ero_lrv_defect_reports')
+        .select('id, lrv_number, cab, defect_text, reported_by_email, reported_at')
+        .eq('lrv_number', selectedLrvNumber)
+        .order('reported_at', { ascending: false });
+      if (error) throw error;
+      lrvDefectReports = Array.isArray(data) ? data : [];
+      return lrvDefectReports;
+    }
+
+    function renderLrvDefectReportList() {
+      if (!lrvDefectReports.length) {
+        return '<div class="saved-empty">No defects reported for this LRV yet.</div>';
+      }
+      return `
+        <div class="defect-list">
+          ${lrvDefectReports.map((report) => `
+            <article class="defect-report">
+              <div class="defect-report-head">
+                <div>
+                  <div class="defect-report-title">LRV ${escapeHtml(formatLrvNumber(report.lrv_number))} - ${escapeHtml(report.cab || '')}</div>
+                  <div class="muted">${escapeHtml(report.reported_by_email || 'Unknown reporter')}</div>
+                </div>
+                <div class="defect-report-date">${escapeHtml(formatReportDate(report.reported_at))}</div>
+              </div>
+              <div class="defect-report-body">${escapeHtml(report.defect_text || '')}</div>
+            </article>
+          `).join('')}
+        </div>
+      `;
+    }
+
+    function renderLrvDefectAdminPanel() {
+      if (!isLrvDefectAdmin()) return '';
+      return `
+        <section class="section-card">
+          <div class="field-label">Admin Visibility</div>
+          <p class="overlay-page-copy">Grant selected accounts access to report defects and view the shared history.</p>
+          <div class="field-grid" style="margin-top:12px;">
+            <label class="field-stack">
+              <span class="field-label">Account Email</span>
+              <input id="lrvAccessEmail" class="text-input" type="email" autocomplete="email" placeholder="operator@example.com">
+            </label>
+            <div class="section-actions">
+              <button id="grantLrvAccessBtn" class="btn" type="button">Grant</button>
+            </div>
+          </div>
+          <div class="defect-admin-list">
+            ${lrvDefectAccessList.length
+              ? lrvDefectAccessList.map((item) => `
+                <div class="defect-admin-row">
+                  <span>${escapeHtml(item.email)}</span>
+                  <button class="linkish-btn" type="button" data-revoke-lrv-access="${escapeHtml(item.email)}">Revoke</button>
+                </div>
+              `).join('')
+              : '<div class="work-empty">No extra accounts have access yet.</div>'}
+          </div>
+        </section>
+      `;
+    }
+
+    async function renderLrvDefectsPage() {
+      if (!supabaseEnabled) {
+        lrvDefectsView.innerHTML = `
+          <div class="board-page-head">
+            <div>
+              <h2>LRV Defects</h2>
+              <p class="overlay-page-copy">Accounts are not configured yet.</p>
+            </div>
+          </div>
+          <div class="saved-empty">Add Supabase first, then LRV Defects will be available.</div>
+        `;
+        return;
+      }
+      if (!currentUser) {
+        lrvDefectsView.innerHTML = `
+          <div class="board-page-head">
+            <div>
+              <h2>LRV Defects</h2>
+              <p class="overlay-page-copy">Sign in to view or report LRV defects.</p>
+            </div>
+          </div>
+          <div class="saved-empty">
+            This page is restricted to approved accounts.
+            <div class="section-actions">
+              <button class="btn" type="button" data-open-account-modal>Open Account</button>
+            </div>
+          </div>
+        `;
+        return;
+      }
+      const allowed = await loadLrvDefectAccessState();
+      if (!allowed) {
+        lrvDefectsView.innerHTML = `
+          <div class="board-page-head">
+            <div>
+              <h2>LRV Defects</h2>
+              <p class="overlay-page-copy">This page is restricted.</p>
+            </div>
+          </div>
+          <div class="saved-empty">Ask Omar to grant access for ${escapeHtml(currentUser.email || 'this account')}.</div>
+        `;
+        return;
+      }
+      await loadLrvDefectReports();
+      lrvDefectsView.innerHTML = `
+        <div class="board-page-head">
+          <div>
+            <h2>LRV Defects</h2>
+            <p class="overlay-page-copy">Approved accounts can report defects and see the shared history entered by everyone.</p>
+          </div>
+          <div class="board-page-meta">
+            <div class="board-stat"><span class="k">Fleet</span><span class="v">01-67</span></div>
+            <div class="board-stat"><span class="k">Reports</span><span class="v">${escapeHtml(lrvDefectReports.length)}</span></div>
+          </div>
+        </div>
+        <div class="defect-page-grid">
+          <div class="stack-form">
+            <section class="section-card">
+              <div class="field-label">Report Defect</div>
+              <div class="stack-form" style="margin-top:12px;">
+                <label class="field-stack">
+                  <span class="field-label">LRV</span>
+                  <select id="lrvReportNumber" class="select-input">${renderLrvOptions(selectedLrvNumber)}</select>
+                </label>
+                <label class="field-stack">
+                  <span class="field-label">Cab</span>
+                  <select id="lrvReportCab" class="select-input">
+                    <option value="MC1" ${selectedLrvCab === 'MC1' ? 'selected' : ''}>MC1</option>
+                    <option value="MC2" ${selectedLrvCab === 'MC2' ? 'selected' : ''}>MC2</option>
+                  </select>
+                </label>
+                <label class="field-stack">
+                  <span class="field-label">Defect</span>
+                  <textarea id="lrvDefectText" class="text-input" rows="5" placeholder="Type the defect details"></textarea>
+                </label>
+              </div>
+              <div class="section-actions">
+                <button id="submitLrvDefectBtn" class="btn" type="button">Report Defect</button>
+              </div>
+            </section>
+            ${renderLrvDefectAdminPanel()}
+          </div>
+          <section class="section-card">
+            <div class="field-inline">
+              <div>
+                <div class="field-label">Lookup LRV</div>
+                <p class="overlay-page-copy">Showing every report for LRV ${escapeHtml(formatLrvNumber(selectedLrvNumber))}.</p>
+              </div>
+              <select id="lrvLookupNumber" class="select-input" style="max-width:180px;">${renderLrvOptions(selectedLrvNumber)}</select>
+            </div>
+            <div style="margin-top:14px;">${renderLrvDefectReportList()}</div>
+          </section>
+        </div>
+      `;
     }
 
     function closeAccountModal() {
@@ -2672,8 +2983,13 @@
       currentUser = session?.user || null;
       if (!currentUser) {
         currentProfile = null;
+        lrvDefectAccessAllowed = false;
+        lrvDefectAccessLoaded = true;
+        lrvDefectAccessList = [];
       } else {
         await loadProfile();
+        lrvDefectAccessLoaded = false;
+        await loadLrvDefectAccessState(true);
       }
       updateAccountButton();
       if (!accountOverlay.hidden) {
@@ -2681,6 +2997,9 @@
       }
       if (!myWorkView.hidden) {
         await renderMyWorkPage();
+      }
+      if (!lrvDefectsView.hidden) {
+        await renderLrvDefectsPage();
       }
     }
 
@@ -2992,6 +3311,7 @@
       setActiveNav('myWorkBtn');
       liveMapView.hidden = true;
       todaysPaddleView.hidden = true;
+      lrvDefectsView.hidden = true;
       todayBoardView.hidden = true;
       chat.hidden = true;
       chatForm.closest('.composer').hidden = true;
@@ -3677,6 +3997,7 @@
       setActiveNav('todaysPaddleBtn');
       liveMapView.hidden = true;
       myWorkView.hidden = true;
+      lrvDefectsView.hidden = true;
       todayBoardView.hidden = true;
       chat.hidden = true;
       chatForm.closest('.composer').hidden = true;
@@ -3685,6 +4006,93 @@
       syncTodaysPaddleFromMyWork();
       await renderTodaysPaddlePage();
       setStatus("Today's paddle ready", true);
+    }
+
+    async function openLrvDefectsPage() {
+      stopLiveMapRefresh();
+      stopTodayBoardRefresh();
+      closePaddleModal();
+      document.querySelector('.app')?.classList.remove('map-mode');
+      setActiveNav('lrvDefectsBtn');
+      liveMapView.hidden = true;
+      myWorkView.hidden = true;
+      todaysPaddleView.hidden = true;
+      todayBoardView.hidden = true;
+      chat.hidden = true;
+      chatForm.closest('.composer').hidden = true;
+      lrvDefectsView.hidden = false;
+      setStatus('Loading defects...', true);
+      await renderLrvDefectsPage();
+      setStatus('LRV Defects ready', true);
+    }
+
+    async function submitLrvDefectReport() {
+      if (!supabaseClient || !currentUser || !lrvDefectAccessAllowed) return;
+      const lrvNumber = Number(document.getElementById('lrvReportNumber')?.value || selectedLrvNumber);
+      const cab = document.getElementById('lrvReportCab')?.value || selectedLrvCab;
+      const defectText = document.getElementById('lrvDefectText')?.value?.trim() || '';
+      if (!lrvNumbers.includes(lrvNumber) || !['MC1', 'MC2'].includes(cab) || !defectText) {
+        setStatus('Complete the defect report first', false);
+        showToast('Report not saved', 'Choose an LRV, cab, and type the defect.');
+        return;
+      }
+      const { error } = await supabaseClient
+        .from('ero_lrv_defect_reports')
+        .insert({
+          lrv_number: lrvNumber,
+          cab,
+          defect_text: defectText,
+          reported_by: currentUser.id,
+          reported_by_email: currentUser.email || '',
+        });
+      if (error) {
+        setStatus('Report failed', false);
+        showToast('Report failed', error.message || 'Could not save the defect.');
+        return;
+      }
+      selectedLrvNumber = lrvNumber;
+      selectedLrvCab = cab;
+      await renderLrvDefectsPage();
+      setStatus('Defect reported', true);
+      showToast('Defect reported', `LRV ${formatLrvNumber(lrvNumber)} ${cab}`);
+    }
+
+    async function grantLrvDefectAccess() {
+      if (!supabaseClient || !isLrvDefectAdmin()) return;
+      const email = document.getElementById('lrvAccessEmail')?.value?.trim().toLowerCase() || '';
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        setStatus('Enter a valid email', false);
+        return;
+      }
+      const { error } = await supabaseClient
+        .from('ero_lrv_defect_access')
+        .upsert({ email, granted_by: currentUser.id }, { onConflict: 'email' });
+      if (error) {
+        setStatus('Grant failed', false);
+        showToast('Grant failed', error.message || 'Could not grant access.');
+        return;
+      }
+      await loadLrvDefectAccessList();
+      await renderLrvDefectsPage();
+      setStatus('Access granted', true);
+    }
+
+    async function revokeLrvDefectAccess(email) {
+      if (!supabaseClient || !isLrvDefectAdmin()) return;
+      const normalizedEmail = String(email || '').trim().toLowerCase();
+      if (!normalizedEmail) return;
+      const { error } = await supabaseClient
+        .from('ero_lrv_defect_access')
+        .delete()
+        .eq('email', normalizedEmail);
+      if (error) {
+        setStatus('Revoke failed', false);
+        showToast('Revoke failed', error.message || 'Could not revoke access.');
+        return;
+      }
+      await loadLrvDefectAccessList();
+      await renderLrvDefectsPage();
+      setStatus('Access revoked', true);
     }
 
     async function openTodayBoard() {
@@ -3696,6 +4104,7 @@
       liveMapView.hidden = true;
       myWorkView.hidden = true;
       todaysPaddleView.hidden = true;
+      lrvDefectsView.hidden = true;
       chat.hidden = true;
       chatForm.closest('.composer').hidden = true;
       todayBoardView.hidden = false;
@@ -3986,6 +4395,8 @@
       setActiveNav('liveMapBtn');
       chat.hidden = true;
       myWorkView.hidden = true;
+      lrvDefectsView.hidden = true;
+      todaysPaddleView.hidden = true;
       todayBoardView.hidden = true;
       chatForm.closest('.composer').hidden = true;
       liveMapView.hidden = false;
@@ -4020,6 +4431,7 @@
       setActiveNav('homeBtn');
       myWorkView.hidden = true;
       todaysPaddleView.hidden = true;
+      lrvDefectsView.hidden = true;
       todayBoardView.hidden = true;
       liveMapView.hidden = true;
       chat.hidden = false;
@@ -4105,6 +4517,16 @@
         todaysPaddleView.hidden = false;
         todaysPaddleView.innerHTML = `<div class="live-map-error">${escapeHtml(error.message || "Today's Paddle failed.")}</div>`;
         setStatus("Today's paddle failed", false);
+      }
+    });
+
+    lrvDefectsBtn.addEventListener('click', async () => {
+      try {
+        await openLrvDefectsPage();
+      } catch (error) {
+        lrvDefectsView.hidden = false;
+        lrvDefectsView.innerHTML = `<div class="live-map-error">${escapeHtml(error.message || 'LRV Defects failed. Apply the Supabase schema if this is the first setup.')}</div>`;
+        setStatus('Defects failed', false);
       }
     });
 
@@ -4195,6 +4617,24 @@
       const openAccountModalBtn = event.target.closest('[data-open-account-modal]');
       if (openAccountModalBtn) {
         openAccountModal();
+        return;
+      }
+
+      const submitLrvDefectBtn = event.target.closest('#submitLrvDefectBtn');
+      if (submitLrvDefectBtn) {
+        await submitLrvDefectReport();
+        return;
+      }
+
+      const grantLrvAccessBtn = event.target.closest('#grantLrvAccessBtn');
+      if (grantLrvAccessBtn) {
+        await grantLrvDefectAccess();
+        return;
+      }
+
+      const revokeLrvAccessBtn = event.target.closest('[data-revoke-lrv-access]');
+      if (revokeLrvAccessBtn) {
+        await revokeLrvDefectAccess(revokeLrvAccessBtn.dataset.revokeLrvAccess || '');
         return;
       }
 
@@ -4300,6 +4740,21 @@
         return;
       }
 
+    });
+
+    document.addEventListener('change', async (event) => {
+      if (event.target?.id === 'lrvLookupNumber') {
+        selectedLrvNumber = Number(event.target.value || selectedLrvNumber);
+        await renderLrvDefectsPage();
+        return;
+      }
+      if (event.target?.id === 'lrvReportNumber') {
+        selectedLrvNumber = Number(event.target.value || selectedLrvNumber);
+        return;
+      }
+      if (event.target?.id === 'lrvReportCab') {
+        selectedLrvCab = event.target.value || selectedLrvCab;
+      }
     });
 
     liveMapView.addEventListener('click', (event) => {
