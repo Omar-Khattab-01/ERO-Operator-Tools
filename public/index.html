@@ -4387,6 +4387,7 @@
       await renderLrvDefectsPage();
       setStatus('Access saved', true);
       showToast('Access saved', `${email} is ${formatLrvAccessRole(role).toLowerCase()}.`);
+      window.alert(`${email} has been assigned ${formatLrvAccessRole(role)} access.`);
     }
 
     async function updateLrvDefectAccessRole(email, role) {
@@ -4408,6 +4409,7 @@
       await renderLrvDefectsPage();
       setStatus('Role updated', true);
       showToast('Role updated', `${normalizedEmail} is ${formatLrvAccessRole(normalizedRole).toLowerCase()}.`);
+      window.alert(`${normalizedEmail} has been assigned ${formatLrvAccessRole(normalizedRole)} access.`);
     }
 
     async function revokeLrvDefectAccess(email) {
