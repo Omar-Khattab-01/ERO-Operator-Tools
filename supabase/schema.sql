@@ -1,6 +1,7 @@
 create table if not exists public.ero_user_profiles (
   user_id uuid primary key references auth.users(id) on delete cascade,
   display_name text,
+  email text,
   mon_thu_paddles text[] not null default '{}',
   friday_paddles text[] not null default '{}',
   saturday_paddles text[] not null default '{}',
@@ -18,6 +19,9 @@ create table if not exists public.ero_user_profiles (
   updated_at timestamptz not null default timezone('utc', now())
 );
 
+alter table public.ero_user_profiles
+add column if not exists email text;
+
 create or replace function public.ero_set_updated_at()
 returns trigger
 language plpgsql
@@ -33,6 +37,22 @@ create trigger ero_user_profiles_set_updated_at
 before update on public.ero_user_profiles
 for each row
 execute function public.ero_set_updated_at();
+
+create or replace function public.ero_normalize_email()
+returns trigger
+language plpgsql
+as $$
+begin
+  new.email = lower(trim(new.email));
+  return new;
+end;
+$$;
+
+drop trigger if exists ero_user_profiles_normalize_email on public.ero_user_profiles;
+create trigger ero_user_profiles_normalize_email
+before insert or update on public.ero_user_profiles
+for each row
+execute function public.ero_normalize_email();
 
 alter table public.ero_user_profiles enable row level security;
 
@@ -57,9 +77,37 @@ with check (auth.uid() = user_id);
 
 create table if not exists public.ero_lrv_defect_access (
   email text primary key,
+  role text not null default 'reporter',
   granted_by uuid references auth.users(id) on delete set null,
   created_at timestamptz not null default timezone('utc', now())
 );
+
+alter table public.ero_lrv_defect_access
+add column if not exists role text not null default 'reporter';
+
+update public.ero_lrv_defect_access
+set email = lower(trim(email)),
+    role = coalesce(nullif(trim(role), ''), 'reporter');
+
+alter table public.ero_lrv_defect_access
+drop constraint if exists ero_lrv_defect_access_email_normalized;
+
+alter table public.ero_lrv_defect_access
+add constraint ero_lrv_defect_access_email_normalized
+check (email = lower(trim(email)) and length(email) > 3);
+
+alter table public.ero_lrv_defect_access
+drop constraint if exists ero_lrv_defect_access_role_check;
+
+alter table public.ero_lrv_defect_access
+add constraint ero_lrv_defect_access_role_check
+check (role in ('viewer', 'reporter', 'admin'));
+
+drop trigger if exists ero_lrv_defect_access_normalize_email on public.ero_lrv_defect_access;
+create trigger ero_lrv_defect_access_normalize_email
+before insert or update on public.ero_lrv_defect_access
+for each row
+execute function public.ero_normalize_email();
 
 create index if not exists ero_lrv_defect_access_email_idx
 on public.ero_lrv_defect_access (lower(email));
@@ -87,7 +135,13 @@ stable
 security definer
 set search_path = public
 as $$
-  select lower(coalesce((auth.jwt() ->> 'email'), '')) = 'omar.hosam2000@gmail.com';
+  select lower(coalesce((auth.jwt() ->> 'email'), '')) = 'omar.hosam2000@gmail.com'
+    or exists (
+      select 1
+      from public.ero_lrv_defect_access access
+      where access.email = lower(coalesce((auth.jwt() ->> 'email'), ''))
+        and access.role = 'admin'
+    );
 $$;
 
 create or replace function public.ero_can_access_lrv_defects()
@@ -101,12 +155,35 @@ as $$
     or exists (
       select 1
       from public.ero_lrv_defect_access access
-      where lower(access.email) = lower(coalesce((auth.jwt() ->> 'email'), ''))
+      where access.email = lower(coalesce((auth.jwt() ->> 'email'), ''))
+        and access.role in ('viewer', 'reporter', 'admin')
+    );
+$$;
+
+create or replace function public.ero_can_report_lrv_defects()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select public.ero_is_lrv_defect_admin()
+    or exists (
+      select 1
+      from public.ero_lrv_defect_access access
+      where access.email = lower(coalesce((auth.jwt() ->> 'email'), ''))
+        and access.role in ('reporter', 'admin')
     );
 $$;
 
 alter table public.ero_lrv_defect_access enable row level security;
 alter table public.ero_lrv_defect_reports enable row level security;
+
+drop policy if exists "LRV defect admins can view ERO profiles" on public.ero_user_profiles;
+create policy "LRV defect admins can view ERO profiles"
+on public.ero_user_profiles
+for select
+using (public.ero_is_lrv_defect_admin());
 
 drop policy if exists "LRV defect admins can view access" on public.ero_lrv_defect_access;
 create policy "LRV defect admins can view access"
@@ -118,20 +195,28 @@ drop policy if exists "Users can view their own LRV defect access" on public.ero
 create policy "Users can view their own LRV defect access"
 on public.ero_lrv_defect_access
 for select
-using (lower(email) = lower(coalesce((auth.jwt() ->> 'email'), '')));
+using (email = lower(coalesce((auth.jwt() ->> 'email'), '')));
 
 drop policy if exists "LRV defect admins can grant access" on public.ero_lrv_defect_access;
 create policy "LRV defect admins can grant access"
 on public.ero_lrv_defect_access
 for insert
-with check (public.ero_is_lrv_defect_admin());
+with check (
+  public.ero_is_lrv_defect_admin()
+  and email = lower(trim(email))
+  and role in ('viewer', 'reporter', 'admin')
+);
 
 drop policy if exists "LRV defect admins can update access" on public.ero_lrv_defect_access;
 create policy "LRV defect admins can update access"
 on public.ero_lrv_defect_access
 for update
 using (public.ero_is_lrv_defect_admin())
-with check (public.ero_is_lrv_defect_admin());
+with check (
+  public.ero_is_lrv_defect_admin()
+  and email = lower(trim(email))
+  and role in ('viewer', 'reporter', 'admin')
+);
 
 drop policy if exists "LRV defect admins can revoke access" on public.ero_lrv_defect_access;
 create policy "LRV defect admins can revoke access"
@@ -150,7 +235,7 @@ create policy "Authorized users can report LRV defects"
 on public.ero_lrv_defect_reports
 for insert
 with check (
-  public.ero_can_access_lrv_defects()
+  public.ero_can_report_lrv_defects()
   and reported_by = auth.uid()
   and lower(reported_by_email) = lower(coalesce((auth.jwt() ->> 'email'), ''))
 );

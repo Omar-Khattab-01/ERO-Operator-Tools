@@ -1400,6 +1400,28 @@
     .defect-admin-row span {
       overflow-wrap: anywhere;
     }
+    .defect-admin-row strong,
+    .defect-admin-row small {
+      display: block;
+    }
+    .defect-admin-row small {
+      margin-top: 3px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.25;
+    }
+    .defect-admin-controls {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+    }
+    .defect-admin-controls .select-input {
+      width: auto;
+      min-width: 118px;
+      padding: 9px 11px;
+    }
     .linkish-btn {
       appearance: none;
       border: 1px solid rgba(255,255,255,.14);
@@ -1873,9 +1895,11 @@
     const lrvDefectAdminEmail = 'omar.hosam2000@gmail.com';
     const lrvNumbers = Array.from({ length: 67 }, (_, index) => index + 1);
     let lrvDefectAccessAllowed = false;
+    let lrvDefectAccessRole = '';
     let lrvDefectAccessLoaded = false;
     let lrvDefectReports = [];
     let lrvDefectAccessList = [];
+    let lrvDefectProfileList = [];
     let selectedLrvNumber = 1;
     let selectedLrvCab = 'MC1';
 
@@ -2248,6 +2272,7 @@
       const payload = {
         user_id: currentUser.id,
         display_name: currentProfile.display_name || null,
+        email: currentUserEmail() || null,
         same_work_schedule: sameWork,
       };
       serviceDays.forEach((day) => {
@@ -2383,7 +2408,33 @@
     }
 
     function isLrvDefectAdmin() {
-      return currentUserEmail() === lrvDefectAdminEmail;
+      return currentUserEmail() === lrvDefectAdminEmail || lrvDefectAccessRole === 'admin';
+    }
+
+    function canReportLrvDefects() {
+      return isLrvDefectAdmin() || lrvDefectAccessRole === 'reporter';
+    }
+
+    function normalizeEmail(value) {
+      return String(value || '').trim().toLowerCase();
+    }
+
+    function normalizeLrvAccessRole(value) {
+      return ['viewer', 'reporter', 'admin'].includes(value) ? value : 'reporter';
+    }
+
+    function formatLrvAccessRole(value) {
+      const role = normalizeLrvAccessRole(value);
+      if (role === 'admin') return 'Admin';
+      if (role === 'viewer') return 'Viewer';
+      return 'Reporter';
+    }
+
+    function lrvRoleOptions(selected = 'reporter') {
+      const role = normalizeLrvAccessRole(selected);
+      return ['viewer', 'reporter', 'admin']
+        .map((item) => `<option value="${item}" ${role === item ? 'selected' : ''}>${formatLrvAccessRole(item)}</option>`)
+        .join('');
     }
 
     function formatLrvNumber(value) {
@@ -2411,14 +2462,17 @@
     async function loadLrvDefectAccessState(force = false) {
       if (!supabaseClient || !currentUser) {
         lrvDefectAccessAllowed = false;
+        lrvDefectAccessRole = '';
         lrvDefectAccessLoaded = true;
         lrvDefectAccessList = [];
+        lrvDefectProfileList = [];
         updateAccountButton();
         return false;
       }
       if (lrvDefectAccessLoaded && !force) return lrvDefectAccessAllowed;
-      if (isLrvDefectAdmin()) {
+      if (currentUserEmail() === lrvDefectAdminEmail) {
         lrvDefectAccessAllowed = true;
+        lrvDefectAccessRole = 'admin';
         lrvDefectAccessLoaded = true;
         await loadLrvDefectAccessList();
         updateAccountButton();
@@ -2426,11 +2480,13 @@
       }
       const { data, error } = await supabaseClient
         .from('ero_lrv_defect_access')
-        .select('email')
+        .select('email, role')
         .eq('email', currentUserEmail())
         .maybeSingle();
-      lrvDefectAccessAllowed = Boolean(data && !error);
+      lrvDefectAccessRole = data && !error ? normalizeLrvAccessRole(data.role) : '';
+      lrvDefectAccessAllowed = Boolean(lrvDefectAccessRole);
       lrvDefectAccessLoaded = true;
+      if (isLrvDefectAdmin()) await loadLrvDefectAccessList();
       updateAccountButton();
       return lrvDefectAccessAllowed;
     }
@@ -2442,14 +2498,59 @@
       }
       const { data, error } = await supabaseClient
         .from('ero_lrv_defect_access')
-        .select('email, created_at')
+        .select('email, role, created_at')
         .order('email', { ascending: true });
       if (error) {
         lrvDefectAccessList = [];
         return [];
       }
       lrvDefectAccessList = Array.isArray(data) ? data : [];
+      await loadLrvDefectProfileList();
       return lrvDefectAccessList;
+    }
+
+    async function loadLrvDefectProfileList() {
+      if (!supabaseClient || !isLrvDefectAdmin()) {
+        lrvDefectProfileList = [];
+        return [];
+      }
+      const { data, error } = await supabaseClient
+        .from('ero_user_profiles')
+        .select('display_name, email')
+        .not('email', 'is', null)
+        .order('email', { ascending: true });
+      if (error) {
+        lrvDefectProfileList = [];
+        return [];
+      }
+      const seen = new Set();
+      lrvDefectProfileList = (Array.isArray(data) ? data : [])
+        .map((profile) => ({
+          email: normalizeEmail(profile.email),
+          displayName: profile.display_name || '',
+        }))
+        .filter((profile) => {
+          if (!profile.email || seen.has(profile.email)) return false;
+          seen.add(profile.email);
+          return true;
+        });
+      return lrvDefectProfileList;
+    }
+
+    function getLrvAccessStatus(email) {
+      const normalizedEmail = normalizeEmail(email);
+      const profile = lrvDefectProfileList.find((item) => item.email === normalizedEmail);
+      return profile
+        ? { label: 'Active', className: 'ok', detail: profile.displayName || normalizedEmail }
+        : { label: 'Pending', className: 'warn', detail: 'No account has signed in with this email yet.' };
+    }
+
+    function renderLrvProfileDatalist() {
+      return `
+        <datalist id="lrvAccountEmailOptions">
+          ${lrvDefectProfileList.map((profile) => `<option value="${escapeHtml(profile.email)}">${escapeHtml(profile.displayName || profile.email)}</option>`).join('')}
+        </datalist>
+      `;
     }
 
     async function loadLrvDefectReports() {
@@ -2493,25 +2594,41 @@
       if (!isLrvDefectAdmin()) return '';
       return `
         <section class="section-card">
-          <div class="field-label">Admin Visibility</div>
-          <p class="overlay-page-copy">Grant selected accounts access to report defects and view the shared history.</p>
-          <div class="field-grid" style="margin-top:12px;">
-            <label class="field-stack">
-              <span class="field-label">Account Email</span>
-              <input id="lrvAccessEmail" class="text-input" type="email" autocomplete="email" placeholder="operator@example.com">
-            </label>
+          <div class="field-label">Admin Access</div>
+          <p class="overlay-page-copy">Grant selected accounts viewer, reporter, or admin access. Pending emails become active once that account signs in.</p>
+          ${renderLrvProfileDatalist()}
+          <div class="stack-form" style="margin-top:12px;">
+            <div class="field-grid">
+              <label class="field-stack">
+                <span class="field-label">Account Email</span>
+                <input id="lrvAccessEmail" class="text-input" type="email" list="lrvAccountEmailOptions" autocomplete="email" placeholder="operator@example.com">
+              </label>
+              <label class="field-stack">
+                <span class="field-label">Role</span>
+                <select id="lrvAccessRole" class="select-input">${lrvRoleOptions('reporter')}</select>
+              </label>
+            </div>
             <div class="section-actions">
-              <button id="grantLrvAccessBtn" class="btn" type="button">Grant</button>
+              <button id="grantLrvAccessBtn" class="btn" type="button">Save Access</button>
             </div>
           </div>
           <div class="defect-admin-list">
             ${lrvDefectAccessList.length
-              ? lrvDefectAccessList.map((item) => `
-                <div class="defect-admin-row">
-                  <span>${escapeHtml(item.email)}</span>
-                  <button class="linkish-btn" type="button" data-revoke-lrv-access="${escapeHtml(item.email)}">Revoke</button>
-                </div>
-              `).join('')
+              ? lrvDefectAccessList.map((item) => {
+                const status = getLrvAccessStatus(item.email);
+                return `
+                  <div class="defect-admin-row">
+                    <span>
+                      <strong>${escapeHtml(item.email)}</strong>
+                      <small>${escapeHtml(formatLrvAccessRole(item.role))} · ${escapeHtml(status.label)}${status.detail ? ` · ${escapeHtml(status.detail)}` : ''}</small>
+                    </span>
+                    <span class="defect-admin-controls">
+                      <select class="select-input" data-update-lrv-access-role="${escapeHtml(item.email)}">${lrvRoleOptions(item.role)}</select>
+                      <button class="linkish-btn" type="button" data-revoke-lrv-access="${escapeHtml(item.email)}">Revoke</button>
+                    </span>
+                  </div>
+                `;
+              }).join('')
               : '<div class="work-empty">No extra accounts have access yet.</div>'}
           </div>
         </section>
@@ -2570,34 +2687,42 @@
           </div>
           <div class="board-page-meta">
             <div class="board-stat"><span class="k">Fleet</span><span class="v">01-67</span></div>
+            <div class="board-stat"><span class="k">Role</span><span class="v">${escapeHtml(formatLrvAccessRole(lrvDefectAccessRole || 'viewer'))}</span></div>
             <div class="board-stat"><span class="k">Reports</span><span class="v">${escapeHtml(lrvDefectReports.length)}</span></div>
           </div>
         </div>
         <div class="defect-page-grid">
           <div class="stack-form">
-            <section class="section-card">
-              <div class="field-label">Report Defect</div>
-              <div class="stack-form" style="margin-top:12px;">
-                <label class="field-stack">
-                  <span class="field-label">LRV</span>
-                  <select id="lrvReportNumber" class="select-input">${renderLrvOptions(selectedLrvNumber)}</select>
-                </label>
-                <label class="field-stack">
-                  <span class="field-label">Cab</span>
-                  <select id="lrvReportCab" class="select-input">
-                    <option value="MC1" ${selectedLrvCab === 'MC1' ? 'selected' : ''}>MC1</option>
-                    <option value="MC2" ${selectedLrvCab === 'MC2' ? 'selected' : ''}>MC2</option>
-                  </select>
-                </label>
-                <label class="field-stack">
-                  <span class="field-label">Defect</span>
-                  <textarea id="lrvDefectText" class="text-input" rows="5" placeholder="Type the defect details"></textarea>
-                </label>
-              </div>
-              <div class="section-actions">
-                <button id="submitLrvDefectBtn" class="btn" type="button">Report Defect</button>
-              </div>
-            </section>
+            ${canReportLrvDefects() ? `
+              <section class="section-card">
+                <div class="field-label">Report Defect</div>
+                <div class="stack-form" style="margin-top:12px;">
+                  <label class="field-stack">
+                    <span class="field-label">LRV</span>
+                    <select id="lrvReportNumber" class="select-input">${renderLrvOptions(selectedLrvNumber)}</select>
+                  </label>
+                  <label class="field-stack">
+                    <span class="field-label">Cab</span>
+                    <select id="lrvReportCab" class="select-input">
+                      <option value="MC1" ${selectedLrvCab === 'MC1' ? 'selected' : ''}>MC1</option>
+                      <option value="MC2" ${selectedLrvCab === 'MC2' ? 'selected' : ''}>MC2</option>
+                    </select>
+                  </label>
+                  <label class="field-stack">
+                    <span class="field-label">Defect</span>
+                    <textarea id="lrvDefectText" class="text-input" rows="5" placeholder="Type the defect details"></textarea>
+                  </label>
+                </div>
+                <div class="section-actions">
+                  <button id="submitLrvDefectBtn" class="btn" type="button">Report Defect</button>
+                </div>
+              </section>
+            ` : `
+              <section class="section-card">
+                <div class="field-label">View Only</div>
+                <p class="overlay-page-copy">Your account can view the shared LRV defect history. Ask an admin for reporter access to add defects.</p>
+              </section>
+            `}
             ${renderLrvDefectAdminPanel()}
           </div>
           <section class="section-card">
@@ -2658,6 +2783,7 @@
         .upsert({
           user_id: currentUser.id,
           display_name: fallbackName || null,
+          email: currentUserEmail() || null,
         }, { onConflict: 'user_id' })
         .select('*')
         .single();
@@ -2686,6 +2812,10 @@
         currentProfile = null;
       } else if (data) {
         currentProfile = data;
+        if (currentUserEmail() && currentProfile.email !== currentUserEmail()) {
+          currentProfile.email = currentUserEmail();
+          await saveCurrentProfile();
+        }
       } else {
         currentProfile = null;
         await ensureProfileRow();
@@ -2857,6 +2987,7 @@
         currentProfile = {
           user_id: data.user.id,
           display_name: displayName,
+          email: String(email || '').trim().toLowerCase(),
           same_work_schedule: true,
           mon_thu_paddles: [],
           friday_paddles: [],
@@ -2984,8 +3115,10 @@
       if (!currentUser) {
         currentProfile = null;
         lrvDefectAccessAllowed = false;
+        lrvDefectAccessRole = '';
         lrvDefectAccessLoaded = true;
         lrvDefectAccessList = [];
+        lrvDefectProfileList = [];
       } else {
         await loadProfile();
         lrvDefectAccessLoaded = false;
@@ -4027,7 +4160,7 @@
     }
 
     async function submitLrvDefectReport() {
-      if (!supabaseClient || !currentUser || !lrvDefectAccessAllowed) return;
+      if (!supabaseClient || !currentUser || !canReportLrvDefects()) return;
       const lrvNumber = Number(document.getElementById('lrvReportNumber')?.value || selectedLrvNumber);
       const cab = document.getElementById('lrvReportCab')?.value || selectedLrvCab;
       const defectText = document.getElementById('lrvDefectText')?.value?.trim() || '';
@@ -4059,14 +4192,15 @@
 
     async function grantLrvDefectAccess() {
       if (!supabaseClient || !isLrvDefectAdmin()) return;
-      const email = document.getElementById('lrvAccessEmail')?.value?.trim().toLowerCase() || '';
+      const email = normalizeEmail(document.getElementById('lrvAccessEmail')?.value || '');
+      const role = normalizeLrvAccessRole(document.getElementById('lrvAccessRole')?.value || 'reporter');
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
         setStatus('Enter a valid email', false);
         return;
       }
       const { error } = await supabaseClient
         .from('ero_lrv_defect_access')
-        .upsert({ email, granted_by: currentUser.id }, { onConflict: 'email' });
+        .upsert({ email, role, granted_by: currentUser.id }, { onConflict: 'email' });
       if (error) {
         setStatus('Grant failed', false);
         showToast('Grant failed', error.message || 'Could not grant access.');
@@ -4074,12 +4208,33 @@
       }
       await loadLrvDefectAccessList();
       await renderLrvDefectsPage();
-      setStatus('Access granted', true);
+      setStatus('Access saved', true);
+      showToast('Access saved', `${email} is ${formatLrvAccessRole(role).toLowerCase()}.`);
+    }
+
+    async function updateLrvDefectAccessRole(email, role) {
+      if (!supabaseClient || !isLrvDefectAdmin()) return;
+      const normalizedEmail = normalizeEmail(email);
+      const normalizedRole = normalizeLrvAccessRole(role);
+      if (!normalizedEmail) return;
+      const { error } = await supabaseClient
+        .from('ero_lrv_defect_access')
+        .update({ role: normalizedRole, granted_by: currentUser.id })
+        .eq('email', normalizedEmail);
+      if (error) {
+        setStatus('Role update failed', false);
+        showToast('Role update failed', error.message || 'Could not update access.');
+        return;
+      }
+      await loadLrvDefectAccessList();
+      await renderLrvDefectsPage();
+      setStatus('Role updated', true);
+      showToast('Role updated', `${normalizedEmail} is ${formatLrvAccessRole(normalizedRole).toLowerCase()}.`);
     }
 
     async function revokeLrvDefectAccess(email) {
       if (!supabaseClient || !isLrvDefectAdmin()) return;
-      const normalizedEmail = String(email || '').trim().toLowerCase();
+      const normalizedEmail = normalizeEmail(email);
       if (!normalizedEmail) return;
       const { error } = await supabaseClient
         .from('ero_lrv_defect_access')
@@ -4743,6 +4898,11 @@
     });
 
     document.addEventListener('change', async (event) => {
+      const roleSelect = event.target?.closest?.('[data-update-lrv-access-role]');
+      if (roleSelect) {
+        await updateLrvDefectAccessRole(roleSelect.dataset.updateLrvAccessRole || '', roleSelect.value || 'reporter');
+        return;
+      }
       if (event.target?.id === 'lrvLookupNumber') {
         selectedLrvNumber = Number(event.target.value || selectedLrvNumber);
         await renderLrvDefectsPage();
