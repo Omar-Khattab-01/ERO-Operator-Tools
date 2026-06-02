@@ -1382,6 +1382,11 @@
       white-space: pre-wrap;
       overflow-wrap: anywhere;
     }
+    .defect-report-actions {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 10px;
+    }
     .defect-admin-list {
       display: grid;
       gap: 8px;
@@ -1900,6 +1905,7 @@
     let lrvDefectReports = [];
     let lrvDefectAccessList = [];
     let lrvDefectProfileList = [];
+    let lrvDefectSchemaWarning = '';
     let selectedLrvNumber = 1;
     let selectedLrvCab = 'MC1';
 
@@ -2419,6 +2425,20 @@
       return String(value || '').trim().toLowerCase();
     }
 
+    function isLrvSchemaError(error) {
+      const message = String(error?.message || error?.details || error?.hint || '').toLowerCase();
+      return message.includes('schema cache')
+        || message.includes("could not find the 'role' column")
+        || message.includes("could not find the 'email' column")
+        || message.includes('ero_lrv_defect_access');
+    }
+
+    function setLrvSchemaWarning(error) {
+      if (!isLrvSchemaError(error)) return false;
+      lrvDefectSchemaWarning = 'Supabase needs the latest LRV Defects SQL migration. Apply the updated schema, then reload this page.';
+      return true;
+    }
+
     function normalizeLrvAccessRole(value) {
       return ['viewer', 'reporter', 'admin'].includes(value) ? value : 'reporter';
     }
@@ -2466,6 +2486,7 @@
         lrvDefectAccessLoaded = true;
         lrvDefectAccessList = [];
         lrvDefectProfileList = [];
+        lrvDefectSchemaWarning = '';
         updateAccountButton();
         return false;
       }
@@ -2483,6 +2504,13 @@
         .select('email, role')
         .eq('email', currentUserEmail())
         .maybeSingle();
+      if (error && setLrvSchemaWarning(error)) {
+        lrvDefectAccessRole = '';
+        lrvDefectAccessAllowed = false;
+        lrvDefectAccessLoaded = true;
+        updateAccountButton();
+        return false;
+      }
       lrvDefectAccessRole = data && !error ? normalizeLrvAccessRole(data.role) : '';
       lrvDefectAccessAllowed = Boolean(lrvDefectAccessRole);
       lrvDefectAccessLoaded = true;
@@ -2501,6 +2529,7 @@
         .select('email, role, created_at')
         .order('email', { ascending: true });
       if (error) {
+        setLrvSchemaWarning(error);
         lrvDefectAccessList = [];
         return [];
       }
@@ -2520,6 +2549,7 @@
         .not('email', 'is', null)
         .order('email', { ascending: true });
       if (error) {
+        setLrvSchemaWarning(error);
         lrvDefectProfileList = [];
         return [];
       }
@@ -2568,6 +2598,112 @@
       return lrvDefectReports;
     }
 
+    async function fetchLrvDefectReportsForExport(scope = 'current') {
+      if (!supabaseClient || !isLrvDefectAdmin()) return [];
+      let query = supabaseClient
+        .from('ero_lrv_defect_reports')
+        .select('id, lrv_number, cab, defect_text, reported_by_email, reported_at')
+        .order('lrv_number', { ascending: true })
+        .order('reported_at', { ascending: false });
+      if (scope !== 'all') query = query.eq('lrv_number', selectedLrvNumber);
+      const { data, error } = await query;
+      if (error) throw error;
+      return Array.isArray(data) ? data : [];
+    }
+
+    function buildLrvDefectExportHtml(reports, scope = 'current') {
+      const title = scope === 'all'
+        ? 'All LRV Defect Reports'
+        : `LRV ${formatLrvNumber(selectedLrvNumber)} Defect Reports`;
+      const generatedAt = new Intl.DateTimeFormat('en-CA', {
+        timeZone,
+        year: 'numeric',
+        month: 'short',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+      }).format(new Date());
+      const grouped = reports.reduce((acc, report) => {
+        const key = formatLrvNumber(report.lrv_number);
+        if (!acc[key]) acc[key] = [];
+        acc[key].push(report);
+        return acc;
+      }, {});
+      const bodyHtml = Object.keys(grouped).length
+        ? Object.entries(grouped).map(([lrv, items]) => `
+          <section class="lrv-section">
+            <h2>LRV ${escapeHtml(lrv)}</h2>
+            ${items.map((report) => `
+              <article class="report">
+                <div class="report-head">
+                  <strong>LRV ${escapeHtml(formatLrvNumber(report.lrv_number))} - ${escapeHtml(report.cab || '')}</strong>
+                  <span>${escapeHtml(formatReportDate(report.reported_at))}</span>
+                </div>
+                <div class="report-meta">Reported by ${escapeHtml(report.reported_by_email || 'Unknown')}</div>
+                <p>${escapeHtml(report.defect_text || '')}</p>
+              </article>
+            `).join('')}
+          </section>
+        `).join('')
+        : '<p>No reports found.</p>';
+      return `<!doctype html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <title>${escapeHtml(title)}</title>
+          <style>
+            @page { margin: 0.6in; }
+            body { font-family: Arial, sans-serif; color: #111; line-height: 1.35; }
+            h1 { margin: 0; font-size: 24px; }
+            h2 { margin: 24px 0 10px; font-size: 18px; border-bottom: 1px solid #bbb; padding-bottom: 5px; }
+            .meta { color: #555; margin: 6px 0 20px; font-size: 12px; }
+            .report { border: 1px solid #ccc; border-radius: 6px; padding: 10px 12px; margin: 0 0 10px; break-inside: avoid; }
+            .report-head { display: flex; justify-content: space-between; gap: 16px; font-size: 14px; }
+            .report-meta { color: #555; font-size: 12px; margin-top: 4px; }
+            p { white-space: pre-wrap; margin: 10px 0 0; }
+            @media print { .print-actions { display: none; } }
+            .print-actions { margin: 0 0 18px; }
+            button { padding: 9px 13px; font: inherit; }
+          </style>
+        </head>
+        <body>
+          <div class="print-actions"><button onclick="window.print()">Print / Save PDF</button></div>
+          <h1>${escapeHtml(title)}</h1>
+          <div class="meta">Generated ${escapeHtml(generatedAt)} · ${escapeHtml(reports.length)} report${reports.length === 1 ? '' : 's'}</div>
+          ${bodyHtml}
+          <script>setTimeout(() => window.print(), 350);<\/script>
+        </body>
+        </html>`;
+    }
+
+    async function exportLrvDefectReports(scope = 'current') {
+      if (!isLrvDefectAdmin()) return;
+      const exportWindow = window.open('', '_blank');
+      if (!exportWindow) {
+        showToast('Export blocked', 'Allow pop-ups, then try the export again.');
+        setStatus('Export blocked', false);
+        return;
+      }
+      exportWindow.document.open();
+      exportWindow.document.write('<!doctype html><title>Preparing PDF</title><body style="font-family:Arial,sans-serif;padding:24px;">Preparing report...</body>');
+      exportWindow.document.close();
+      try {
+        setStatus('Preparing PDF...', true);
+        const reports = await fetchLrvDefectReportsForExport(scope);
+        exportWindow.document.open();
+        exportWindow.document.write(buildLrvDefectExportHtml(reports, scope));
+        exportWindow.document.close();
+        setStatus('PDF export ready', true);
+      } catch (error) {
+        setLrvSchemaWarning(error);
+        exportWindow.document.open();
+        exportWindow.document.write(`<!doctype html><title>Export failed</title><body style="font-family:Arial,sans-serif;padding:24px;"><h1>Export failed</h1><p>${escapeHtml(lrvDefectSchemaWarning || error.message || 'Could not export reports.')}</p></body>`);
+        exportWindow.document.close();
+        setStatus('Export failed', false);
+        showToast('Export failed', lrvDefectSchemaWarning || error.message || 'Could not export reports.');
+      }
+    }
+
     function renderLrvDefectReportList() {
       if (!lrvDefectReports.length) {
         return '<div class="saved-empty">No defects reported for this LRV yet.</div>';
@@ -2584,6 +2720,11 @@
                 <div class="defect-report-date">${escapeHtml(formatReportDate(report.reported_at))}</div>
               </div>
               <div class="defect-report-body">${escapeHtml(report.defect_text || '')}</div>
+              ${isLrvDefectAdmin() ? `
+                <div class="defect-report-actions">
+                  <button class="linkish-btn" type="button" data-delete-lrv-report="${escapeHtml(report.id || '')}">Delete Report</button>
+                </div>
+              ` : ''}
             </article>
           `).join('')}
         </div>
@@ -2596,6 +2737,7 @@
         <section class="section-card">
           <div class="field-label">Admin Access</div>
           <p class="overlay-page-copy">Grant selected accounts viewer, reporter, or admin access. Pending emails become active once that account signs in.</p>
+          ${lrvDefectSchemaWarning ? `<div class="auth-notice warn">${escapeHtml(lrvDefectSchemaWarning)}</div>` : ''}
           ${renderLrvProfileDatalist()}
           <div class="stack-form" style="margin-top:12px;">
             <div class="field-grid">
@@ -2632,6 +2774,14 @@
               : '<div class="work-empty">No extra accounts have access yet.</div>'}
           </div>
         </section>
+        <section class="section-card">
+          <div class="field-label">Admin Export</div>
+          <p class="overlay-page-copy">Export shared defect reports as a print-ready PDF.</p>
+          <div class="section-actions">
+            <button class="btn" type="button" data-export-lrv-defects="current">Export LRV ${escapeHtml(formatLrvNumber(selectedLrvNumber))}</button>
+            <button class="linkish-btn" type="button" data-export-lrv-defects="all">Export All LRVs</button>
+          </div>
+        </section>
       `;
     }
 
@@ -2666,6 +2816,18 @@
         return;
       }
       const allowed = await loadLrvDefectAccessState();
+      if (lrvDefectSchemaWarning) {
+        lrvDefectsView.innerHTML = `
+          <div class="board-page-head">
+            <div>
+              <h2>LRV Defects</h2>
+              <p class="overlay-page-copy">The page needs a Supabase schema update.</p>
+            </div>
+          </div>
+          <div class="live-map-error">${escapeHtml(lrvDefectSchemaWarning)}</div>
+        `;
+        return;
+      }
       if (!allowed) {
         lrvDefectsView.innerHTML = `
           <div class="board-page-head">
@@ -2678,7 +2840,21 @@
         `;
         return;
       }
-      await loadLrvDefectReports();
+      try {
+        await loadLrvDefectReports();
+      } catch (error) {
+        setLrvSchemaWarning(error);
+        lrvDefectsView.innerHTML = `
+          <div class="board-page-head">
+            <div>
+              <h2>LRV Defects</h2>
+              <p class="overlay-page-copy">The page needs a Supabase schema update.</p>
+            </div>
+          </div>
+          <div class="live-map-error">${escapeHtml(lrvDefectSchemaWarning || error.message || 'Could not load LRV defects.')}</div>
+        `;
+        return;
+      }
       lrvDefectsView.innerHTML = `
         <div class="board-page-head">
           <div>
@@ -4202,8 +4378,9 @@
         .from('ero_lrv_defect_access')
         .upsert({ email, role, granted_by: currentUser.id }, { onConflict: 'email' });
       if (error) {
+        setLrvSchemaWarning(error);
         setStatus('Grant failed', false);
-        showToast('Grant failed', error.message || 'Could not grant access.');
+        showToast('Grant failed', lrvDefectSchemaWarning || error.message || 'Could not grant access.');
         return;
       }
       await loadLrvDefectAccessList();
@@ -4222,8 +4399,9 @@
         .update({ role: normalizedRole, granted_by: currentUser.id })
         .eq('email', normalizedEmail);
       if (error) {
+        setLrvSchemaWarning(error);
         setStatus('Role update failed', false);
-        showToast('Role update failed', error.message || 'Could not update access.');
+        showToast('Role update failed', lrvDefectSchemaWarning || error.message || 'Could not update access.');
         return;
       }
       await loadLrvDefectAccessList();
@@ -4248,6 +4426,26 @@
       await loadLrvDefectAccessList();
       await renderLrvDefectsPage();
       setStatus('Access revoked', true);
+    }
+
+    async function deleteLrvDefectReport(reportId) {
+      if (!supabaseClient || !isLrvDefectAdmin()) return;
+      const id = String(reportId || '').trim();
+      if (!id) return;
+      const confirmed = window.confirm('Delete this defect report? This cannot be undone.');
+      if (!confirmed) return;
+      const { error } = await supabaseClient
+        .from('ero_lrv_defect_reports')
+        .delete()
+        .eq('id', id);
+      if (error) {
+        setStatus('Delete failed', false);
+        showToast('Delete failed', error.message || 'Could not delete the report.');
+        return;
+      }
+      await renderLrvDefectsPage();
+      setStatus('Report deleted', true);
+      showToast('Report deleted');
     }
 
     async function openTodayBoard() {
@@ -4790,6 +4988,18 @@
       const revokeLrvAccessBtn = event.target.closest('[data-revoke-lrv-access]');
       if (revokeLrvAccessBtn) {
         await revokeLrvDefectAccess(revokeLrvAccessBtn.dataset.revokeLrvAccess || '');
+        return;
+      }
+
+      const deleteLrvReportBtn = event.target.closest('[data-delete-lrv-report]');
+      if (deleteLrvReportBtn) {
+        await deleteLrvDefectReport(deleteLrvReportBtn.dataset.deleteLrvReport || '');
+        return;
+      }
+
+      const exportLrvDefectsBtn = event.target.closest('[data-export-lrv-defects]');
+      if (exportLrvDefectsBtn) {
+        await exportLrvDefectReports(exportLrvDefectsBtn.dataset.exportLrvDefects || 'current');
         return;
       }
 

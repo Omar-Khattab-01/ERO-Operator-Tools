@@ -239,3 +239,9 @@ with check (
   and reported_by = auth.uid()
   and lower(reported_by_email) = lower(coalesce((auth.jwt() ->> 'email'), ''))
 );
+
+drop policy if exists "LRV defect admins can delete reports" on public.ero_lrv_defect_reports;
+create policy "LRV defect admins can delete reports"
+on public.ero_lrv_defect_reports
+for delete
+using (public.ero_is_lrv_defect_admin());
