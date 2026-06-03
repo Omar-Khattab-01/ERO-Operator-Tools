@@ -1936,6 +1936,7 @@
     let lrvDefectAccessLoaded = false;
     let lrvDefectReports = [];
     let lrvDefectAccessList = [];
+    let lrvDefectAccessPendingRoles = new Map();
     let lrvDefectProfileList = [];
     let lrvDefectSchemaWarning = '';
     let selectedLrvNumber = 1;
@@ -1943,7 +1944,8 @@
     let selectedLrvDefectCategory = 'dirty_windshield';
     let selectedLrvSeatIssueDetail = 'recliner';
     let selectedLrvThermoKingMode = 'heat';
-    let lrvExportMonth = getCurrentMonthValue();
+    let lrvExportFromDate = getCurrentMonthStartValue();
+    let lrvExportToDate = getTodayDateValue();
     let editingLrvReportId = '';
 
     function setActiveNav(targetId = 'homeBtn') {
@@ -2481,6 +2483,23 @@
       return true;
     }
 
+    function withLrvRequestTimeout(request, label = 'LRV request') {
+      return new Promise((resolve, reject) => {
+        const timer = window.setTimeout(() => {
+          reject(new Error(`${label} timed out. Check the connection and try again.`));
+        }, 15000);
+        Promise.resolve(request)
+          .then((value) => {
+            window.clearTimeout(timer);
+            resolve(value);
+          })
+          .catch((error) => {
+            window.clearTimeout(timer);
+            reject(error);
+          });
+      });
+    }
+
     function normalizeLrvAccessRole(value) {
       return ['viewer', 'reporter', 'admin'].includes(value) ? value : 'reporter';
     }
@@ -2581,35 +2600,84 @@
       return value ? formatReportDate(value) : 'Not entered';
     }
 
-    function getCurrentMonthValue() {
+    function getTodayDateValue() {
+      const parts = new Intl.DateTimeFormat('en-CA', {
+        timeZone,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      }).formatToParts(new Date());
+      const lookup = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+      return `${lookup.year}-${lookup.month}-${lookup.day}`;
+    }
+
+    function getCurrentMonthStartValue() {
       const parts = new Intl.DateTimeFormat('en-CA', {
         timeZone,
         year: 'numeric',
         month: '2-digit',
       }).formatToParts(new Date());
       const lookup = Object.fromEntries(parts.map((part) => [part.type, part.value]));
-      return `${lookup.year}-${lookup.month}`;
+      return `${lookup.year}-${lookup.month}-01`;
     }
 
-    function monthRangeToIso(monthValue) {
-      const match = String(monthValue || '').match(/^(\d{4})-(\d{2})$/);
+    function parseExportDateValue(value) {
+      const match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
       if (!match) return null;
       const year = Number(match[1]);
       const monthIndex = Number(match[2]) - 1;
-      return {
-        start: new Date(Date.UTC(year, monthIndex, 1)).toISOString(),
-        end: new Date(Date.UTC(year, monthIndex + 1, 1)).toISOString(),
-      };
+      const day = Number(match[3]);
+      const date = new Date(year, monthIndex, day);
+      if (Number.isNaN(date.getTime())) return null;
+      return date;
     }
 
-    function formatExportMonthLabel(monthValue) {
-      const match = String(monthValue || '').match(/^(\d{4})-(\d{2})$/);
-      if (!match) return 'All dates';
+    function dateRangeToIso(fromValue, toValue) {
+      const fromDate = parseExportDateValue(fromValue);
+      const toDate = parseExportDateValue(toValue);
+      if (!fromDate && !toDate) return null;
+      const start = fromDate && toDate && fromDate > toDate ? toDate : fromDate;
+      const endBase = fromDate && toDate && fromDate > toDate ? fromDate : toDate;
+      const range = {};
+      if (start) range.start = start.toISOString();
+      if (endBase) {
+        const end = new Date(endBase);
+        end.setDate(end.getDate() + 1);
+        range.end = end.toISOString();
+      }
+      return range;
+    }
+
+    function formatExportDateLabel(value) {
+      const date = parseExportDateValue(value);
+      if (!date) return '';
       return new Intl.DateTimeFormat('en-CA', {
         timeZone,
-        month: 'long',
+        month: 'short',
+        day: 'numeric',
         year: 'numeric',
-      }).format(new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, 2, 12)));
+      }).format(date);
+    }
+
+    function formatExportPeriodLabel(fromValue, toValue) {
+      const fromLabel = formatExportDateLabel(fromValue);
+      const toLabel = formatExportDateLabel(toValue);
+      if (!fromLabel && !toLabel) return 'All dates';
+      if (fromLabel && toLabel) return `${fromLabel} to ${toLabel}`;
+      if (fromLabel) return `From ${fromLabel}`;
+      return `Through ${toLabel}`;
+    }
+
+    function normalizeExportDateInputs() {
+      const range = dateRangeToIso(lrvExportFromDate, lrvExportToDate);
+      if (!range?.start || !range?.end) return;
+      const fromDate = parseExportDateValue(lrvExportFromDate);
+      const toDate = parseExportDateValue(lrvExportToDate);
+      if (fromDate && toDate && fromDate > toDate) {
+        const previousFrom = lrvExportFromDate;
+        lrvExportFromDate = lrvExportToDate;
+        lrvExportToDate = previousFrom;
+      }
     }
 
     function renderLrvReportMeta(report) {
@@ -2629,6 +2697,7 @@
         lrvDefectAccessRole = '';
         lrvDefectAccessLoaded = true;
         lrvDefectAccessList = [];
+        lrvDefectAccessPendingRoles.clear();
         lrvDefectProfileList = [];
         lrvDefectSchemaWarning = '';
         updateAccountButton();
@@ -2643,11 +2712,11 @@
         updateAccountButton();
         return true;
       }
-      const { data, error } = await supabaseClient
+      const { data, error } = await withLrvRequestTimeout(supabaseClient
         .from('ero_lrv_defect_access')
         .select('email, role')
         .eq('email', currentUserEmail())
-        .maybeSingle();
+        .maybeSingle(), 'LRV access lookup');
       if (error && setLrvSchemaWarning(error)) {
         lrvDefectAccessRole = '';
         lrvDefectAccessAllowed = false;
@@ -2668,18 +2737,84 @@
         lrvDefectAccessList = [];
         return [];
       }
-      const { data, error } = await supabaseClient
+      const { data, error } = await withLrvRequestTimeout(supabaseClient
         .from('ero_lrv_defect_access')
         .select('email, role, created_at')
-        .order('email', { ascending: true });
+        .order('email', { ascending: true }), 'LRV access list');
       if (error) {
         setLrvSchemaWarning(error);
         lrvDefectAccessList = [];
         return [];
       }
       lrvDefectAccessList = Array.isArray(data) ? data : [];
+      mergePendingLrvDefectAccessRoles();
       await loadLrvDefectProfileList();
       return lrvDefectAccessList;
+    }
+
+    function upsertLocalLrvDefectAccess(email, role) {
+      const normalizedEmail = normalizeEmail(email);
+      const normalizedRole = normalizeLrvAccessRole(role);
+      if (!normalizedEmail) return;
+      const existingIndex = lrvDefectAccessList.findIndex((item) => normalizeEmail(item.email) === normalizedEmail);
+      const existing = existingIndex >= 0 ? lrvDefectAccessList[existingIndex] : {};
+      const nextEntry = {
+        ...existing,
+        email: normalizedEmail,
+        role: normalizedRole,
+        created_at: existing.created_at || new Date().toISOString(),
+      };
+      if (existingIndex >= 0) {
+        lrvDefectAccessList[existingIndex] = nextEntry;
+      } else {
+        lrvDefectAccessList.push(nextEntry);
+      }
+      lrvDefectAccessList.sort((a, b) => normalizeEmail(a.email).localeCompare(normalizeEmail(b.email)));
+    }
+
+    function mergePendingLrvDefectAccessRoles() {
+      if (!lrvDefectAccessPendingRoles.size) return;
+      lrvDefectAccessPendingRoles.forEach((role, email) => {
+        const normalizedRole = normalizeLrvAccessRole(role);
+        const loadedEntry = lrvDefectAccessList.find((item) => normalizeEmail(item.email) === email);
+        if (loadedEntry && normalizeLrvAccessRole(loadedEntry.role) === normalizedRole) {
+          lrvDefectAccessPendingRoles.delete(email);
+          return;
+        }
+        upsertLocalLrvDefectAccess(email, normalizedRole);
+      });
+    }
+
+    function syncCurrentLrvDefectAccess(email, role) {
+      if (normalizeEmail(email) !== currentUserEmail()) return;
+      lrvDefectAccessRole = normalizeLrvAccessRole(role);
+      lrvDefectAccessAllowed = Boolean(lrvDefectAccessRole);
+      lrvDefectAccessLoaded = true;
+      updateAccountButton();
+    }
+
+    function refreshLrvDefectAdminPanel() {
+      const adminPanel = document.getElementById('lrvDefectAdminPanel');
+      if (adminPanel) adminPanel.outerHTML = renderLrvDefectAdminPanel();
+    }
+
+    async function refreshLrvDefectAccessAfterMutation(email, role) {
+      const normalizedEmail = normalizeEmail(email);
+      const normalizedRole = normalizeLrvAccessRole(role);
+      if (normalizedEmail) {
+        lrvDefectAccessPendingRoles.set(normalizedEmail, normalizedRole);
+        upsertLocalLrvDefectAccess(normalizedEmail, normalizedRole);
+        syncCurrentLrvDefectAccess(normalizedEmail, normalizedRole);
+      }
+      refreshLrvDefectAdminPanel();
+      try {
+        await loadLrvDefectAccessList();
+        refreshLrvDefectAdminPanel();
+        if (!lrvDefectsView.hidden) await renderLrvDefectsPage();
+      } catch (error) {
+        refreshLrvDefectAdminPanel();
+        showToast('Access saved', 'The list will finish refreshing the next time this page loads.');
+      }
     }
 
     async function loadLrvDefectProfileList() {
@@ -2687,11 +2822,11 @@
         lrvDefectProfileList = [];
         return [];
       }
-      const { data, error } = await supabaseClient
+      const { data, error } = await withLrvRequestTimeout(supabaseClient
         .from('ero_user_profiles')
         .select('display_name, email')
         .not('email', 'is', null)
-        .order('email', { ascending: true });
+        .order('email', { ascending: true }), 'LRV account list');
       if (error) {
         setLrvSchemaWarning(error);
         lrvDefectProfileList = [];
@@ -2732,11 +2867,11 @@
         lrvDefectReports = [];
         return [];
       }
-      const { data, error } = await supabaseClient
+      const { data, error } = await withLrvRequestTimeout(supabaseClient
         .from('ero_lrv_defect_reports')
         .select('id, lrv_number, cab, defect_category, seat_issue_detail, thermo_king_mode, mlc_reported_at, report_status, defect_text, reported_by_email, reported_at')
         .eq('lrv_number', selectedLrvNumber)
-        .order('reported_at', { ascending: false });
+        .order('reported_at', { ascending: false }), 'LRV defect reports');
       if (error) throw error;
       lrvDefectReports = Array.isArray(data) ? data : [];
       return lrvDefectReports;
@@ -2750,11 +2885,15 @@
         .order('lrv_number', { ascending: true })
         .order('reported_at', { ascending: false });
       if (scope !== 'all') query = query.eq('lrv_number', selectedLrvNumber);
-      const monthRange = monthRangeToIso(lrvExportMonth);
-      if (monthRange) {
-        query = query.gte('reported_at', monthRange.start).lt('reported_at', monthRange.end);
+      normalizeExportDateInputs();
+      const dateRange = dateRangeToIso(lrvExportFromDate, lrvExportToDate);
+      if (dateRange?.start) {
+        query = query.gte('reported_at', dateRange.start);
       }
-      const { data, error } = await query;
+      if (dateRange?.end) {
+        query = query.lt('reported_at', dateRange.end);
+      }
+      const { data, error } = await withLrvRequestTimeout(query, 'LRV export reports');
       if (error) throw error;
       return Array.isArray(data) ? data : [];
     }
@@ -2763,7 +2902,7 @@
       const title = scope === 'all'
         ? 'All LRV Defect Reports'
         : `LRV ${formatLrvNumber(selectedLrvNumber)} Defect Reports`;
-      const monthLabel = formatExportMonthLabel(lrvExportMonth);
+      const periodLabel = formatExportPeriodLabel(lrvExportFromDate, lrvExportToDate);
       const generatedAt = new Intl.DateTimeFormat('en-CA', {
         timeZone,
         year: 'numeric',
@@ -2812,16 +2951,33 @@
             .report-meta { color: #555; font-size: 12px; margin-top: 4px; }
             p { white-space: pre-wrap; margin: 10px 0 0; }
             @media print { .print-actions { display: none; } }
-            .print-actions { margin: 0 0 18px; }
-            button { padding: 9px 13px; font: inherit; }
+            .print-actions { align-items: center; display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 18px; }
+            button { border: 1px solid #111; border-radius: 4px; padding: 9px 13px; font: inherit; background: #fff; }
+            .primary { background: #111; color: #fff; }
+            .hint { color: #555; font-size: 12px; width: 100%; }
           </style>
         </head>
         <body>
-          <div class="print-actions"><button onclick="window.print()">Print / Save PDF</button></div>
+          <div class="print-actions">
+            <button class="primary" onclick="window.print()">Print / Save PDF</button>
+            <button onclick="returnToLrvDefects()">Back to LRV Defects</button>
+            <button onclick="window.close()">Close Report</button>
+            <span class="hint">After printing, use Back to LRV Defects or close this report tab/window.</span>
+          </div>
           <h1>${escapeHtml(title)}</h1>
-          <div class="meta">Generated ${escapeHtml(generatedAt)} · ${escapeHtml(monthLabel)} · ${escapeHtml(reports.length)} report${reports.length === 1 ? '' : 's'}</div>
+          <div class="meta">Generated ${escapeHtml(generatedAt)} · ${escapeHtml(periodLabel)} · ${escapeHtml(reports.length)} report${reports.length === 1 ? '' : 's'}</div>
           ${bodyHtml}
-          <script>setTimeout(() => window.print(), 350);<\/script>
+          <script>
+            function returnToLrvDefects() {
+              if (window.opener && !window.opener.closed) {
+                window.opener.focus();
+                window.close();
+                return;
+              }
+              window.close();
+            }
+            setTimeout(() => window.print(), 350);
+          <\/script>
         </body>
         </html>`;
     }
@@ -2939,7 +3095,7 @@
     function renderLrvDefectAdminPanel() {
       if (!isLrvDefectAdmin()) return '';
       return `
-        <section class="section-card">
+        <section id="lrvDefectAdminPanel" class="section-card">
           <div class="field-label">Admin Access</div>
           <p class="overlay-page-copy">Grant selected accounts viewer, reporter, or admin access. Pending emails become active once that account signs in.</p>
           ${lrvDefectSchemaWarning ? `<div class="auth-notice warn">${escapeHtml(lrvDefectSchemaWarning)}</div>` : ''}
@@ -2981,11 +3137,17 @@
         </section>
         <section class="section-card">
           <div class="field-label">Admin Export</div>
-          <p class="overlay-page-copy">Export shared defect reports as a print-ready PDF. Leave month blank to export all dates.</p>
-          <label class="field-stack" style="margin-top:12px;">
-            <span class="field-label">Report Month</span>
-            <input id="lrvExportMonth" class="text-input" type="month" value="${escapeHtml(lrvExportMonth)}">
-          </label>
+          <p class="overlay-page-copy">Export shared defect reports as a print-ready PDF. Choose a period, or leave both dates blank to export all dates.</p>
+          <div class="field-grid" style="margin-top:12px;">
+            <label class="field-stack">
+              <span class="field-label">From</span>
+              <input id="lrvExportFromDate" class="text-input" type="date" value="${escapeHtml(lrvExportFromDate)}">
+            </label>
+            <label class="field-stack">
+              <span class="field-label">To</span>
+              <input id="lrvExportToDate" class="text-input" type="date" value="${escapeHtml(lrvExportToDate)}">
+            </label>
+          </div>
           <div class="section-actions">
             <button class="btn" type="button" data-export-lrv-defects="current">Export LRV ${escapeHtml(formatLrvNumber(selectedLrvNumber))}</button>
             <button class="linkish-btn" type="button" data-export-lrv-defects="all">Export All LRVs</button>
@@ -3024,7 +3186,22 @@
         `;
         return;
       }
-      const allowed = await loadLrvDefectAccessState();
+      let allowed = false;
+      try {
+        allowed = await loadLrvDefectAccessState();
+      } catch (error) {
+        lrvDefectsView.innerHTML = `
+          <div class="board-page-head">
+            <div>
+              <h2>LRV Defects</h2>
+              <p class="overlay-page-copy">The page could not load right now.</p>
+            </div>
+          </div>
+          <div class="live-map-error">${escapeHtml(error.message || 'Could not load LRV defect access.')}</div>
+        `;
+        setStatus('Defects failed', false);
+        return;
+      }
       if (lrvDefectSchemaWarning) {
         lrvDefectsView.innerHTML = `
           <div class="board-page-head">
@@ -3519,6 +3696,7 @@
         lrvDefectAccessRole = '';
         lrvDefectAccessLoaded = true;
         lrvDefectAccessList = [];
+        lrvDefectAccessPendingRoles.clear();
         lrvDefectProfileList = [];
       } else {
         await loadProfile();
@@ -4584,20 +4762,25 @@
         showToast('Report not saved', 'Choose an LRV, cab, and defect type.');
         return;
       }
-      const { error } = await supabaseClient
-        .from('ero_lrv_defect_reports')
-        .insert({
-          lrv_number: lrvNumber,
-          cab,
-          defect_category: defectCategory,
-          seat_issue_detail: seatIssueDetail,
-          thermo_king_mode: thermoKingMode,
-          mlc_reported_at: mlcReportedAt,
-          report_status: 'open',
-          defect_text: defectText,
-          reported_by: currentUser.id,
-          reported_by_email: currentUser.email || '',
-        });
+      let error = null;
+      try {
+        ({ error } = await withLrvRequestTimeout(supabaseClient
+          .from('ero_lrv_defect_reports')
+          .insert({
+            lrv_number: lrvNumber,
+            cab,
+            defect_category: defectCategory,
+            seat_issue_detail: seatIssueDetail,
+            thermo_king_mode: thermoKingMode,
+            mlc_reported_at: mlcReportedAt,
+            report_status: 'open',
+            defect_text: defectText,
+            reported_by: currentUser.id,
+            reported_by_email: currentUser.email || '',
+          }), 'LRV defect submit'));
+      } catch (requestError) {
+        error = requestError;
+      }
       if (error) {
         setStatus('Report failed', false);
         showToast('Report failed', error.message || 'Could not save the defect.');
@@ -4621,20 +4804,29 @@
         setStatus('Enter a valid email', false);
         return;
       }
-      const { error } = await supabaseClient
-        .from('ero_lrv_defect_access')
-        .upsert({ email, role, granted_by: currentUser.id }, { onConflict: 'email' });
+      let error = null;
+      try {
+        ({ error } = await withLrvRequestTimeout(supabaseClient
+          .from('ero_lrv_defect_access')
+          .upsert({ email, role, granted_by: currentUser.id }, { onConflict: 'email' }), 'LRV access save'));
+      } catch (requestError) {
+        error = requestError;
+      }
       if (error) {
         setLrvSchemaWarning(error);
         setStatus('Grant failed', false);
         showToast('Grant failed', lrvDefectSchemaWarning || error.message || 'Could not grant access.');
         return;
       }
-      await loadLrvDefectAccessList();
-      await renderLrvDefectsPage();
+      lrvDefectSchemaWarning = '';
+      lrvDefectAccessPendingRoles.set(email, role);
+      upsertLocalLrvDefectAccess(email, role);
+      syncCurrentLrvDefectAccess(email, role);
+      refreshLrvDefectAdminPanel();
       setStatus('Access saved', true);
       showToast('Access saved', `${email} is ${formatLrvAccessRole(role).toLowerCase()}.`);
       window.alert(`${email} has been assigned ${formatLrvAccessRole(role)} access.`);
+      await refreshLrvDefectAccessAfterMutation(email, role);
     }
 
     async function updateLrvDefectAccessRole(email, role) {
@@ -4642,31 +4834,45 @@
       const normalizedEmail = normalizeEmail(email);
       const normalizedRole = normalizeLrvAccessRole(role);
       if (!normalizedEmail) return;
-      const { error } = await supabaseClient
-        .from('ero_lrv_defect_access')
-        .update({ role: normalizedRole, granted_by: currentUser.id })
-        .eq('email', normalizedEmail);
+      let error = null;
+      try {
+        ({ error } = await withLrvRequestTimeout(supabaseClient
+          .from('ero_lrv_defect_access')
+          .update({ role: normalizedRole, granted_by: currentUser.id })
+          .eq('email', normalizedEmail), 'LRV role update'));
+      } catch (requestError) {
+        error = requestError;
+      }
       if (error) {
         setLrvSchemaWarning(error);
         setStatus('Role update failed', false);
         showToast('Role update failed', lrvDefectSchemaWarning || error.message || 'Could not update access.');
         return;
       }
-      await loadLrvDefectAccessList();
-      await renderLrvDefectsPage();
+      lrvDefectSchemaWarning = '';
+      lrvDefectAccessPendingRoles.set(normalizedEmail, normalizedRole);
+      upsertLocalLrvDefectAccess(normalizedEmail, normalizedRole);
+      syncCurrentLrvDefectAccess(normalizedEmail, normalizedRole);
+      refreshLrvDefectAdminPanel();
       setStatus('Role updated', true);
       showToast('Role updated', `${normalizedEmail} is ${formatLrvAccessRole(normalizedRole).toLowerCase()}.`);
       window.alert(`${normalizedEmail} has been assigned ${formatLrvAccessRole(normalizedRole)} access.`);
+      await refreshLrvDefectAccessAfterMutation(normalizedEmail, normalizedRole);
     }
 
     async function revokeLrvDefectAccess(email) {
       if (!supabaseClient || !isLrvDefectAdmin()) return;
       const normalizedEmail = normalizeEmail(email);
       if (!normalizedEmail) return;
-      const { error } = await supabaseClient
-        .from('ero_lrv_defect_access')
-        .delete()
-        .eq('email', normalizedEmail);
+      let error = null;
+      try {
+        ({ error } = await withLrvRequestTimeout(supabaseClient
+          .from('ero_lrv_defect_access')
+          .delete()
+          .eq('email', normalizedEmail), 'LRV access revoke'));
+      } catch (requestError) {
+        error = requestError;
+      }
       if (error) {
         setStatus('Revoke failed', false);
         showToast('Revoke failed', error.message || 'Could not revoke access.');
@@ -4683,10 +4889,15 @@
       if (!id) return;
       const confirmed = window.confirm('Delete this defect report? This cannot be undone.');
       if (!confirmed) return;
-      const { error } = await supabaseClient
-        .from('ero_lrv_defect_reports')
-        .delete()
-        .eq('id', id);
+      let error = null;
+      try {
+        ({ error } = await withLrvRequestTimeout(supabaseClient
+          .from('ero_lrv_defect_reports')
+          .delete()
+          .eq('id', id), 'LRV report delete'));
+      } catch (requestError) {
+        error = requestError;
+      }
       if (error) {
         setStatus('Delete failed', false);
         showToast('Delete failed', error.message || 'Could not delete the report.');
@@ -4702,10 +4913,15 @@
       const id = String(reportId || '').trim();
       const nextStatus = normalizeLrvReportStatus(status);
       if (!id) return;
-      const { error } = await supabaseClient
-        .from('ero_lrv_defect_reports')
-        .update({ report_status: nextStatus })
-        .eq('id', id);
+      let error = null;
+      try {
+        ({ error } = await withLrvRequestTimeout(supabaseClient
+          .from('ero_lrv_defect_reports')
+          .update({ report_status: nextStatus })
+          .eq('id', id), 'LRV status update'));
+      } catch (requestError) {
+        error = requestError;
+      }
       if (error) {
         setStatus('Status update failed', false);
         showToast('Status update failed', error.message || 'Could not update report status.');
@@ -4732,18 +4948,23 @@
         thermoKingMode ? formatLrvThermoKingMode(thermoKingMode) : '',
       ].filter(Boolean).join(' - ');
       const defectText = typedDefectText || generatedSummary;
-      const { error } = await supabaseClient
-        .from('ero_lrv_defect_reports')
-        .update({
-          cab,
-          defect_category: defectCategory,
-          seat_issue_detail: seatIssueDetail,
-          thermo_king_mode: thermoKingMode,
-          mlc_reported_at: mlcReportedAt,
-          report_status: reportStatus,
-          defect_text: defectText,
-        })
-        .eq('id', id);
+      let error = null;
+      try {
+        ({ error } = await withLrvRequestTimeout(supabaseClient
+          .from('ero_lrv_defect_reports')
+          .update({
+            cab,
+            defect_category: defectCategory,
+            seat_issue_detail: seatIssueDetail,
+            thermo_king_mode: thermoKingMode,
+            mlc_reported_at: mlcReportedAt,
+            report_status: reportStatus,
+            defect_text: defectText,
+          })
+          .eq('id', id), 'LRV report edit'));
+      } catch (requestError) {
+        error = requestError;
+      }
       if (error) {
         setStatus('Edit failed', false);
         showToast('Edit failed', error.message || 'Could not update report.');
@@ -5483,8 +5704,16 @@
         selectedLrvThermoKingMode = event.target.value || selectedLrvThermoKingMode;
         return;
       }
-      if (event.target?.id === 'lrvExportMonth') {
-        lrvExportMonth = event.target.value || '';
+      if (event.target?.id === 'lrvExportFromDate') {
+        lrvExportFromDate = event.target.value || '';
+        normalizeExportDateInputs();
+        refreshLrvDefectAdminPanel();
+        return;
+      }
+      if (event.target?.id === 'lrvExportToDate') {
+        lrvExportToDate = event.target.value || '';
+        normalizeExportDateInputs();
+        refreshLrvDefectAdminPanel();
       }
     });
 
