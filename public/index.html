@@ -1899,6 +1899,25 @@
     let accountNotice = { text: '', type: '' };
     const lrvDefectAdminEmail = 'omar.hosam2000@gmail.com';
     const lrvNumbers = Array.from({ length: 67 }, (_, index) => index + 1);
+    const lrvDefectCategories = [
+      { key: 'dirty_windshield', label: 'Dirty windshield' },
+      { key: 'dars_volume', label: 'DARS volume' },
+      { key: 'traction_bell', label: 'Traction bell' },
+      { key: 'seat_issue', label: 'Seat issue' },
+      { key: 'headlight', label: 'Headlight misaligned or out' },
+      { key: 'apex_light', label: 'Apex light not centred in the rail' },
+      { key: 'thermo_king', label: 'Thermo King inaccurate reading' },
+      { key: 'other', label: 'Other' },
+    ];
+    const lrvSeatIssueDetails = [
+      { key: 'recliner', label: 'Recliner' },
+      { key: 'heated_seat', label: 'Heated seat' },
+      { key: 'other', label: 'Other seat issue' },
+    ];
+    const lrvThermoKingModes = [
+      { key: 'heat', label: 'Heat' },
+      { key: 'cold', label: 'Cold' },
+    ];
     let lrvDefectAccessAllowed = false;
     let lrvDefectAccessRole = '';
     let lrvDefectAccessLoaded = false;
@@ -1908,6 +1927,10 @@
     let lrvDefectSchemaWarning = '';
     let selectedLrvNumber = 1;
     let selectedLrvCab = 'MC1';
+    let selectedLrvDefectCategory = 'dirty_windshield';
+    let selectedLrvSeatIssueDetail = 'recliner';
+    let selectedLrvThermoKingMode = 'heat';
+    let lrvExportMonth = getCurrentMonthValue();
 
     function setActiveNav(targetId = 'homeBtn') {
       [homeBtn, myWorkBtn, todaysPaddleBtn, lrvDefectsBtn, liveMapBtn, todayBoardBtn].forEach((button) => {
@@ -2430,6 +2453,11 @@
       return message.includes('schema cache')
         || message.includes("could not find the 'role' column")
         || message.includes("could not find the 'email' column")
+        || message.includes("could not find the 'defect_category' column")
+        || message.includes("could not find the 'cad_entry_at' column")
+        || message.includes("could not find the 'mlc_reported_at' column")
+        || message.includes("could not find the 'seat_issue_detail' column")
+        || message.includes("could not find the 'thermo_king_mode' column")
         || message.includes('ero_lrv_defect_access');
     }
 
@@ -2477,6 +2505,93 @@
       return lrvNumbers
         .map((number) => `<option value="${number}" ${Number(selected) === number ? 'selected' : ''}>LRV ${formatLrvNumber(number)}</option>`)
         .join('');
+    }
+
+    function optionLabel(options, key, fallback = '') {
+      return options.find((item) => item.key === key)?.label || fallback || String(key || '');
+    }
+
+    function renderLrvDefectCategoryOptions(selected = selectedLrvDefectCategory) {
+      return lrvDefectCategories
+        .map((item) => `<option value="${escapeHtml(item.key)}" ${selected === item.key ? 'selected' : ''}>${escapeHtml(item.label)}</option>`)
+        .join('');
+    }
+
+    function renderLrvSeatIssueOptions(selected = selectedLrvSeatIssueDetail) {
+      return lrvSeatIssueDetails
+        .map((item) => `<option value="${escapeHtml(item.key)}" ${selected === item.key ? 'selected' : ''}>${escapeHtml(item.label)}</option>`)
+        .join('');
+    }
+
+    function renderLrvThermoKingOptions(selected = selectedLrvThermoKingMode) {
+      return lrvThermoKingModes
+        .map((item) => `<option value="${escapeHtml(item.key)}" ${selected === item.key ? 'selected' : ''}>${escapeHtml(item.label)}</option>`)
+        .join('');
+    }
+
+    function formatLrvDefectCategory(value) {
+      return optionLabel(lrvDefectCategories, value, 'Other');
+    }
+
+    function formatLrvSeatIssueDetail(value) {
+      return value ? optionLabel(lrvSeatIssueDetails, value, value) : '';
+    }
+
+    function formatLrvThermoKingMode(value) {
+      return value ? optionLabel(lrvThermoKingModes, value, value) : '';
+    }
+
+    function dateTimeLocalToIso(value) {
+      const raw = String(value || '').trim();
+      if (!raw) return null;
+      const date = new Date(raw);
+      return Number.isNaN(date.getTime()) ? null : date.toISOString();
+    }
+
+    function formatOptionalReportDate(value) {
+      return value ? formatReportDate(value) : 'Not entered';
+    }
+
+    function getCurrentMonthValue() {
+      const parts = new Intl.DateTimeFormat('en-CA', {
+        timeZone,
+        year: 'numeric',
+        month: '2-digit',
+      }).formatToParts(new Date());
+      const lookup = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+      return `${lookup.year}-${lookup.month}`;
+    }
+
+    function monthRangeToIso(monthValue) {
+      const match = String(monthValue || '').match(/^(\d{4})-(\d{2})$/);
+      if (!match) return null;
+      const year = Number(match[1]);
+      const monthIndex = Number(match[2]) - 1;
+      return {
+        start: new Date(Date.UTC(year, monthIndex, 1)).toISOString(),
+        end: new Date(Date.UTC(year, monthIndex + 1, 1)).toISOString(),
+      };
+    }
+
+    function formatExportMonthLabel(monthValue) {
+      const match = String(monthValue || '').match(/^(\d{4})-(\d{2})$/);
+      if (!match) return 'All dates';
+      return new Intl.DateTimeFormat('en-CA', {
+        timeZone,
+        month: 'long',
+        year: 'numeric',
+      }).format(new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, 2, 12)));
+    }
+
+    function renderLrvReportMeta(report) {
+      const rows = [
+        `Category: ${formatLrvDefectCategory(report.defect_category || 'other')}`,
+      ];
+      if (report.seat_issue_detail) rows.push(`Seat: ${formatLrvSeatIssueDetail(report.seat_issue_detail)}`);
+      if (report.thermo_king_mode) rows.push(`Thermo King: ${formatLrvThermoKingMode(report.thermo_king_mode)}`);
+      rows.push(`CAD: ${formatOptionalReportDate(report.cad_entry_at)}`);
+      rows.push(`MLC: ${formatOptionalReportDate(report.mlc_reported_at)}`);
+      return rows.join(' | ');
     }
 
     async function loadLrvDefectAccessState(force = false) {
@@ -2590,7 +2705,7 @@
       }
       const { data, error } = await supabaseClient
         .from('ero_lrv_defect_reports')
-        .select('id, lrv_number, cab, defect_text, reported_by_email, reported_at')
+        .select('id, lrv_number, cab, defect_category, seat_issue_detail, thermo_king_mode, cad_entry_at, mlc_reported_at, defect_text, reported_by_email, reported_at')
         .eq('lrv_number', selectedLrvNumber)
         .order('reported_at', { ascending: false });
       if (error) throw error;
@@ -2602,10 +2717,14 @@
       if (!supabaseClient || !isLrvDefectAdmin()) return [];
       let query = supabaseClient
         .from('ero_lrv_defect_reports')
-        .select('id, lrv_number, cab, defect_text, reported_by_email, reported_at')
+        .select('id, lrv_number, cab, defect_category, seat_issue_detail, thermo_king_mode, cad_entry_at, mlc_reported_at, defect_text, reported_by_email, reported_at')
         .order('lrv_number', { ascending: true })
         .order('reported_at', { ascending: false });
       if (scope !== 'all') query = query.eq('lrv_number', selectedLrvNumber);
+      const monthRange = monthRangeToIso(lrvExportMonth);
+      if (monthRange) {
+        query = query.gte('reported_at', monthRange.start).lt('reported_at', monthRange.end);
+      }
       const { data, error } = await query;
       if (error) throw error;
       return Array.isArray(data) ? data : [];
@@ -2615,6 +2734,7 @@
       const title = scope === 'all'
         ? 'All LRV Defect Reports'
         : `LRV ${formatLrvNumber(selectedLrvNumber)} Defect Reports`;
+      const monthLabel = formatExportMonthLabel(lrvExportMonth);
       const generatedAt = new Intl.DateTimeFormat('en-CA', {
         timeZone,
         year: 'numeric',
@@ -2640,6 +2760,7 @@
                   <span>${escapeHtml(formatReportDate(report.reported_at))}</span>
                 </div>
                 <div class="report-meta">Reported by ${escapeHtml(report.reported_by_email || 'Unknown')}</div>
+                <div class="report-meta">${escapeHtml(renderLrvReportMeta(report))}</div>
                 <p>${escapeHtml(report.defect_text || '')}</p>
               </article>
             `).join('')}
@@ -2669,7 +2790,7 @@
         <body>
           <div class="print-actions"><button onclick="window.print()">Print / Save PDF</button></div>
           <h1>${escapeHtml(title)}</h1>
-          <div class="meta">Generated ${escapeHtml(generatedAt)} · ${escapeHtml(reports.length)} report${reports.length === 1 ? '' : 's'}</div>
+          <div class="meta">Generated ${escapeHtml(generatedAt)} · ${escapeHtml(monthLabel)} · ${escapeHtml(reports.length)} report${reports.length === 1 ? '' : 's'}</div>
           ${bodyHtml}
           <script>setTimeout(() => window.print(), 350);<\/script>
         </body>
@@ -2716,6 +2837,7 @@
                 <div>
                   <div class="defect-report-title">LRV ${escapeHtml(formatLrvNumber(report.lrv_number))} - ${escapeHtml(report.cab || '')}</div>
                   <div class="muted">${escapeHtml(report.reported_by_email || 'Unknown reporter')}</div>
+                  <div class="muted">${escapeHtml(renderLrvReportMeta(report))}</div>
                 </div>
                 <div class="defect-report-date">${escapeHtml(formatReportDate(report.reported_at))}</div>
               </div>
@@ -2776,7 +2898,11 @@
         </section>
         <section class="section-card">
           <div class="field-label">Admin Export</div>
-          <p class="overlay-page-copy">Export shared defect reports as a print-ready PDF.</p>
+          <p class="overlay-page-copy">Export shared defect reports as a print-ready PDF. Leave month blank to export all dates.</p>
+          <label class="field-stack" style="margin-top:12px;">
+            <span class="field-label">Report Month</span>
+            <input id="lrvExportMonth" class="text-input" type="month" value="${escapeHtml(lrvExportMonth)}">
+          </label>
           <div class="section-actions">
             <button class="btn" type="button" data-export-lrv-defects="current">Export LRV ${escapeHtml(formatLrvNumber(selectedLrvNumber))}</button>
             <button class="linkish-btn" type="button" data-export-lrv-defects="all">Export All LRVs</button>
@@ -2877,17 +3003,37 @@
                     <span class="field-label">LRV</span>
                     <select id="lrvReportNumber" class="select-input">${renderLrvOptions(selectedLrvNumber)}</select>
                   </label>
-                  <label class="field-stack">
-                    <span class="field-label">Cab</span>
-                    <select id="lrvReportCab" class="select-input">
-                      <option value="MC1" ${selectedLrvCab === 'MC1' ? 'selected' : ''}>MC1</option>
-                      <option value="MC2" ${selectedLrvCab === 'MC2' ? 'selected' : ''}>MC2</option>
-                    </select>
-                  </label>
-                  <label class="field-stack">
-                    <span class="field-label">Defect</span>
-                    <textarea id="lrvDefectText" class="text-input" rows="5" placeholder="Type the defect details"></textarea>
-                  </label>
+                <label class="field-stack">
+                  <span class="field-label">Cab</span>
+                  <select id="lrvReportCab" class="select-input">
+                    <option value="MC1" ${selectedLrvCab === 'MC1' ? 'selected' : ''}>MC1</option>
+                    <option value="MC2" ${selectedLrvCab === 'MC2' ? 'selected' : ''}>MC2</option>
+                  </select>
+                </label>
+                <label class="field-stack">
+                  <span class="field-label">Defect Type</span>
+                  <select id="lrvDefectCategory" class="select-input">${renderLrvDefectCategoryOptions(selectedLrvDefectCategory)}</select>
+                </label>
+                <label id="lrvSeatIssueDetailWrap" class="field-stack" ${selectedLrvDefectCategory === 'seat_issue' ? '' : 'hidden'}>
+                  <span class="field-label">Seat Detail</span>
+                  <select id="lrvSeatIssueDetail" class="select-input">${renderLrvSeatIssueOptions(selectedLrvSeatIssueDetail)}</select>
+                </label>
+                <label id="lrvThermoKingModeWrap" class="field-stack" ${selectedLrvDefectCategory === 'thermo_king' ? '' : 'hidden'}>
+                  <span class="field-label">Heat / Cold</span>
+                  <select id="lrvThermoKingMode" class="select-input">${renderLrvThermoKingOptions(selectedLrvThermoKingMode)}</select>
+                </label>
+                <label class="field-stack">
+                  <span class="field-label">CAD Entry Time</span>
+                  <input id="lrvCadEntryAt" class="text-input" type="datetime-local">
+                </label>
+                <label class="field-stack">
+                  <span class="field-label">Reported to MLC Time</span>
+                  <input id="lrvMlcReportedAt" class="text-input" type="datetime-local">
+                </label>
+                <label class="field-stack">
+                  <span class="field-label">Additional Details</span>
+                  <textarea id="lrvDefectText" class="text-input" rows="4" placeholder="Optional notes, location, symptoms, or follow-up"></textarea>
+                </label>
                 </div>
                 <div class="section-actions">
                   <button id="submitLrvDefectBtn" class="btn" type="button">Report Defect</button>
@@ -4339,10 +4485,25 @@
       if (!supabaseClient || !currentUser || !canReportLrvDefects()) return;
       const lrvNumber = Number(document.getElementById('lrvReportNumber')?.value || selectedLrvNumber);
       const cab = document.getElementById('lrvReportCab')?.value || selectedLrvCab;
-      const defectText = document.getElementById('lrvDefectText')?.value?.trim() || '';
-      if (!lrvNumbers.includes(lrvNumber) || !['MC1', 'MC2'].includes(cab) || !defectText) {
+      const defectCategory = document.getElementById('lrvDefectCategory')?.value || selectedLrvDefectCategory;
+      const seatIssueDetail = defectCategory === 'seat_issue'
+        ? document.getElementById('lrvSeatIssueDetail')?.value || selectedLrvSeatIssueDetail
+        : null;
+      const thermoKingMode = defectCategory === 'thermo_king'
+        ? document.getElementById('lrvThermoKingMode')?.value || selectedLrvThermoKingMode
+        : null;
+      const cadEntryAt = dateTimeLocalToIso(document.getElementById('lrvCadEntryAt')?.value || '');
+      const mlcReportedAt = dateTimeLocalToIso(document.getElementById('lrvMlcReportedAt')?.value || '');
+      const typedDefectText = document.getElementById('lrvDefectText')?.value?.trim() || '';
+      const generatedSummary = [
+        formatLrvDefectCategory(defectCategory),
+        seatIssueDetail ? formatLrvSeatIssueDetail(seatIssueDetail) : '',
+        thermoKingMode ? formatLrvThermoKingMode(thermoKingMode) : '',
+      ].filter(Boolean).join(' - ');
+      const defectText = typedDefectText || generatedSummary;
+      if (!lrvNumbers.includes(lrvNumber) || !['MC1', 'MC2'].includes(cab) || !defectCategory || !defectText) {
         setStatus('Complete the defect report first', false);
-        showToast('Report not saved', 'Choose an LRV, cab, and type the defect.');
+        showToast('Report not saved', 'Choose an LRV, cab, and defect type.');
         return;
       }
       const { error } = await supabaseClient
@@ -4350,6 +4511,11 @@
         .insert({
           lrv_number: lrvNumber,
           cab,
+          defect_category: defectCategory,
+          seat_issue_detail: seatIssueDetail,
+          thermo_king_mode: thermoKingMode,
+          cad_entry_at: cadEntryAt,
+          mlc_reported_at: mlcReportedAt,
           defect_text: defectText,
           reported_by: currentUser.id,
           reported_by_email: currentUser.email || '',
@@ -4361,6 +4527,9 @@
       }
       selectedLrvNumber = lrvNumber;
       selectedLrvCab = cab;
+      selectedLrvDefectCategory = defectCategory;
+      selectedLrvSeatIssueDetail = seatIssueDetail || selectedLrvSeatIssueDetail;
+      selectedLrvThermoKingMode = thermoKingMode || selectedLrvThermoKingMode;
       await renderLrvDefectsPage();
       setStatus('Defect reported', true);
       showToast('Defect reported', `LRV ${formatLrvNumber(lrvNumber)} ${cab}`);
@@ -5126,6 +5295,25 @@
       }
       if (event.target?.id === 'lrvReportCab') {
         selectedLrvCab = event.target.value || selectedLrvCab;
+      }
+      if (event.target?.id === 'lrvDefectCategory') {
+        selectedLrvDefectCategory = event.target.value || selectedLrvDefectCategory;
+        const seatWrap = document.getElementById('lrvSeatIssueDetailWrap');
+        const thermoWrap = document.getElementById('lrvThermoKingModeWrap');
+        if (seatWrap) seatWrap.hidden = selectedLrvDefectCategory !== 'seat_issue';
+        if (thermoWrap) thermoWrap.hidden = selectedLrvDefectCategory !== 'thermo_king';
+        return;
+      }
+      if (event.target?.id === 'lrvSeatIssueDetail') {
+        selectedLrvSeatIssueDetail = event.target.value || selectedLrvSeatIssueDetail;
+        return;
+      }
+      if (event.target?.id === 'lrvThermoKingMode') {
+        selectedLrvThermoKingMode = event.target.value || selectedLrvThermoKingMode;
+        return;
+      }
+      if (event.target?.id === 'lrvExportMonth') {
+        lrvExportMonth = event.target.value || '';
       }
     });
 

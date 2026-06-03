@@ -116,10 +116,69 @@ create table if not exists public.ero_lrv_defect_reports (
   id uuid primary key default gen_random_uuid(),
   lrv_number integer not null check (lrv_number between 1 and 67),
   cab text not null check (cab in ('MC1', 'MC2')),
+  defect_category text,
+  seat_issue_detail text,
+  thermo_king_mode text,
+  cad_entry_at timestamptz,
+  mlc_reported_at timestamptz,
   defect_text text not null check (length(trim(defect_text)) > 0),
   reported_by uuid not null references auth.users(id) on delete cascade,
   reported_by_email text not null,
   reported_at timestamptz not null default timezone('utc', now())
+);
+
+alter table public.ero_lrv_defect_reports
+add column if not exists defect_category text;
+
+alter table public.ero_lrv_defect_reports
+add column if not exists seat_issue_detail text;
+
+alter table public.ero_lrv_defect_reports
+add column if not exists thermo_king_mode text;
+
+alter table public.ero_lrv_defect_reports
+add column if not exists cad_entry_at timestamptz;
+
+alter table public.ero_lrv_defect_reports
+add column if not exists mlc_reported_at timestamptz;
+
+alter table public.ero_lrv_defect_reports
+drop constraint if exists ero_lrv_defect_reports_category_check;
+
+alter table public.ero_lrv_defect_reports
+add constraint ero_lrv_defect_reports_category_check
+check (
+  defect_category is null
+  or defect_category in (
+    'dirty_windshield',
+    'dars_volume',
+    'traction_bell',
+    'seat_issue',
+    'headlight',
+    'apex_light',
+    'thermo_king',
+    'other'
+  )
+);
+
+alter table public.ero_lrv_defect_reports
+drop constraint if exists ero_lrv_defect_reports_seat_detail_check;
+
+alter table public.ero_lrv_defect_reports
+add constraint ero_lrv_defect_reports_seat_detail_check
+check (
+  seat_issue_detail is null
+  or seat_issue_detail in ('recliner', 'heated_seat', 'other')
+);
+
+alter table public.ero_lrv_defect_reports
+drop constraint if exists ero_lrv_defect_reports_thermo_king_mode_check;
+
+alter table public.ero_lrv_defect_reports
+add constraint ero_lrv_defect_reports_thermo_king_mode_check
+check (
+  thermo_king_mode is null
+  or thermo_king_mode in ('heat', 'cold')
 );
 
 create index if not exists ero_lrv_defect_reports_lrv_idx
