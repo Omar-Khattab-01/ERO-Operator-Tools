@@ -119,8 +119,8 @@ create table if not exists public.ero_lrv_defect_reports (
   defect_category text,
   seat_issue_detail text,
   thermo_king_mode text,
-  cad_entry_at timestamptz,
   mlc_reported_at timestamptz,
+  report_status text not null default 'open',
   defect_text text not null check (length(trim(defect_text)) > 0),
   reported_by uuid not null references auth.users(id) on delete cascade,
   reported_by_email text not null,
@@ -137,10 +137,17 @@ alter table public.ero_lrv_defect_reports
 add column if not exists thermo_king_mode text;
 
 alter table public.ero_lrv_defect_reports
-add column if not exists cad_entry_at timestamptz;
+drop column if exists cad_entry_at;
 
 alter table public.ero_lrv_defect_reports
 add column if not exists mlc_reported_at timestamptz;
+
+alter table public.ero_lrv_defect_reports
+add column if not exists report_status text not null default 'open';
+
+update public.ero_lrv_defect_reports
+set report_status = 'open'
+where report_status is null;
 
 alter table public.ero_lrv_defect_reports
 drop constraint if exists ero_lrv_defect_reports_category_check;
@@ -180,6 +187,13 @@ check (
   thermo_king_mode is null
   or thermo_king_mode in ('heat', 'cold')
 );
+
+alter table public.ero_lrv_defect_reports
+drop constraint if exists ero_lrv_defect_reports_status_check;
+
+alter table public.ero_lrv_defect_reports
+add constraint ero_lrv_defect_reports_status_check
+check (report_status in ('open', 'addressed', 'solved'));
 
 create index if not exists ero_lrv_defect_reports_lrv_idx
 on public.ero_lrv_defect_reports (lrv_number, reported_at desc);
@@ -304,3 +318,10 @@ create policy "LRV defect admins can delete reports"
 on public.ero_lrv_defect_reports
 for delete
 using (public.ero_is_lrv_defect_admin());
+
+drop policy if exists "LRV defect admins can update reports" on public.ero_lrv_defect_reports;
+create policy "LRV defect admins can update reports"
+on public.ero_lrv_defect_reports
+for update
+using (public.ero_is_lrv_defect_admin())
+with check (public.ero_is_lrv_defect_admin());

@@ -1385,7 +1385,15 @@
     .defect-report-actions {
       display: flex;
       justify-content: flex-end;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
       margin-top: 10px;
+    }
+    .defect-report-actions .select-input {
+      width: auto;
+      min-width: 120px;
+      padding: 9px 11px;
     }
     .defect-admin-list {
       display: grid;
@@ -1918,6 +1926,11 @@
       { key: 'heat', label: 'Heat' },
       { key: 'cold', label: 'Cold' },
     ];
+    const lrvReportStatuses = [
+      { key: 'open', label: 'Open' },
+      { key: 'addressed', label: 'Addressed' },
+      { key: 'solved', label: 'Solved' },
+    ];
     let lrvDefectAccessAllowed = false;
     let lrvDefectAccessRole = '';
     let lrvDefectAccessLoaded = false;
@@ -1931,6 +1944,7 @@
     let selectedLrvSeatIssueDetail = 'recliner';
     let selectedLrvThermoKingMode = 'heat';
     let lrvExportMonth = getCurrentMonthValue();
+    let editingLrvReportId = '';
 
     function setActiveNav(targetId = 'homeBtn') {
       [homeBtn, myWorkBtn, todaysPaddleBtn, lrvDefectsBtn, liveMapBtn, todayBoardBtn].forEach((button) => {
@@ -2454,8 +2468,8 @@
         || message.includes("could not find the 'role' column")
         || message.includes("could not find the 'email' column")
         || message.includes("could not find the 'defect_category' column")
-        || message.includes("could not find the 'cad_entry_at' column")
         || message.includes("could not find the 'mlc_reported_at' column")
+        || message.includes("could not find the 'report_status' column")
         || message.includes("could not find the 'seat_issue_detail' column")
         || message.includes("could not find the 'thermo_king_mode' column")
         || message.includes('ero_lrv_defect_access');
@@ -2541,6 +2555,21 @@
       return value ? optionLabel(lrvThermoKingModes, value, value) : '';
     }
 
+    function normalizeLrvReportStatus(value) {
+      return ['open', 'addressed', 'solved'].includes(value) ? value : 'open';
+    }
+
+    function formatLrvReportStatus(value) {
+      return optionLabel(lrvReportStatuses, normalizeLrvReportStatus(value), 'Open');
+    }
+
+    function renderLrvReportStatusOptions(selected = 'open') {
+      const status = normalizeLrvReportStatus(selected);
+      return lrvReportStatuses
+        .map((item) => `<option value="${escapeHtml(item.key)}" ${status === item.key ? 'selected' : ''}>${escapeHtml(item.label)}</option>`)
+        .join('');
+    }
+
     function dateTimeLocalToIso(value) {
       const raw = String(value || '').trim();
       if (!raw) return null;
@@ -2589,8 +2618,8 @@
       ];
       if (report.seat_issue_detail) rows.push(`Seat: ${formatLrvSeatIssueDetail(report.seat_issue_detail)}`);
       if (report.thermo_king_mode) rows.push(`Thermo King: ${formatLrvThermoKingMode(report.thermo_king_mode)}`);
-      rows.push(`CAD: ${formatOptionalReportDate(report.cad_entry_at)}`);
-      rows.push(`MLC: ${formatOptionalReportDate(report.mlc_reported_at)}`);
+      rows.push(`Status: ${formatLrvReportStatus(report.report_status)}`);
+      rows.push(`Mainline: ${formatOptionalReportDate(report.mlc_reported_at)}`);
       return rows.join(' | ');
     }
 
@@ -2705,7 +2734,7 @@
       }
       const { data, error } = await supabaseClient
         .from('ero_lrv_defect_reports')
-        .select('id, lrv_number, cab, defect_category, seat_issue_detail, thermo_king_mode, cad_entry_at, mlc_reported_at, defect_text, reported_by_email, reported_at')
+        .select('id, lrv_number, cab, defect_category, seat_issue_detail, thermo_king_mode, mlc_reported_at, report_status, defect_text, reported_by_email, reported_at')
         .eq('lrv_number', selectedLrvNumber)
         .order('reported_at', { ascending: false });
       if (error) throw error;
@@ -2717,7 +2746,7 @@
       if (!supabaseClient || !isLrvDefectAdmin()) return [];
       let query = supabaseClient
         .from('ero_lrv_defect_reports')
-        .select('id, lrv_number, cab, defect_category, seat_issue_detail, thermo_king_mode, cad_entry_at, mlc_reported_at, defect_text, reported_by_email, reported_at')
+        .select('id, lrv_number, cab, defect_category, seat_issue_detail, thermo_king_mode, mlc_reported_at, report_status, defect_text, reported_by_email, reported_at')
         .order('lrv_number', { ascending: true })
         .order('reported_at', { ascending: false });
       if (scope !== 'all') query = query.eq('lrv_number', selectedLrvNumber);
@@ -2825,6 +2854,58 @@
       }
     }
 
+    function datetimeLocalValue(value) {
+      if (!value) return '';
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return '';
+      const pad = (number) => String(number).padStart(2, '0');
+      return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+    }
+
+    function renderLrvReportEditForm(report) {
+      const id = escapeHtml(report.id || '');
+      const category = report.defect_category || 'other';
+      return `
+        <div class="stack-form" style="margin-top:12px;">
+          <label class="field-stack">
+            <span class="field-label">Cab</span>
+            <select id="editCab_${id}" class="select-input">
+              <option value="MC1" ${report.cab === 'MC1' ? 'selected' : ''}>MC1</option>
+              <option value="MC2" ${report.cab === 'MC2' ? 'selected' : ''}>MC2</option>
+            </select>
+          </label>
+          <label class="field-stack">
+            <span class="field-label">Defect Type</span>
+            <select id="editCategory_${id}" class="select-input" data-edit-report-category="${id}">${renderLrvDefectCategoryOptions(category)}</select>
+          </label>
+          <label id="editSeatWrap_${id}" class="field-stack" ${category === 'seat_issue' ? '' : 'hidden'}>
+            <span class="field-label">Seat Detail</span>
+            <select id="editSeat_${id}" class="select-input">${renderLrvSeatIssueOptions(report.seat_issue_detail || 'recliner')}</select>
+          </label>
+          <label id="editThermoWrap_${id}" class="field-stack" ${category === 'thermo_king' ? '' : 'hidden'}>
+            <span class="field-label">Heat / Cold</span>
+            <select id="editThermo_${id}" class="select-input">${renderLrvThermoKingOptions(report.thermo_king_mode || 'heat')}</select>
+          </label>
+          <label class="field-stack">
+            <span class="field-label">Reported to Mainline Time</span>
+            <input id="editMlc_${id}" class="text-input" type="datetime-local" value="${escapeHtml(datetimeLocalValue(report.mlc_reported_at))}">
+          </label>
+          <label class="field-stack">
+            <span class="field-label">Status</span>
+            <select id="editStatus_${id}" class="select-input">${renderLrvReportStatusOptions(report.report_status)}</select>
+          </label>
+          <label class="field-stack">
+            <span class="field-label">Details</span>
+            <textarea id="editText_${id}" class="text-input" rows="4">${escapeHtml(report.defect_text || '')}</textarea>
+          </label>
+          <div class="section-actions">
+            <button class="btn" type="button" data-save-lrv-report="${id}">Save Report</button>
+            <button class="linkish-btn" type="button" data-cancel-edit-lrv-report>Cancel</button>
+          </div>
+        </div>
+      `;
+    }
+
     function renderLrvDefectReportList() {
       if (!lrvDefectReports.length) {
         return '<div class="saved-empty">No defects reported for this LRV yet.</div>';
@@ -2835,15 +2916,17 @@
             <article class="defect-report">
               <div class="defect-report-head">
                 <div>
-                  <div class="defect-report-title">LRV ${escapeHtml(formatLrvNumber(report.lrv_number))} - ${escapeHtml(report.cab || '')}</div>
+                  <div class="defect-report-title">LRV ${escapeHtml(formatLrvNumber(report.lrv_number))} - ${escapeHtml(report.cab || '')} · ${escapeHtml(formatLrvReportStatus(report.report_status))}</div>
                   <div class="muted">${escapeHtml(report.reported_by_email || 'Unknown reporter')}</div>
                   <div class="muted">${escapeHtml(renderLrvReportMeta(report))}</div>
                 </div>
                 <div class="defect-report-date">${escapeHtml(formatReportDate(report.reported_at))}</div>
               </div>
-              <div class="defect-report-body">${escapeHtml(report.defect_text || '')}</div>
+              ${editingLrvReportId === report.id ? renderLrvReportEditForm(report) : `<div class="defect-report-body">${escapeHtml(report.defect_text || '')}</div>`}
               ${isLrvDefectAdmin() ? `
                 <div class="defect-report-actions">
+                  <button class="linkish-btn" type="button" data-edit-lrv-report="${escapeHtml(report.id || '')}">Edit Report</button>
+                  <select class="select-input" data-update-lrv-report-status="${escapeHtml(report.id || '')}">${renderLrvReportStatusOptions(report.report_status)}</select>
                   <button class="linkish-btn" type="button" data-delete-lrv-report="${escapeHtml(report.id || '')}">Delete Report</button>
                 </div>
               ` : ''}
@@ -3023,11 +3106,7 @@
                   <select id="lrvThermoKingMode" class="select-input">${renderLrvThermoKingOptions(selectedLrvThermoKingMode)}</select>
                 </label>
                 <label class="field-stack">
-                  <span class="field-label">CAD Entry Time</span>
-                  <input id="lrvCadEntryAt" class="text-input" type="datetime-local">
-                </label>
-                <label class="field-stack">
-                  <span class="field-label">Reported to MLC Time</span>
+                  <span class="field-label">Reported to Mainline Time</span>
                   <input id="lrvMlcReportedAt" class="text-input" type="datetime-local">
                 </label>
                 <label class="field-stack">
@@ -4492,7 +4571,6 @@
       const thermoKingMode = defectCategory === 'thermo_king'
         ? document.getElementById('lrvThermoKingMode')?.value || selectedLrvThermoKingMode
         : null;
-      const cadEntryAt = dateTimeLocalToIso(document.getElementById('lrvCadEntryAt')?.value || '');
       const mlcReportedAt = dateTimeLocalToIso(document.getElementById('lrvMlcReportedAt')?.value || '');
       const typedDefectText = document.getElementById('lrvDefectText')?.value?.trim() || '';
       const generatedSummary = [
@@ -4514,8 +4592,8 @@
           defect_category: defectCategory,
           seat_issue_detail: seatIssueDetail,
           thermo_king_mode: thermoKingMode,
-          cad_entry_at: cadEntryAt,
           mlc_reported_at: mlcReportedAt,
+          report_status: 'open',
           defect_text: defectText,
           reported_by: currentUser.id,
           reported_by_email: currentUser.email || '',
@@ -4617,6 +4695,64 @@
       await renderLrvDefectsPage();
       setStatus('Report deleted', true);
       showToast('Report deleted');
+    }
+
+    async function updateLrvDefectReportStatus(reportId, status) {
+      if (!supabaseClient || !isLrvDefectAdmin()) return;
+      const id = String(reportId || '').trim();
+      const nextStatus = normalizeLrvReportStatus(status);
+      if (!id) return;
+      const { error } = await supabaseClient
+        .from('ero_lrv_defect_reports')
+        .update({ report_status: nextStatus })
+        .eq('id', id);
+      if (error) {
+        setStatus('Status update failed', false);
+        showToast('Status update failed', error.message || 'Could not update report status.');
+        return;
+      }
+      await renderLrvDefectsPage();
+      setStatus('Status updated', true);
+    }
+
+    async function saveLrvDefectReportEdit(reportId) {
+      if (!supabaseClient || !isLrvDefectAdmin()) return;
+      const id = String(reportId || '').trim();
+      if (!id) return;
+      const cab = document.getElementById(`editCab_${id}`)?.value || 'MC1';
+      const defectCategory = document.getElementById(`editCategory_${id}`)?.value || 'other';
+      const seatIssueDetail = defectCategory === 'seat_issue' ? document.getElementById(`editSeat_${id}`)?.value || 'recliner' : null;
+      const thermoKingMode = defectCategory === 'thermo_king' ? document.getElementById(`editThermo_${id}`)?.value || 'heat' : null;
+      const mlcReportedAt = dateTimeLocalToIso(document.getElementById(`editMlc_${id}`)?.value || '');
+      const reportStatus = normalizeLrvReportStatus(document.getElementById(`editStatus_${id}`)?.value || 'open');
+      const typedDefectText = document.getElementById(`editText_${id}`)?.value?.trim() || '';
+      const generatedSummary = [
+        formatLrvDefectCategory(defectCategory),
+        seatIssueDetail ? formatLrvSeatIssueDetail(seatIssueDetail) : '',
+        thermoKingMode ? formatLrvThermoKingMode(thermoKingMode) : '',
+      ].filter(Boolean).join(' - ');
+      const defectText = typedDefectText || generatedSummary;
+      const { error } = await supabaseClient
+        .from('ero_lrv_defect_reports')
+        .update({
+          cab,
+          defect_category: defectCategory,
+          seat_issue_detail: seatIssueDetail,
+          thermo_king_mode: thermoKingMode,
+          mlc_reported_at: mlcReportedAt,
+          report_status: reportStatus,
+          defect_text: defectText,
+        })
+        .eq('id', id);
+      if (error) {
+        setStatus('Edit failed', false);
+        showToast('Edit failed', error.message || 'Could not update report.');
+        return;
+      }
+      editingLrvReportId = '';
+      await renderLrvDefectsPage();
+      setStatus('Report updated', true);
+      showToast('Report updated');
     }
 
     async function openTodayBoard() {
@@ -5168,6 +5304,26 @@
         return;
       }
 
+      const editLrvReportBtn = event.target.closest('[data-edit-lrv-report]');
+      if (editLrvReportBtn) {
+        editingLrvReportId = editLrvReportBtn.dataset.editLrvReport || '';
+        await renderLrvDefectsPage();
+        return;
+      }
+
+      const saveLrvReportBtn = event.target.closest('[data-save-lrv-report]');
+      if (saveLrvReportBtn) {
+        await saveLrvDefectReportEdit(saveLrvReportBtn.dataset.saveLrvReport || '');
+        return;
+      }
+
+      const cancelEditLrvReportBtn = event.target.closest('[data-cancel-edit-lrv-report]');
+      if (cancelEditLrvReportBtn) {
+        editingLrvReportId = '';
+        await renderLrvDefectsPage();
+        return;
+      }
+
       const exportLrvDefectsBtn = event.target.closest('[data-export-lrv-defects]');
       if (exportLrvDefectsBtn) {
         await exportLrvDefectReports(exportLrvDefectsBtn.dataset.exportLrvDefects || 'current');
@@ -5282,6 +5438,21 @@
       const roleSelect = event.target?.closest?.('[data-update-lrv-access-role]');
       if (roleSelect) {
         await updateLrvDefectAccessRole(roleSelect.dataset.updateLrvAccessRole || '', roleSelect.value || 'reporter');
+        return;
+      }
+      const reportStatusSelect = event.target?.closest?.('[data-update-lrv-report-status]');
+      if (reportStatusSelect) {
+        await updateLrvDefectReportStatus(reportStatusSelect.dataset.updateLrvReportStatus || '', reportStatusSelect.value || 'open');
+        return;
+      }
+      const editCategorySelect = event.target?.closest?.('[data-edit-report-category]');
+      if (editCategorySelect) {
+        const id = editCategorySelect.dataset.editReportCategory || '';
+        const category = editCategorySelect.value || 'other';
+        const seatWrap = document.getElementById(`editSeatWrap_${id}`);
+        const thermoWrap = document.getElementById(`editThermoWrap_${id}`);
+        if (seatWrap) seatWrap.hidden = category !== 'seat_issue';
+        if (thermoWrap) thermoWrap.hidden = category !== 'thermo_king';
         return;
       }
       if (event.target?.id === 'lrvLookupNumber') {
