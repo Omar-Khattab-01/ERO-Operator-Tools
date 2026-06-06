@@ -3014,7 +3014,7 @@
         return;
       }
       accountBtn.textContent = currentUser ? 'Settings' : 'Account';
-      lrvDefectsBtn.hidden = !lrvDefectAccessAllowed;
+      lrvDefectsBtn.hidden = !(lrvDefectAccessAllowed || currentUserEmail() === lrvDefectAdminEmail);
     }
 
     function currentUserEmail() {
@@ -3883,7 +3883,7 @@
       }
       let allowed = false;
       try {
-        allowed = await loadLrvDefectAccessState();
+        allowed = await loadLrvDefectAccessState(true);
       } catch (error) {
         lrvDefectsView.innerHTML = `
           <div class="board-page-head">
@@ -4800,6 +4800,23 @@
           </div>
         `;
         return;
+      }
+      if (!currentProfile) {
+        try {
+          await loadProfile();
+        } catch (error) {
+          myWorkView.innerHTML = `
+            <div class="board-page-head">
+              <div>
+                <h2>My Work</h2>
+                <p class="overlay-page-copy">Your saved work could not load right now.</p>
+              </div>
+            </div>
+            <div class="live-map-error">${escapeHtml(error.message || 'Could not load saved work.')}</div>
+            <div class="section-actions"><button class="btn" type="button" data-retry-my-work>Retry</button></div>
+          `;
+          return;
+        }
       }
       if (!myWorkDraft) cloneMyWorkDraftFromProfile();
       const paddleOptions = await fetchAccountOptions() || {};
@@ -6410,6 +6427,13 @@
       const retryLrvDefectsBtn = event.target.closest('[data-retry-lrv-defects]');
       if (retryLrvDefectsBtn) {
         await renderLrvDefectsPage();
+        return;
+      }
+
+      const retryMyWorkBtn = event.target.closest('[data-retry-my-work]');
+      if (retryMyWorkBtn) {
+        myWorkDraft = null;
+        await renderMyWorkPage();
         return;
       }
 
