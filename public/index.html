@@ -1295,6 +1295,66 @@
       color: var(--accent-2);
       font-weight: 800;
     }
+    .demo-live-example {
+      display: grid;
+      gap: 10px;
+      margin-top: 12px;
+    }
+    .demo-live-example .card {
+      margin: 0;
+    }
+    .demo-live-example .card-head h3 {
+      font-size: 28px;
+    }
+    .demo-board-example {
+      display: grid;
+      gap: 8px;
+    }
+    .demo-board-example .board-item {
+      pointer-events: none;
+    }
+    .demo-work-example {
+      display: grid;
+      gap: 8px;
+    }
+    .demo-work-row {
+      align-items: center;
+      border: 1px solid rgba(255,255,255,.10);
+      border-radius: 12px;
+      display: flex;
+      gap: 10px;
+      justify-content: space-between;
+      padding: 10px 12px;
+    }
+    .demo-work-row strong {
+      color: var(--text);
+    }
+    .demo-work-row span {
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .demo-phone-example {
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 16px;
+      background: rgba(9,12,18,.68);
+      padding: 12px;
+    }
+    .demo-phone-alert {
+      border-radius: 14px;
+      background: rgba(255,255,255,.08);
+      padding: 12px;
+      box-shadow: 0 10px 24px rgba(0,0,0,.22);
+    }
+    .demo-phone-alert strong {
+      display: block;
+      margin-bottom: 4px;
+    }
+    .demo-phone-alert span {
+      color: var(--muted);
+      display: block;
+      font-size: 13px;
+      line-height: 1.35;
+    }
     .password-toggle-row {
       display: flex;
       justify-content: flex-start;
@@ -2032,8 +2092,14 @@
     let accountNotice = { text: '', type: '' };
     const lrvDefectAdminEmail = 'omar.hosam2000@gmail.com';
     const lrvNumbers = Array.from({ length: 67 }, (_, index) => index + 1);
+    const lrvCabOptions = [
+      { key: 'MC1', label: 'MC1' },
+      { key: 'MC2', label: 'MC2' },
+      { key: 'UNKNOWN', label: 'Unknown' },
+    ];
     const lrvDefectCategories = [
       { key: 'dirty_windshield', label: 'Dirty windshield' },
+      { key: 'nsa', label: 'NSA' },
       { key: 'dars_volume', label: 'DARS volume' },
       { key: 'traction_bell', label: 'Traction bell' },
       { key: 'seat_issue', label: 'Seat issue' },
@@ -2071,6 +2137,7 @@
     let selectedLrvThermoKingMode = 'heat';
     let lrvExportFromDate = getCurrentMonthStartValue();
     let lrvExportToDate = getTodayDateValue();
+    let lrvExportCategory = 'all';
     let editingLrvReportId = '';
 
     function setActiveNav(targetId = 'homeBtn') {
@@ -2152,72 +2219,183 @@
       showToolView('Ready');
     }
 
+    function secondsToClock(totalSeconds) {
+      const normalized = ((Math.round(totalSeconds / 60) * 60) % 86400 + 86400) % 86400;
+      const hours = Math.floor(normalized / 3600);
+      const minutes = Math.floor((normalized % 3600) / 60);
+      return `${hours}:${String(minutes).padStart(2, '0')}`;
+    }
+
+    function makeDemoTime(minutesFromNow) {
+      return secondsToClock(getOttawaNowSeconds() + (Number(minutesFromNow) * 60));
+    }
+
+    function createDemoPaddleData(mode = 'trip') {
+      const tripStart = makeDemoTime(-7);
+      const tripEnd = makeDemoTime(16);
+      const breakEnd = makeDemoTime(12);
+      const radioReport = makeDemoTime(5);
+      const liveStatus = mode === 'break'
+        ? {
+            demo: true,
+            kind: 'break',
+            block: '112',
+            sequence: '2',
+            nextSequence: '3',
+            nextStartStop: "Tunney's",
+            nextStartTime: breakEnd,
+            targetTime: breakEnd,
+          }
+        : {
+            demo: true,
+            kind: 'trip',
+            block: '104',
+            sequence: '1',
+            tripId: 'demo-trip-1',
+            directionLabel: "West to Tunney's",
+            startStop: 'Blair Station',
+            endStop: "Tunney's",
+            startTime: tripStart,
+            endTime: tripEnd,
+            targetTime: tripEnd,
+          };
+      return {
+        ok: true,
+        paddleId: mode === 'break' ? '1-5' : '1-8',
+        serviceDay: 'saturday',
+        serviceLabel: 'Saturday',
+        effective: 'Demo',
+        firstReportTime: mode === 'break' ? makeDemoTime(-62) : makeDemoTime(-14),
+        finalClearTime: mode === 'break' ? makeDemoTime(84) : makeDemoTime(128),
+        splitBreaks: [],
+        pieceSummaries: [],
+        liveStatus,
+        entries: [
+          {
+            sequence: '1',
+            block: mode === 'break' ? '109' : '104',
+            radioCheckNeeded: mode !== 'break',
+            breakAfterMinutes: mode === 'break' ? 18 : 6,
+            clearTime: tripEnd,
+            endTime: tripEnd,
+            trips: [
+              {
+                tripId: 'demo-trip-1',
+                startStop: 'Blair Station',
+                endStop: "Tunney's",
+                startTime: tripStart,
+                endTime: tripEnd,
+                durationMinutes: 23,
+              },
+            ],
+          },
+          {
+            sequence: '2',
+            block: '112',
+            radioCheckNeeded: false,
+            breakAfterMinutes: mode === 'break' ? 21 : 0,
+            clearTime: makeDemoTime(42),
+            endTime: makeDemoTime(42),
+            nextBlockStartTime: breakEnd,
+            trips: [
+              {
+                tripId: 'demo-trip-2',
+                startStop: "Tunney's",
+                endStop: 'Blair Station',
+                startTime: breakEnd,
+                endTime: makeDemoTime(42),
+                durationMinutes: 30,
+              },
+            ],
+          },
+        ],
+        demoRadioReport: radioReport,
+      };
+    }
+
     function renderDemoPage() {
+      const tripDemo = createDemoPaddleData('trip');
+      const breakDemo = createDemoPaddleData('break');
+      const radioDemoStatus = {
+        demo: true,
+        kind: 'prestart',
+        phase: 'report',
+        block: '215',
+        sequence: '4',
+        nextStartStop: "Tunney's",
+        nextStartTime: makeDemoTime(14),
+        reportTime: makeDemoTime(6),
+        targetTime: makeDemoTime(6),
+      };
       demoView.innerHTML = `
         <div class="board-page-head">
           <div>
             <h2>Demo</h2>
-            <p class="overlay-page-copy">Quick examples for using the main ERO Tool features during a shift.</p>
+            <p class="overlay-page-copy">Live examples of the main ERO Tool features during a shift.</p>
           </div>
         </div>
         <div class="demo-grid">
           <section class="demo-card">
             <h3>Paddle Lookup</h3>
-            <p>Use this when you need the current work for a paddle number.</p>
-            <ol class="demo-steps">
-              <li>Tap <strong>Paddle Lookup</strong>.</li>
-              <li>Enter a paddle like <strong>14</strong> or <strong>1-14</strong>.</li>
-              <li>Check the live card for the current trip, break, block, and countdown.</li>
-              <li>Tap <strong>Open Paddle</strong> to see the full paddle.</li>
-            </ol>
+            <p>Example of a looked-up paddle while a trip is in progress.</p>
+            <div class="demo-live-example">
+              ${renderFullPaddleCard(tripDemo, '<button class="link-btn" type="button" disabled>Open Paddle</button>', 'demo-paddle-card')}
+            </div>
           </section>
           <section class="demo-card">
             <h3>Radio Checks</h3>
-            <p>Use the board or paddle details to see which block needs a radio check.</p>
-            <ol class="demo-steps">
-              <li>Tap <strong>Board</strong>.</li>
-              <li>Look for blocks marked for radio checks.</li>
-              <li>Tap a paddle to open the full work and confirm the block.</li>
-            </ol>
+            <p>Example of a board item showing a block that needs a radio check.</p>
+            <div class="demo-live-example demo-board-example">
+              ${renderBoardItem({
+                paddleId: '2-15',
+                serviceDay: 'mon_thu',
+                activeSequence: '4',
+                totalBlocks: 7,
+                remainingBlocks: 3,
+                liveStatus: radioDemoStatus,
+              })}
+              <div class="entry-head">
+                <h4><span>Trip 4</span><span class="radio-check">Radio check required</span></h4>
+                <div class="entry-direction">West to Tunney's</div>
+                <div class="entry-block">Block 215</div>
+              </div>
+            </div>
           </section>
           <section class="demo-card">
             <h3>Today's Paddle</h3>
-            <p>Keep the paddles you need today in one quick page.</p>
-            <ol class="demo-steps">
-              <li>Look up a paddle.</li>
-              <li>Tap <strong>Save to Today's Paddle</strong>.</li>
-              <li>Open <strong>Today's Paddle</strong> to see it without searching again.</li>
-              <li>Tap <strong>Remove</strong> when you no longer need it today.</li>
-            </ol>
+            <p>Example of a saved paddle on a normal break with a live countdown.</p>
+            <div class="demo-live-example">
+              ${renderFullPaddleCard(breakDemo, '<button class="save-btn" type="button" disabled>Remove from Today\'s Paddle</button>', 'saved-paddle-inline demo-paddle-card')}
+            </div>
           </section>
           <section class="demo-card">
             <h3>My Work</h3>
-            <p>Save your regular work to your account by service day and OC week.</p>
-            <ol class="demo-steps">
-              <li>Sign in or create an account.</li>
-              <li>Open <strong>My Work</strong>.</li>
-              <li>Add or remove paddles. Changes save right away.</li>
-              <li>Use the Week 1 / Week 2 toggle if your work repeats both weeks.</li>
-            </ol>
+            <p>Example of saved regular work. Adding or removing a paddle saves right away.</p>
+            <div class="demo-live-example demo-work-example">
+              <div class="demo-work-row"><strong>Monday-Thursday</strong><span>Week 1: 1-8</span></div>
+              <div class="demo-work-row"><strong>Friday</strong><span>Week 1: 2-15</span></div>
+              <div class="demo-work-row"><strong>Saturday</strong><span>Both weeks: 1-5</span></div>
+            </div>
           </section>
           <section class="demo-card">
             <h3>Trip Notifications</h3>
-            <p>Set a phone reminder before the next trip starts.</p>
-            <ol class="demo-steps">
-              <li>Open <strong>Settings</strong>.</li>
-              <li>Turn on <strong>Send trip start reminder</strong>.</li>
-              <li>Choose <strong>5 minutes</strong> or <strong>3 minutes</strong>.</li>
-              <li>On iPhone, use the Home Screen app path and allow notifications.</li>
-            </ol>
+            <p>Example of the reminder operators should expect before the next trip.</p>
+            <div class="demo-live-example demo-phone-example">
+              <div class="demo-phone-alert">
+                <strong>Trip 3 starts in 5 min</strong>
+                <span>Paddle 1-5 | Block 112 | Start: Tunney's | At ${escapeHtml(breakDemo.liveStatus.nextStartTime)}</span>
+              </div>
+              <div class="settings-status-pill">5 min before</div>
+            </div>
           </section>
           <section class="demo-card">
             <h3>Home Screen</h3>
-            <p>Use ERO Tool like an app from your phone home screen.</p>
-            <ol class="demo-steps">
-              <li>iPhone: open in Safari, tap Share, then Add to Home Screen.</li>
-              <li>Android: open in Chrome, tap the menu, then Add to Home screen.</li>
-              <li>Open ERO Tool from the new home screen icon.</li>
-            </ol>
+            <p>Example of the short install path operators follow on a phone.</p>
+            <div class="demo-live-example demo-work-example">
+              <div class="demo-work-row"><strong>iPhone</strong><span>Safari -> Share -> Add to Home Screen</span></div>
+              <div class="demo-work-row"><strong>Android</strong><span>Chrome -> Menu -> Add to Home screen</span></div>
+              <div class="demo-work-row"><strong>Then</strong><span>Open ERO Tool from the home screen icon</span></div>
+            </div>
           </section>
         </div>
       `;
@@ -2238,6 +2416,7 @@
       chat.hidden = true;
       chatForm.closest('.composer').hidden = true;
       renderDemoPage();
+      refreshCountdowns();
       setStatus('Demo ready', true);
     }
 
@@ -2684,7 +2863,20 @@
       }));
     }
 
+    function isIosDevice() {
+      const platform = navigator.platform || '';
+      const userAgent = navigator.userAgent || '';
+      return /iPad|iPhone|iPod/.test(userAgent)
+        || (platform === 'MacIntel' && Number(navigator.maxTouchPoints || 0) > 1);
+    }
+
+    function isStandaloneWebApp() {
+      return Boolean(window.navigator.standalone)
+        || Boolean(window.matchMedia?.('(display-mode: standalone)').matches);
+    }
+
     function notificationSupportMessage() {
+      if (isIosDevice() && !isStandaloneWebApp()) return 'On iPhone, add ERO Tool to the Home Screen and open it from there before turning this on.';
       if (!('Notification' in window)) return 'This browser does not support phone notifications.';
       if (!window.isSecureContext) return 'Open the live HTTPS site to turn this on.';
       if (Notification.permission === 'denied') return 'Notifications are blocked. Turn them back on in browser or iPhone settings.';
@@ -2695,7 +2887,6 @@
     function renderTripNotificationSettings() {
       const enabled = Boolean(tripNotificationSettings.enabled);
       const lead = [3, 5].includes(Number(tripNotificationSettings.leadMinutes)) ? Number(tripNotificationSettings.leadMinutes) : 5;
-      const canRequest = 'Notification' in window && window.isSecureContext;
       const statusLabel = enabled ? `${lead} min before` : 'Off';
       return `
         <section class="section-card">
@@ -2713,11 +2904,11 @@
                 <strong>Send trip start reminder</strong>
                 <small>${escapeHtml(notificationSupportMessage())}</small>
               </span>
-              <input id="tripNotificationEnabled" type="checkbox" ${enabled ? 'checked' : ''} ${canRequest ? '' : 'disabled'}>
+              <input id="tripNotificationEnabled" type="checkbox" ${enabled ? 'checked' : ''}>
             </label>
             <label class="field-stack">
               <span class="field-label">How early?</span>
-              <select id="tripNotificationLead" class="select-input" ${enabled && canRequest ? '' : 'disabled'}>
+              <select id="tripNotificationLead" class="select-input" ${enabled ? '' : 'disabled'}>
                 <option value="5" ${lead === 5 ? 'selected' : ''}>5 minutes before</option>
                 <option value="3" ${lead === 3 ? 'selected' : ''}>3 minutes before</option>
               </select>
@@ -2733,11 +2924,16 @@
     }
 
     async function requestTripNotificationPermission() {
+      if (isIosDevice() && !isStandaloneWebApp()) return false;
       if (!('Notification' in window) || !window.isSecureContext) return false;
       if (Notification.permission === 'granted') return true;
       if (Notification.permission === 'denied') return false;
-      const permission = await Notification.requestPermission();
-      return permission === 'granted';
+      try {
+        const permission = await Notification.requestPermission();
+        return permission === 'granted';
+      } catch (_) {
+        return false;
+      }
     }
 
     async function showTripStartNotification(title, options = {}) {
@@ -2781,6 +2977,7 @@
 
     function renderTripNotificationData(live) {
       const info = getTripStartNotificationInfo(live);
+      if (live?.demo) return '';
       if (!info) return '';
       return [
         `data-trip-notify-target="${escapeHtml(info.targetTime)}"`,
@@ -2912,6 +3109,22 @@
         .join('');
     }
 
+    function normalizeLrvCab(value) {
+      const cab = String(value || '').trim().toUpperCase();
+      return lrvCabOptions.some((item) => item.key === cab) ? cab : 'MC1';
+    }
+
+    function formatLrvCab(value) {
+      return optionLabel(lrvCabOptions, normalizeLrvCab(value), 'MC1');
+    }
+
+    function renderLrvCabOptions(selected = selectedLrvCab) {
+      const cab = normalizeLrvCab(selected);
+      return lrvCabOptions
+        .map((item) => `<option value="${escapeHtml(item.key)}" ${cab === item.key ? 'selected' : ''}>${escapeHtml(item.label)}</option>`)
+        .join('');
+    }
+
     function optionLabel(options, key, fallback = '') {
       return options.find((item) => item.key === key)?.label || fallback || String(key || '');
     }
@@ -2920,6 +3133,13 @@
       return lrvDefectCategories
         .map((item) => `<option value="${escapeHtml(item.key)}" ${selected === item.key ? 'selected' : ''}>${escapeHtml(item.label)}</option>`)
         .join('');
+    }
+
+    function renderLrvExportCategoryOptions(selected = lrvExportCategory) {
+      return [
+        `<option value="all" ${selected === 'all' ? 'selected' : ''}>All categories</option>`,
+        ...lrvDefectCategories.map((item) => `<option value="${escapeHtml(item.key)}" ${selected === item.key ? 'selected' : ''}>${escapeHtml(item.label)}</option>`),
+      ].join('');
     }
 
     function renderLrvSeatIssueOptions(selected = selectedLrvSeatIssueDetail) {
@@ -2972,6 +3192,52 @@
       return value ? formatReportDate(value) : 'Not entered';
     }
 
+    function formatTypedLrvDateInput(value) {
+      const digits = String(value || '').replace(/\D/g, '').slice(0, 8);
+      if (digits.length <= 2) return digits;
+      if (digits.length <= 4) return `${digits.slice(0, 2)}-${digits.slice(2)}`;
+      return `${digits.slice(0, 2)}-${digits.slice(2, 4)}-${digits.slice(4)}`;
+    }
+
+    function isValidDateParts(year, month, day) {
+      const date = new Date(year, month - 1, day);
+      return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day;
+    }
+
+    function typedLrvDateToDateValue(value) {
+      const digits = String(value || '').replace(/\D/g, '');
+      if (digits.length !== 8) return '';
+      const month = Number(digits.slice(0, 2));
+      const day = Number(digits.slice(2, 4));
+      const year = Number(digits.slice(4, 8));
+      if (!isValidDateParts(year, month, day)) return '';
+      return `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    }
+
+    function dateValueToTypedLrvDate(value) {
+      const match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (!match) return '';
+      return `${match[2]}-${match[3]}-${match[1]}`;
+    }
+
+    function isoToLrvTimeValue(value) {
+      if (!value) return '';
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return '';
+      const pad = (number) => String(number).padStart(2, '0');
+      return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
+    }
+
+    function lrvDateTimeInputsToIso(dateInputId, timeInputId) {
+      const dateValue = typedLrvDateToDateValue(document.getElementById(dateInputId)?.value || '');
+      const timeValue = String(document.getElementById(timeInputId)?.value || '').trim();
+      if (!dateValue && !timeValue) return null;
+      const resolvedDate = dateValue || getTodayDateValue();
+      const resolvedTime = /^\d{2}:\d{2}$/.test(timeValue) ? timeValue : '00:00';
+      const date = new Date(`${resolvedDate}T${resolvedTime}`);
+      return Number.isNaN(date.getTime()) ? null : date.toISOString();
+    }
+
     function getTodayDateValue() {
       const parts = new Intl.DateTimeFormat('en-CA', {
         timeZone,
@@ -2994,7 +3260,10 @@
     }
 
     function parseExportDateValue(value) {
-      const match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      const normalized = String(value || '').includes('-') && /^\d{2}-\d{2}-\d{4}$/.test(String(value || ''))
+        ? typedLrvDateToDateValue(value)
+        : String(value || '');
+      const match = normalized.match(/^(\d{4})-(\d{2})-(\d{2})$/);
       if (!match) return null;
       const year = Number(match[1]);
       const monthIndex = Number(match[2]) - 1;
@@ -3259,6 +3528,7 @@
       const dateRange = dateRangeToIso(lrvExportFromDate, lrvExportToDate);
       if (dateRange?.start) query = query.gte('reported_at', dateRange.start);
       if (dateRange?.end) query = query.lt('reported_at', dateRange.end);
+      if (lrvExportCategory !== 'all') query = query.eq('defect_category', lrvExportCategory);
       return query;
     }
 
@@ -3285,6 +3555,9 @@
         ? 'All LRV Defect Reports'
         : `LRV ${formatLrvNumber(selectedLrvNumber)} Defect Reports`;
       const periodLabel = formatExportPeriodLabel(lrvExportFromDate, lrvExportToDate);
+      const categoryLabel = lrvExportCategory === 'all'
+        ? 'All categories'
+        : formatLrvDefectCategory(lrvExportCategory);
       const generatedAt = new Intl.DateTimeFormat('en-CA', {
         timeZone,
         year: 'numeric',
@@ -3306,7 +3579,7 @@
             ${items.map((report) => `
               <article class="report">
                 <div class="report-head">
-                  <strong>LRV ${escapeHtml(formatLrvNumber(report.lrv_number))} - ${escapeHtml(report.cab || '')}</strong>
+                  <strong>LRV ${escapeHtml(formatLrvNumber(report.lrv_number))} - ${escapeHtml(formatLrvCab(report.cab || 'MC1'))}</strong>
                   <span>${escapeHtml(formatReportDate(report.reported_at))}</span>
                 </div>
                 <div class="report-meta">Reported by ${escapeHtml(report.reported_by_email || 'Unknown')}</div>
@@ -3347,7 +3620,7 @@
             <span class="hint">After printing, use Back to LRV Defects or close this report tab/window.</span>
           </div>
           <h1>${escapeHtml(title)}</h1>
-          <div class="meta">Generated ${escapeHtml(generatedAt)} · ${escapeHtml(periodLabel)} · ${escapeHtml(reports.length)} report${reports.length === 1 ? '' : 's'}</div>
+          <div class="meta">Generated ${escapeHtml(generatedAt)} · ${escapeHtml(periodLabel)} · ${escapeHtml(categoryLabel)} · ${escapeHtml(reports.length)} report${reports.length === 1 ? '' : 's'}</div>
           ${bodyHtml}
           <script>
             function returnToLrvDefects() {
@@ -3407,10 +3680,7 @@
         <div class="stack-form" style="margin-top:12px;">
           <label class="field-stack">
             <span class="field-label">Cab</span>
-            <select id="editCab_${id}" class="select-input">
-              <option value="MC1" ${report.cab === 'MC1' ? 'selected' : ''}>MC1</option>
-              <option value="MC2" ${report.cab === 'MC2' ? 'selected' : ''}>MC2</option>
-            </select>
+            <select id="editCab_${id}" class="select-input">${renderLrvCabOptions(report.cab || 'MC1')}</select>
           </label>
           <label class="field-stack">
             <span class="field-label">Defect Type</span>
@@ -3425,8 +3695,12 @@
             <select id="editThermo_${id}" class="select-input">${renderLrvThermoKingOptions(report.thermo_king_mode || 'heat')}</select>
           </label>
           <label class="field-stack">
+            <span class="field-label">Reported to Mainline Date</span>
+            <input id="editMlcDate_${id}" class="text-input" type="text" inputmode="numeric" maxlength="10" data-lrv-date-input placeholder="MM-DD-YYYY" value="${escapeHtml(dateValueToTypedLrvDate(datetimeLocalValue(report.mlc_reported_at)))}">
+          </label>
+          <label class="field-stack">
             <span class="field-label">Reported to Mainline Time</span>
-            <input id="editMlc_${id}" class="text-input" type="datetime-local" value="${escapeHtml(datetimeLocalValue(report.mlc_reported_at))}">
+            <input id="editMlcTime_${id}" class="text-input" type="time" value="${escapeHtml(isoToLrvTimeValue(report.mlc_reported_at))}">
           </label>
           <label class="field-stack">
             <span class="field-label">Status</span>
@@ -3454,7 +3728,7 @@
             <article class="defect-report">
               <div class="defect-report-head">
                 <div>
-                  <div class="defect-report-title">LRV ${escapeHtml(formatLrvNumber(report.lrv_number))} - ${escapeHtml(report.cab || '')} · ${escapeHtml(formatLrvReportStatus(report.report_status))}</div>
+                  <div class="defect-report-title">LRV ${escapeHtml(formatLrvNumber(report.lrv_number))} - ${escapeHtml(formatLrvCab(report.cab || 'MC1'))} · ${escapeHtml(formatLrvReportStatus(report.report_status))}</div>
                   <div class="muted">${escapeHtml(report.reported_by_email || 'Unknown reporter')}</div>
                   <div class="muted">${escapeHtml(renderLrvReportMeta(report))}</div>
                 </div>
@@ -3523,11 +3797,15 @@
           <div class="field-grid" style="margin-top:12px;">
             <label class="field-stack">
               <span class="field-label">From</span>
-              <input id="lrvExportFromDate" class="text-input" type="date" value="${escapeHtml(lrvExportFromDate)}">
+              <input id="lrvExportFromDate" class="text-input" type="text" inputmode="numeric" maxlength="10" data-lrv-date-input placeholder="MM-DD-YYYY" value="${escapeHtml(dateValueToTypedLrvDate(lrvExportFromDate))}">
             </label>
             <label class="field-stack">
               <span class="field-label">To</span>
-              <input id="lrvExportToDate" class="text-input" type="date" value="${escapeHtml(lrvExportToDate)}">
+              <input id="lrvExportToDate" class="text-input" type="text" inputmode="numeric" maxlength="10" data-lrv-date-input placeholder="MM-DD-YYYY" value="${escapeHtml(dateValueToTypedLrvDate(lrvExportToDate))}">
+            </label>
+            <label class="field-stack">
+              <span class="field-label">Category</span>
+              <select id="lrvExportCategory" class="select-input">${renderLrvExportCategoryOptions(lrvExportCategory)}</select>
             </label>
           </div>
           <div class="section-actions">
@@ -3647,10 +3925,7 @@
                   </label>
                 <label class="field-stack">
                   <span class="field-label">Cab</span>
-                  <select id="lrvReportCab" class="select-input">
-                    <option value="MC1" ${selectedLrvCab === 'MC1' ? 'selected' : ''}>MC1</option>
-                    <option value="MC2" ${selectedLrvCab === 'MC2' ? 'selected' : ''}>MC2</option>
-                  </select>
+                  <select id="lrvReportCab" class="select-input">${renderLrvCabOptions(selectedLrvCab)}</select>
                 </label>
                 <label class="field-stack">
                   <span class="field-label">Defect Type</span>
@@ -3665,8 +3940,12 @@
                   <select id="lrvThermoKingMode" class="select-input">${renderLrvThermoKingOptions(selectedLrvThermoKingMode)}</select>
                 </label>
                 <label class="field-stack">
+                  <span class="field-label">Reported to Mainline Date</span>
+                  <input id="lrvMlcReportedDate" class="text-input" type="text" inputmode="numeric" maxlength="10" data-lrv-date-input placeholder="MM-DD-YYYY">
+                </label>
+                <label class="field-stack">
                   <span class="field-label">Reported to Mainline Time</span>
-                  <input id="lrvMlcReportedAt" class="text-input" type="datetime-local">
+                  <input id="lrvMlcReportedTime" class="text-input" type="time">
                 </label>
                 <label class="field-stack">
                   <span class="field-label">Additional Details</span>
@@ -5205,7 +5484,7 @@
     async function submitLrvDefectReport() {
       if (!supabaseClient || !currentUser || !canReportLrvDefects()) return;
       const lrvNumber = Number(document.getElementById('lrvReportNumber')?.value || selectedLrvNumber);
-      const cab = document.getElementById('lrvReportCab')?.value || selectedLrvCab;
+      const cab = normalizeLrvCab(document.getElementById('lrvReportCab')?.value || selectedLrvCab);
       const defectCategory = document.getElementById('lrvDefectCategory')?.value || selectedLrvDefectCategory;
       const seatIssueDetail = defectCategory === 'seat_issue'
         ? document.getElementById('lrvSeatIssueDetail')?.value || selectedLrvSeatIssueDetail
@@ -5213,7 +5492,7 @@
       const thermoKingMode = defectCategory === 'thermo_king'
         ? document.getElementById('lrvThermoKingMode')?.value || selectedLrvThermoKingMode
         : null;
-      const mlcReportedAt = dateTimeLocalToIso(document.getElementById('lrvMlcReportedAt')?.value || '');
+      const mlcReportedAt = lrvDateTimeInputsToIso('lrvMlcReportedDate', 'lrvMlcReportedTime');
       const typedDefectText = document.getElementById('lrvDefectText')?.value?.trim() || '';
       const generatedSummary = [
         formatLrvDefectCategory(defectCategory),
@@ -5221,7 +5500,7 @@
         thermoKingMode ? formatLrvThermoKingMode(thermoKingMode) : '',
       ].filter(Boolean).join(' - ');
       const defectText = typedDefectText || generatedSummary;
-      if (!lrvNumbers.includes(lrvNumber) || !['MC1', 'MC2'].includes(cab) || !defectCategory || !defectText) {
+      if (!lrvNumbers.includes(lrvNumber) || !lrvCabOptions.some((item) => item.key === cab) || !defectCategory || !defectText) {
         setStatus('Complete the defect report first', false);
         showToast('Report not saved', 'Choose an LRV, cab, and defect type.');
         return;
@@ -5257,7 +5536,7 @@
       selectedLrvThermoKingMode = thermoKingMode || selectedLrvThermoKingMode;
       await renderLrvDefectsPage();
       setStatus('Defect reported', true);
-      showToast('Defect reported', `LRV ${formatLrvNumber(lrvNumber)} ${cab}`);
+      showToast('Defect reported', `LRV ${formatLrvNumber(lrvNumber)} ${formatLrvCab(cab)}`);
     }
 
     async function grantLrvDefectAccess() {
@@ -5399,11 +5678,11 @@
       if (!supabaseClient || !isLrvDefectAdmin()) return;
       const id = String(reportId || '').trim();
       if (!id) return;
-      const cab = document.getElementById(`editCab_${id}`)?.value || 'MC1';
+      const cab = normalizeLrvCab(document.getElementById(`editCab_${id}`)?.value || 'MC1');
       const defectCategory = document.getElementById(`editCategory_${id}`)?.value || 'other';
       const seatIssueDetail = defectCategory === 'seat_issue' ? document.getElementById(`editSeat_${id}`)?.value || 'recliner' : null;
       const thermoKingMode = defectCategory === 'thermo_king' ? document.getElementById(`editThermo_${id}`)?.value || 'heat' : null;
-      const mlcReportedAt = dateTimeLocalToIso(document.getElementById(`editMlc_${id}`)?.value || '');
+      const mlcReportedAt = lrvDateTimeInputsToIso(`editMlcDate_${id}`, `editMlcTime_${id}`);
       const reportStatus = normalizeLrvReportStatus(document.getElementById(`editStatus_${id}`)?.value || 'open');
       const typedDefectText = document.getElementById(`editText_${id}`)?.value?.trim() || '';
       const generatedSummary = [
@@ -6144,7 +6423,7 @@
         return;
       }
       if (event.target?.id === 'lrvReportCab') {
-        selectedLrvCab = event.target.value || selectedLrvCab;
+        selectedLrvCab = normalizeLrvCab(event.target.value || selectedLrvCab);
       }
       if (event.target?.id === 'lrvDefectCategory') {
         selectedLrvDefectCategory = event.target.value || selectedLrvDefectCategory;
@@ -6163,16 +6442,31 @@
         return;
       }
       if (event.target?.id === 'lrvExportFromDate') {
-        lrvExportFromDate = event.target.value || '';
+        lrvExportFromDate = typedLrvDateToDateValue(event.target.value || '') || '';
         normalizeExportDateInputs();
         refreshLrvDefectAdminPanel();
         return;
       }
       if (event.target?.id === 'lrvExportToDate') {
-        lrvExportToDate = event.target.value || '';
+        lrvExportToDate = typedLrvDateToDateValue(event.target.value || '') || '';
         normalizeExportDateInputs();
         refreshLrvDefectAdminPanel();
+        return;
       }
+      if (event.target?.id === 'lrvExportCategory') {
+        const nextCategory = event.target.value || 'all';
+        lrvExportCategory = nextCategory === 'all' || lrvDefectCategories.some((item) => item.key === nextCategory)
+          ? nextCategory
+          : 'all';
+        refreshLrvDefectAdminPanel();
+      }
+    });
+
+    document.addEventListener('input', (event) => {
+      const dateInput = event.target?.closest?.('[data-lrv-date-input]');
+      if (!dateInput) return;
+      const formatted = formatTypedLrvDateInput(dateInput.value);
+      if (dateInput.value !== formatted) dateInput.value = formatted;
     });
 
     liveMapView.addEventListener('click', (event) => {
