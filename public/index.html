@@ -4441,10 +4441,28 @@
     }
 
     async function signOutUser() {
-      if (!supabaseClient) return;
-      await supabaseClient.auth.signOut();
+      const signOutBtn = document.getElementById('signOutBtn');
+      if (signOutBtn) {
+        signOutBtn.disabled = true;
+        signOutBtn.textContent = 'Signing Out...';
+      }
+      setStatus('Signing out...', true);
+      if (supabaseClient) {
+        try {
+          await withAuthRequestTimeout(
+            supabaseClient.auth.signOut({ scope: 'local' }),
+            'Sign out',
+            5000,
+          );
+        } catch (_) {
+          // Clear the UI even if the network/session cleanup is slow.
+        }
+      }
+      await handleSession(null);
       setAccountNotice('Signed out.', 'ok');
       closeAccountModal();
+      setStatus('Signed out', true);
+      showToast('Signed out');
     }
 
     async function handleSession(session) {
