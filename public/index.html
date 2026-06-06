@@ -4,6 +4,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>ERO Operator Tools</title>
+  <meta name="theme-color" content="#14171d">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="ERO Tool">
+  <link rel="manifest" href="/manifest.webmanifest">
   <style>
     :root {
       --bg: #14171d;
@@ -1181,6 +1185,31 @@
       margin: 0;
       accent-color: var(--accent-2);
     }
+    .toggle-row {
+      align-items: center;
+      display: flex;
+      gap: 12px;
+      justify-content: space-between;
+      cursor: pointer;
+      user-select: none;
+    }
+    .toggle-row strong {
+      display: block;
+      font-size: 14px;
+    }
+    .toggle-row small {
+      color: var(--muted);
+      display: block;
+      font-size: 12px;
+      line-height: 1.35;
+      margin-top: 3px;
+    }
+    .toggle-row input {
+      accent-color: var(--accent-2);
+      flex: 0 0 auto;
+      width: 20px;
+      height: 20px;
+    }
     .password-toggle-row {
       display: flex;
       justify-content: flex-start;
@@ -1899,6 +1928,10 @@
     let currentProfile = null;
     let accountOptions = null;
     let myWorkDraft = null;
+    const tripNotificationStorageKey = 'ero_trip_notification_settings_v1';
+    const tripNotificationFiredStorageKey = 'ero_trip_notification_fired_v1';
+    let tripNotificationSettings = loadTripNotificationSettings();
+    let tripNotificationFired = loadTripNotificationFired();
     let currentPaddleOpenSource = 'lookup';
     let paddleModalRefreshInFlight = false;
     let accountAuthMode = 'signin';
@@ -2416,6 +2449,134 @@
     function renderAccountNotice() {
       if (!accountNotice.text) return '';
       return `<div class="auth-notice ${escapeHtml(accountNotice.type || '')}">${escapeHtml(accountNotice.text)}</div>`;
+    }
+
+    function loadTripNotificationSettings() {
+      try {
+        const parsed = JSON.parse(localStorage.getItem(tripNotificationStorageKey) || '{}');
+        const leadMinutes = [3, 5].includes(Number(parsed.leadMinutes)) ? Number(parsed.leadMinutes) : 3;
+        return {
+          enabled: Boolean(parsed.enabled),
+          leadMinutes,
+        };
+      } catch (_) {
+        return { enabled: false, leadMinutes: 3 };
+      }
+    }
+
+    function saveTripNotificationSettings() {
+      localStorage.setItem(tripNotificationStorageKey, JSON.stringify(tripNotificationSettings));
+    }
+
+    function loadTripNotificationFired() {
+      try {
+        const parsed = JSON.parse(localStorage.getItem(tripNotificationFiredStorageKey) || '{}');
+        const todayKey = getTodayDateValue();
+        return new Set(Array.isArray(parsed[todayKey]) ? parsed[todayKey] : []);
+      } catch (_) {
+        return new Set();
+      }
+    }
+
+    function saveTripNotificationFired() {
+      localStorage.setItem(tripNotificationFiredStorageKey, JSON.stringify({
+        [getTodayDateValue()]: Array.from(tripNotificationFired).slice(-80),
+      }));
+    }
+
+    function notificationSupportMessage() {
+      if (!('Notification' in window)) return 'Notifications are not supported in this browser.';
+      if (!window.isSecureContext) return 'Open the live HTTPS site to enable notifications.';
+      if (Notification.permission === 'denied') return 'Notifications are blocked in this browser. Enable them in browser settings.';
+      if (Notification.permission === 'granted') return 'Notifications are allowed on this device.';
+      return 'Save with notifications on to allow browser notifications.';
+    }
+
+    function renderTripNotificationSettings() {
+      const enabled = Boolean(tripNotificationSettings.enabled);
+      const lead = [3, 5].includes(Number(tripNotificationSettings.leadMinutes)) ? Number(tripNotificationSettings.leadMinutes) : 3;
+      const canRequest = 'Notification' in window && window.isSecureContext;
+      return `
+        <section class="section-card">
+          <div class="field-label">Trip Notifications</div>
+          <p class="overlay-page-copy">Phone notification first: get an iPhone/browser notification before your next trip starts. Apple Watch is second target and depends on your iPhone/watch notification mirroring settings.</p>
+          <div class="stack-form" style="margin-top:12px;">
+            <label class="toggle-row">
+              <span>
+                <strong>Notify before trip start</strong>
+                <small>${escapeHtml(notificationSupportMessage())}</small>
+              </span>
+              <input id="tripNotificationEnabled" type="checkbox" ${enabled ? 'checked' : ''} ${canRequest ? '' : 'disabled'}>
+            </label>
+            <label class="field-stack">
+              <span class="field-label">Reminder Time</span>
+              <select id="tripNotificationLead" class="select-input" ${enabled && canRequest ? '' : 'disabled'}>
+                <option value="3" ${lead === 3 ? 'selected' : ''}>3 minutes before</option>
+                <option value="5" ${lead === 5 ? 'selected' : ''}>5 minutes before</option>
+              </select>
+            </label>
+            <div class="muted">For iPhone, add ERO Tool to the Home Screen, open it from there, and allow notifications. This version alerts while ERO Tool is open; closed-app push is the next server-side step.</div>
+          </div>
+        </section>
+      `;
+    }
+
+    async function requestTripNotificationPermission() {
+      if (!('Notification' in window) || !window.isSecureContext) return false;
+      if (Notification.permission === 'granted') return true;
+      if (Notification.permission === 'denied') return false;
+      const permission = await Notification.requestPermission();
+      return permission === 'granted';
+    }
+
+    async function showTripStartNotification(title, options = {}) {
+      if (!('Notification' in window) || Notification.permission !== 'granted') return false;
+      const payload = {
+        body: options.body || '',
+        tag: options.tag || 'ero-trip-start',
+        renotify: true,
+        requireInteraction: false,
+        data: { url: window.location.href },
+      };
+      if ('serviceWorker' in navigator) {
+        try {
+          const registration = await Promise.race([
+            navigator.serviceWorker.ready,
+            new Promise((_, reject) => window.setTimeout(() => reject(new Error('Service worker not ready')), 1500)),
+          ]);
+          await registration.showNotification(title, payload);
+          return true;
+        } catch (_) {
+          // Fall back to a page notification below.
+        }
+      }
+      new Notification(title, payload);
+      return true;
+    }
+
+    function getTripStartNotificationInfo(live) {
+      if (!live || !['break', 'prestart'].includes(live.kind)) return null;
+      const targetTime = live.nextStartTime || live.nextTripStartTime || live.targetTime || '';
+      if (!targetTime) return null;
+      const trip = live.nextSequence || live.sequence || '';
+      const station = live.nextStartStop || live.reportPlaceName || live.startStop || '';
+      return {
+        targetTime,
+        trip,
+        station,
+        block: live.nextBlock || live.block || '',
+      };
+    }
+
+    function renderTripNotificationData(live) {
+      const info = getTripStartNotificationInfo(live);
+      if (!info) return '';
+      return [
+        `data-trip-notify-target="${escapeHtml(info.targetTime)}"`,
+        `data-trip-notify-trip="${escapeHtml(info.trip)}"`,
+        `data-trip-notify-station="${escapeHtml(info.station)}"`,
+        `data-trip-notify-block="${escapeHtml(info.block)}"`,
+      ].join(' ');
     }
 
     function getAuthRedirectUrl() {
@@ -3691,6 +3852,36 @@
       renderAccountModal();
     }
 
+    async function updateTripNotificationSettings() {
+      const enabledInput = document.getElementById('tripNotificationEnabled');
+      const leadInput = document.getElementById('tripNotificationLead');
+      const wantsEnabled = Boolean(enabledInput?.checked);
+      const leadMinutes = [3, 5].includes(Number(leadInput?.value)) ? Number(leadInput.value) : 3;
+      tripNotificationSettings.leadMinutes = leadMinutes;
+      if (wantsEnabled) {
+        const allowed = await requestTripNotificationPermission();
+        tripNotificationSettings.enabled = allowed;
+        setAccountNotice(allowed
+          ? `Trip notifications are on for ${leadMinutes} minutes before start.`
+          : notificationSupportMessage(), allowed ? 'ok' : 'warn');
+      } else {
+        tripNotificationSettings.enabled = false;
+        setAccountNotice('Trip notifications are off.', 'ok');
+      }
+      saveTripNotificationSettings();
+      renderAccountModal();
+      refreshCountdowns();
+    }
+
+    async function registerServiceWorker() {
+      if (!('serviceWorker' in navigator) || !window.isSecureContext) return;
+      try {
+        await navigator.serviceWorker.register('/sw.js');
+      } catch (_) {
+        // Notifications still work while the page is open in browsers that allow Notification().
+      }
+    }
+
     async function signOutUser() {
       if (!supabaseClient) return;
       await supabaseClient.auth.signOut();
@@ -3872,6 +4063,7 @@
             <button id="signOutBtn" class="linkish-btn" type="button">Sign Out</button>
           </div>
         </section>
+        ${renderTripNotificationSettings()}
       `;
       wireAccountEvents();
     }
@@ -3898,6 +4090,8 @@
       const saveSettingsBtn = document.getElementById('saveSettingsBtn');
       const requestPasswordResetBtn = document.getElementById('requestPasswordResetBtn');
       const signOutBtn = document.getElementById('signOutBtn');
+      const tripNotificationEnabled = document.getElementById('tripNotificationEnabled');
+      const tripNotificationLead = document.getElementById('tripNotificationLead');
       wirePasswordToggle('toggleSigninPassword', ['authPassword']);
       wirePasswordToggle('toggleSignupPasswords', ['authPassword', 'authPasswordConfirm']);
       wirePasswordToggle('toggleRecoveryPasswords', ['recoveryPassword', 'recoveryPasswordConfirm']);
@@ -3926,6 +4120,8 @@
       if (sendResetBtn) sendResetBtn.addEventListener('click', sendPasswordResetEmail);
       if (setNewPasswordBtn) setNewPasswordBtn.addEventListener('click', setNewPassword);
       if (saveSettingsBtn) saveSettingsBtn.addEventListener('click', saveSettings);
+      if (tripNotificationEnabled) tripNotificationEnabled.addEventListener('change', updateTripNotificationSettings);
+      if (tripNotificationLead) tripNotificationLead.addEventListener('change', updateTripNotificationSettings);
       if (requestPasswordResetBtn) requestPasswordResetBtn.addEventListener('click', sendSignedInPasswordResetEmail);
       if (signOutBtn) signOutBtn.addEventListener('click', signOutUser);
     }
@@ -4201,7 +4397,7 @@
         </div>
       ` : '';
       return `
-        <div class="active-box">
+        <div class="active-box" ${renderTripNotificationData(live)}>
           <div class="active-box-head">
             <div class="active-box-copy">
               <div class="title">${escapeHtml(action.title)}</div>
@@ -4339,6 +4535,41 @@
           progress = 10 + ((elapsed / total) * 80);
         }
         node.style.setProperty('--train-progress', `${progress}%`);
+      });
+      checkTripStartNotifications(nowSeconds);
+    }
+
+    function checkTripStartNotifications(nowSeconds = getOttawaNowSeconds()) {
+      if (!tripNotificationSettings.enabled || !('Notification' in window) || Notification.permission !== 'granted') return;
+      const leadSeconds = (Number(tripNotificationSettings.leadMinutes) || 3) * 60;
+      document.querySelectorAll('[data-trip-notify-target]').forEach((node) => {
+        const targetTime = node.getAttribute('data-trip-notify-target') || '';
+        const targetSeconds = timeToSecondsClock(targetTime);
+        if (targetSeconds === null) return;
+        let diff = targetSeconds - nowSeconds;
+        if (diff < -60) diff += 24 * 3600;
+        if (diff < 0 || diff > leadSeconds) return;
+        const card = node.closest('[data-paddle-card]');
+        const paddleId = card?.dataset?.paddleCard || 'paddle';
+        const serviceDay = card?.dataset?.serviceDay || '';
+        const trip = node.getAttribute('data-trip-notify-trip') || '';
+        const block = node.getAttribute('data-trip-notify-block') || '';
+        const station = node.getAttribute('data-trip-notify-station') || '';
+        const notificationKey = [getTodayDateValue(), paddleId, serviceDay, trip, block, targetTime].join('|');
+        if (tripNotificationFired.has(notificationKey)) return;
+        tripNotificationFired.add(notificationKey);
+        saveTripNotificationFired();
+        const title = `Trip${trip ? ` ${trip}` : ''} starts in ${Math.max(1, Math.ceil(diff / 60))} min`;
+        const detail = [
+          `Paddle ${paddleId}`,
+          block ? `Block ${block}` : '',
+          station ? `Start: ${station}` : '',
+          targetTime ? `At ${targetTime}` : '',
+        ].filter(Boolean).join(' | ');
+        showTripStartNotification(title, {
+          body: detail,
+          tag: `ero-trip-${notificationKey}`,
+        });
       });
     }
 
@@ -5458,6 +5689,7 @@
     refreshCountdowns();
     renderOcMetaBar();
     setInterval(refreshCountdowns, 1000);
+    registerServiceWorker();
     initSupabase();
 
     document.addEventListener('click', async (event) => {

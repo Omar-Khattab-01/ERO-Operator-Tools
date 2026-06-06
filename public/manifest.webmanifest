@@ -1,0 +1,10 @@
+{
+  "name": "ERO Operator Tools",
+  "short_name": "ERO Tool",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#14171d",
+  "theme_color": "#14171d",
+  "description": "Paddle lookup and operator reference tools."
+}
