@@ -3370,7 +3370,7 @@
         updateAccountButton();
         loadLrvDefectAccessList()
           .then(() => {
-            if (!lrvDefectsView.hidden) renderLrvDefectsPage();
+            refreshLrvDefectAdminPanel();
             if (!accountOverlay.hidden) renderAccountModal();
           })
           .catch((error) => {
@@ -3378,26 +3378,33 @@
           });
         return true;
       }
-      const { data, error } = await withLrvRequestTimeout(supabaseClient
-        .from('ero_lrv_defect_access')
-        .select('email, role')
-        .eq('email', currentUserEmail())
-        .maybeSingle(), 'LRV access lookup');
-      if (error && setLrvSchemaWarning(error)) {
+      let accessData = null;
+      let accessError = null;
+      try {
+        const accessResponse = await fetchSignedApi(`/api/lrv-defect-access?email=${encodeURIComponent(currentUserEmail())}`, {
+          label: 'LRV access lookup',
+          timeoutMs: 25000,
+        });
+        accessData = accessResponse.access || null;
+      } catch (requestError) {
+        accessError = requestError;
+      }
+      if (accessError && setLrvSchemaWarning(accessError)) {
         lrvDefectAccessRole = '';
         lrvDefectAccessAllowed = false;
         lrvDefectAccessLoaded = true;
         updateAccountButton();
         return false;
       }
-      lrvDefectAccessRole = data && !error ? normalizeLrvAccessRole(data.role) : '';
+      if (accessError) throw accessError;
+      lrvDefectAccessRole = accessData ? normalizeLrvAccessRole(accessData.role) : '';
       lrvDefectAccessAllowed = Boolean(lrvDefectAccessRole);
       lrvDefectAccessLoaded = true;
       updateAccountButton();
       if (isLrvDefectAdmin()) {
         loadLrvDefectAccessList()
           .then(() => {
-            if (!lrvDefectsView.hidden) renderLrvDefectsPage();
+            refreshLrvDefectAdminPanel();
             if (!accountOverlay.hidden) renderAccountModal();
           })
           .catch((error) => {
@@ -3542,14 +3549,11 @@
         lrvDefectReports = [];
         return [];
       }
-      const { data, error } = await withLrvRequestTimeout(supabaseClient
-        .from('ero_lrv_defect_reports')
-        .select('id, lrv_number, cab, defect_category, seat_issue_detail, thermo_king_mode, mlc_reported_at, report_status, defect_text, reported_by_email, reported_at')
-        .eq('lrv_number', selectedLrvNumber)
-        .order('reported_at', { ascending: false })
-        .limit(250), 'LRV defect reports', 30000);
-      if (error) throw error;
-      lrvDefectReports = Array.isArray(data) ? data : [];
+      const data = await fetchSignedApi(`/api/lrv-defect-reports?lrvNumber=${encodeURIComponent(selectedLrvNumber)}&limit=250`, {
+        label: 'LRV defect reports',
+        timeoutMs: 35000,
+      });
+      lrvDefectReports = Array.isArray(data.reports) ? data.reports : [];
       return lrvDefectReports;
     }
 
@@ -4049,26 +4053,37 @@
       }
     }
 
+    async function getSupabaseAccessToken() {
+      if (!supabaseClient) return '';
+      const { data, error } = await supabaseClient.auth.getSession();
+      if (error) throw error;
+      return data?.session?.access_token || '';
+    }
+
+    async function fetchSignedApi(path, options = {}) {
+      const token = await getSupabaseAccessToken();
+      if (!token) throw new Error('Sign in again to continue.');
+      const response = await withAuthRequestTimeout(fetch(path, {
+        method: options.method || 'GET',
+        headers: {
+          authorization: `Bearer ${token}`,
+          'content-type': 'application/json',
+          ...(options.headers || {}),
+        },
+        body: options.body ? JSON.stringify(options.body) : undefined,
+      }), options.label || 'Account request', options.timeoutMs || 20000);
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.ok) {
+        throw new Error(data.error || `${options.label || 'Account request'} failed.`);
+      }
+      return data;
+    }
+
     async function ensureProfileRow() {
       if (!supabaseClient || !currentUser) return false;
       if (currentProfile) return true;
-      const fallbackName = currentUser.user_metadata?.display_name || currentUser.user_metadata?.username || '';
-      const { data, error } = await supabaseClient
-        .from('ero_user_profiles')
-        .upsert({
-          user_id: currentUser.id,
-          display_name: fallbackName || null,
-          email: currentUserEmail() || null,
-        }, { onConflict: 'user_id' })
-        .select('*')
-        .single();
-      if (error || !data) {
-        currentProfile = null;
-        setAccountNotice(error?.message || 'Could not load your saved work.', 'warn');
-        return false;
-      }
-      currentProfile = data;
-      return true;
+      await loadProfile();
+      return Boolean(currentProfile);
     }
 
     async function loadProfile() {
@@ -4078,23 +4093,18 @@
         updateAccountButton();
         return;
       }
-      const { data, error } = await withAuthRequestTimeout(supabaseClient
-        .from('ero_user_profiles')
-        .select('*')
-        .eq('user_id', currentUser.id)
-        .maybeSingle(), 'Saved work load');
-      if (error) {
-        currentProfile = null;
-      } else if (data) {
-        currentProfile = data;
-        if (currentUserEmail() && currentProfile.email !== currentUserEmail()) {
-          currentProfile.email = currentUserEmail();
-          await saveCurrentProfile();
-        }
-      } else {
-        currentProfile = null;
-        await ensureProfileRow();
-      }
+      const fallbackName = currentUser.user_metadata?.display_name || currentUser.user_metadata?.username || '';
+      const data = await fetchSignedApi('/api/account-profile/load', {
+        method: 'POST',
+        label: 'Saved work load',
+        timeoutMs: 25000,
+        body: {
+          userId: currentUser.id,
+          displayName: fallbackName || null,
+          email: currentUserEmail() || null,
+        },
+      });
+      currentProfile = data.profile || null;
       myWorkDraft = null;
       syncTodaysPaddleFromMyWork();
       updateAccountButton();
@@ -4104,19 +4114,32 @@
       if (!supabaseClient || !currentUser || !currentProfile) return { ok: false, error: 'Not signed in.' };
       const payload = buildProfilePayload();
       let usedLegacyFallback = false;
-      let { data, error } = await supabaseClient
-        .from('ero_user_profiles')
-        .upsert(payload, { onConflict: 'user_id' })
-        .select('*')
-        .single();
+      let data = null;
+      let error = null;
+      try {
+        const response = await fetchSignedApi('/api/account-profile/save', {
+          method: 'POST',
+          label: 'Saved work save',
+          timeoutMs: 25000,
+          body: { profile: payload },
+        });
+        data = response.profile || null;
+      } catch (requestError) {
+        error = requestError;
+      }
       if (error && isMissingWeeklyColumnError(error)) {
-        const fallback = await supabaseClient
-          .from('ero_user_profiles')
-          .upsert(buildLegacyProfilePayload(), { onConflict: 'user_id' })
-          .select('*')
-          .single();
-        data = fallback.data;
-        error = fallback.error;
+        try {
+          const fallback = await fetchSignedApi('/api/account-profile/save', {
+            method: 'POST',
+            label: 'Saved work save',
+            timeoutMs: 25000,
+            body: { profile: buildLegacyProfilePayload() },
+          });
+          data = fallback.profile || null;
+          error = null;
+        } catch (fallbackError) {
+          error = fallbackError;
+        }
         if (!error) {
           usedLegacyFallback = true;
           setAccountNotice('Saved using the current database columns. Apply the Week 1 / Week 2 migration to save separate weeks.', 'warn');

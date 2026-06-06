@@ -964,6 +964,178 @@ app.get('/api/account-options', (_req, res) => {
   });
 });
 
+function getBearerToken(req) {
+  const header = String(req.get('authorization') || '').trim();
+  const match = header.match(/^Bearer\s+(.+)$/i);
+  return match ? match[1].trim() : '';
+}
+
+function supabaseRestUrl(pathname, params = null) {
+  const url = new URL(`${SUPABASE_URL}/rest/v1/${pathname.replace(/^\/+/, '')}`);
+  if (params) {
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') url.searchParams.set(key, String(value));
+    });
+  }
+  return url;
+}
+
+async function supabaseRestRequest(req, pathname, options = {}) {
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+    return { ok: false, status: 503, error: 'Supabase is not configured.' };
+  }
+  const token = getBearerToken(req);
+  if (!token) {
+    return { ok: false, status: 401, error: 'Sign in again to continue.' };
+  }
+  const url = supabaseRestUrl(pathname, options.params);
+  const response = await fetch(url, {
+    method: options.method || 'GET',
+    headers: {
+      apikey: SUPABASE_ANON_KEY,
+      authorization: `Bearer ${token}`,
+      'content-type': 'application/json',
+      ...(options.prefer ? { prefer: options.prefer } : {}),
+    },
+    body: options.body ? JSON.stringify(options.body) : undefined,
+  });
+  const text = await response.text();
+  let payload = null;
+  try {
+    payload = text ? JSON.parse(text) : null;
+  } catch (_) {
+    payload = text;
+  }
+  if (!response.ok) {
+    const message = payload?.message || payload?.msg || payload?.error || response.statusText || 'Supabase request failed.';
+    return { ok: false, status: response.status, error: String(message), details: payload };
+  }
+  return { ok: true, status: response.status, data: payload };
+}
+
+function isUuid(value) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(value || ''));
+}
+
+app.post('/api/account-profile/load', async (req, res) => {
+  const userId = String(req.body?.userId || '').trim();
+  if (!isUuid(userId)) {
+    res.status(400).json({ ok: false, error: 'Missing account id.' });
+    return;
+  }
+  try {
+    const existing = await supabaseRestRequest(req, 'ero_user_profiles', {
+      params: {
+        select: '*',
+        user_id: `eq.${userId}`,
+        limit: '1',
+      },
+    });
+    if (!existing.ok) {
+      res.status(existing.status).json({ ok: false, error: existing.error, details: existing.details || null });
+      return;
+    }
+    const row = Array.isArray(existing.data) ? existing.data[0] : null;
+    if (row) {
+      res.json({ ok: true, profile: row });
+      return;
+    }
+    const created = await supabaseRestRequest(req, 'ero_user_profiles', {
+      method: 'POST',
+      params: { select: '*' },
+      prefer: 'resolution=merge-duplicates,return=representation',
+      body: {
+        user_id: userId,
+        display_name: String(req.body?.displayName || '').trim() || null,
+        email: String(req.body?.email || '').trim().toLowerCase() || null,
+      },
+    });
+    if (!created.ok) {
+      res.status(created.status).json({ ok: false, error: created.error, details: created.details || null });
+      return;
+    }
+    res.json({ ok: true, profile: Array.isArray(created.data) ? created.data[0] : created.data });
+  } catch (error) {
+    res.status(502).json({ ok: false, error: error.message || 'Could not load saved work.' });
+  }
+});
+
+app.post('/api/account-profile/save', async (req, res) => {
+  const payload = req.body?.profile || null;
+  if (!payload || !isUuid(payload.user_id)) {
+    res.status(400).json({ ok: false, error: 'Missing profile.' });
+    return;
+  }
+  try {
+    const saved = await supabaseRestRequest(req, 'ero_user_profiles', {
+      method: 'POST',
+      params: {
+        on_conflict: 'user_id',
+        select: '*',
+      },
+      prefer: 'resolution=merge-duplicates,return=representation',
+      body: payload,
+    });
+    if (!saved.ok) {
+      res.status(saved.status).json({ ok: false, error: saved.error, details: saved.details || null });
+      return;
+    }
+    res.json({ ok: true, profile: Array.isArray(saved.data) ? saved.data[0] : saved.data });
+  } catch (error) {
+    res.status(502).json({ ok: false, error: error.message || 'Could not save profile.' });
+  }
+});
+
+app.get('/api/lrv-defect-access', async (req, res) => {
+  const email = String(req.query.email || '').trim().toLowerCase();
+  if (!email) {
+    res.status(400).json({ ok: false, error: 'Missing email.' });
+    return;
+  }
+  try {
+    const result = await supabaseRestRequest(req, 'ero_lrv_defect_access', {
+      params: {
+        select: 'email,role',
+        email: `eq.${email}`,
+        limit: '1',
+      },
+    });
+    if (!result.ok) {
+      res.status(result.status).json({ ok: false, error: result.error, details: result.details || null });
+      return;
+    }
+    res.json({ ok: true, access: Array.isArray(result.data) ? result.data[0] || null : null });
+  } catch (error) {
+    res.status(502).json({ ok: false, error: error.message || 'Could not load LRV defect access.' });
+  }
+});
+
+app.get('/api/lrv-defect-reports', async (req, res) => {
+  const lrvNumber = Number(req.query.lrvNumber || req.query.lrv || 0);
+  const limit = Math.min(Math.max(Number(req.query.limit || 250) || 250, 1), 500);
+  if (!Number.isInteger(lrvNumber) || lrvNumber < 1 || lrvNumber > 67) {
+    res.status(400).json({ ok: false, error: 'Choose an LRV from 01 to 67.' });
+    return;
+  }
+  try {
+    const result = await supabaseRestRequest(req, 'ero_lrv_defect_reports', {
+      params: {
+        select: 'id,lrv_number,cab,defect_category,seat_issue_detail,thermo_king_mode,mlc_reported_at,report_status,defect_text,reported_by_email,reported_at',
+        lrv_number: `eq.${lrvNumber}`,
+        order: 'reported_at.desc',
+        limit: String(limit),
+      },
+    });
+    if (!result.ok) {
+      res.status(result.status).json({ ok: false, error: result.error, details: result.details || null });
+      return;
+    }
+    res.json({ ok: true, reports: Array.isArray(result.data) ? result.data : [] });
+  } catch (error) {
+    res.status(502).json({ ok: false, error: error.message || 'Could not load LRV defect reports.' });
+  }
+});
+
 app.get('/api/today-board', (_req, res) => {
   res.json(buildTodayBoard());
 });
