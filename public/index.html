@@ -4240,11 +4240,17 @@
         showToast('Sign in failed', 'No account session was returned.');
         return;
       }
-      await handleSession(session);
       setAccountNotice('', '');
       setStatus('Signed in', true);
       showToast('Signed in', session.user.email || 'Account ready.');
       closeAccountModal();
+      handleSession(session)
+        .then(() => setStatus('Account ready', true))
+        .catch((sessionError) => {
+          setAccountNotice(sessionError?.message || 'Signed in, but account details could not load.', 'warn');
+          setStatus('Account details failed', false);
+          showToast('Account warning', sessionError?.message || 'Signed in, but account details could not load.');
+        });
     }
 
     async function signUpWithPassword() {
