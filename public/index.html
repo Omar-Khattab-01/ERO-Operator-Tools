@@ -3630,6 +3630,18 @@
       return result;
     }
 
+    async function persistMyWorkDraft(actionLabel = 'My Work saved') {
+      const result = await saveMyWorkDraft();
+      if (!result.ok) {
+        setStatus(result.error || 'Could not save work.', false);
+        showToast('Save failed', result.error || 'Your work was not saved. Please try again.');
+        return false;
+      }
+      if (!todaysPaddleView.hidden) await renderTodaysPaddlePage();
+      setStatus(actionLabel, true);
+      return true;
+    }
+
     async function savePaddleToMyWork(paddleId, serviceDay) {
       if (!currentUser) {
         setAccountNotice('Sign in first to save paddles to My Work.', 'warn');
@@ -4230,9 +4242,6 @@
             ${myWorkDraft.sameWork
               ? renderMyWorkWeekCard({ key: 'week1', label: 'Both Weeks' }, serviceDays, paddleOptions, lookupServiceDay, lookupPaddleId)
               : workWeeks.map((week) => renderMyWorkWeekCard(week, serviceDays, paddleOptions, lookupServiceDay, lookupPaddleId)).join('')}
-          </div>
-          <div class="section-actions">
-            <button id="saveMyWorkDraftBtn" class="btn" type="button">Save Work</button>
           </div>
         </section>
       `;
@@ -5826,7 +5835,9 @@
       const sameWorkScheduleToggle = event.target.closest('#sameWorkScheduleToggle');
       if (sameWorkScheduleToggle) {
         setDraftSameWork(sameWorkScheduleToggle.checked);
+        const saved = await persistMyWorkDraft('My Work updated');
         await renderMyWorkPage();
+        if (saved) showToast('My Work updated', sameWorkScheduleToggle.checked ? 'Week 1 and Week 2 now use the same paddles.' : 'Week 1 and Week 2 can now be saved separately.');
         return;
       }
 
@@ -5840,33 +5851,19 @@
           setStatus(result.error, false);
           return;
         }
+        const saved = await persistMyWorkDraft('Paddle added to My Work');
         await renderMyWorkPage();
-        setStatus('Paddle added to My Work', true);
+        if (saved) showToast('Saved to My Work', `${result.paddleId} was saved.`);
         return;
       }
 
       const removeMyWorkDraftBtn = event.target.closest('[data-remove-my-work-draft]');
       if (removeMyWorkDraftBtn) {
-        removePaddleFromMyWorkDraft(removeMyWorkDraftBtn.dataset.day || '', removeMyWorkDraftBtn.dataset.removeMyWorkDraft || '', removeMyWorkDraftBtn.dataset.week || getCurrentWorkWeekKey());
+        const paddleId = removeMyWorkDraftBtn.dataset.removeMyWorkDraft || '';
+        removePaddleFromMyWorkDraft(removeMyWorkDraftBtn.dataset.day || '', paddleId, removeMyWorkDraftBtn.dataset.week || getCurrentWorkWeekKey());
+        const saved = await persistMyWorkDraft('Paddle removed from My Work');
         await renderMyWorkPage();
-        setStatus('Paddle removed from My Work', true);
-        return;
-      }
-
-      const saveMyWorkDraftBtn = event.target.closest('#saveMyWorkDraftBtn');
-      if (saveMyWorkDraftBtn) {
-        const savedSameWork = Boolean(myWorkDraft?.sameWork);
-        const result = await saveMyWorkDraft();
-        if (!result.ok) {
-          setStatus(result.error || 'Could not save work.', false);
-          showToast('Save failed', result.error || 'Your work was not saved. Please try again.');
-          return;
-        }
-        await renderMyWorkPage();
-        setStatus('My Work saved', true);
-        showToast('My Work saved', result.usedLegacyFallback
-          ? 'Saved with the current database columns. Apply the Week 1 / Week 2 migration to save separate weeks.'
-          : savedSameWork ? 'Your Week 1 and Week 2 work are using the same paddles.' : 'Your Week 1 and Week 2 paddles are saved.');
+        if (saved) showToast('Removed from My Work', `${paddleId} was removed.`);
         return;
       }
 
