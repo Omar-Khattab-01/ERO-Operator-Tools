@@ -115,7 +115,7 @@ on public.ero_lrv_defect_access (lower(email));
 create table if not exists public.ero_lrv_defect_reports (
   id uuid primary key default gen_random_uuid(),
   lrv_number integer not null check (lrv_number between 1 and 67),
-  cab text not null check (cab in ('MC1', 'MC2', 'UNKNOWN')),
+  cab text not null check (cab in ('MC1', 'MC2')),
   defect_category text,
   seat_issue_detail text,
   thermo_king_mode text,
@@ -150,13 +150,6 @@ set report_status = 'open'
 where report_status is null;
 
 alter table public.ero_lrv_defect_reports
-drop constraint if exists ero_lrv_defect_reports_cab_check;
-
-alter table public.ero_lrv_defect_reports
-add constraint ero_lrv_defect_reports_cab_check
-check (cab in ('MC1', 'MC2', 'UNKNOWN'));
-
-alter table public.ero_lrv_defect_reports
 drop constraint if exists ero_lrv_defect_reports_category_check;
 
 alter table public.ero_lrv_defect_reports
@@ -165,7 +158,6 @@ check (
   defect_category is null
   or defect_category in (
     'dirty_windshield',
-    'nsa',
     'dars_volume',
     'traction_bell',
     'seat_issue',
