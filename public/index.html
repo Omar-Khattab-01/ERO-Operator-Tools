@@ -4213,9 +4213,10 @@
         signInBtn.textContent = 'Signing In...';
       }
       setStatus('Signing in...', true);
+      let data = null;
       let error = null;
       try {
-        ({ error } = await withAuthRequestTimeout(
+        ({ data, error } = await withAuthRequestTimeout(
           supabaseClient.auth.signInWithPassword({ email, password }),
           'Sign in',
         ));
@@ -4228,10 +4229,21 @@
         setAccountNotice(error.message || 'Sign in failed.', 'warn');
         renderAccountModal();
         setStatus('Sign in failed', false);
+        showToast('Sign in failed', error.message || 'Check the email and password.');
         return;
       }
+      const session = data?.session || (await supabaseClient.auth.getSession()).data?.session || null;
+      if (!session?.user) {
+        setAccountNotice('Sign in did not return an account session. Reload and try again.', 'warn');
+        renderAccountModal();
+        setStatus('Sign in failed', false);
+        showToast('Sign in failed', 'No account session was returned.');
+        return;
+      }
+      await handleSession(session);
       setAccountNotice('', '');
       setStatus('Signed in', true);
+      showToast('Signed in', session.user.email || 'Account ready.');
       closeAccountModal();
     }
 
