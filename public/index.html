@@ -3366,8 +3366,15 @@
         lrvDefectAccessAllowed = true;
         lrvDefectAccessRole = 'admin';
         lrvDefectAccessLoaded = true;
-        await loadLrvDefectAccessList();
         updateAccountButton();
+        loadLrvDefectAccessList()
+          .then(() => {
+            if (!lrvDefectsView.hidden) renderLrvDefectsPage();
+            if (!accountOverlay.hidden) renderAccountModal();
+          })
+          .catch((error) => {
+            setLrvSchemaWarning(error);
+          });
         return true;
       }
       const { data, error } = await withLrvRequestTimeout(supabaseClient
@@ -3385,8 +3392,17 @@
       lrvDefectAccessRole = data && !error ? normalizeLrvAccessRole(data.role) : '';
       lrvDefectAccessAllowed = Boolean(lrvDefectAccessRole);
       lrvDefectAccessLoaded = true;
-      if (isLrvDefectAdmin()) await loadLrvDefectAccessList();
       updateAccountButton();
+      if (isLrvDefectAdmin()) {
+        loadLrvDefectAccessList()
+          .then(() => {
+            if (!lrvDefectsView.hidden) renderLrvDefectsPage();
+            if (!accountOverlay.hidden) renderAccountModal();
+          })
+          .catch((error) => {
+            setLrvSchemaWarning(error);
+          });
+      }
       return lrvDefectAccessAllowed;
     }
 
@@ -4059,11 +4075,11 @@
         updateAccountButton();
         return;
       }
-      const { data, error } = await supabaseClient
+      const { data, error } = await withAuthRequestTimeout(supabaseClient
         .from('ero_user_profiles')
         .select('*')
         .eq('user_id', currentUser.id)
-        .maybeSingle();
+        .maybeSingle(), 'Saved work load');
       if (error) {
         currentProfile = null;
       } else if (data) {
@@ -4476,21 +4492,22 @@
         lrvDefectAccessPendingRoles.clear();
         lrvDefectProfileList = [];
       } else {
-        try {
-          await loadProfile();
-        } catch (error) {
+        lrvDefectAccessLoaded = false;
+        updateAccountButton();
+        const [profileResult, lrvAccessResult] = await Promise.allSettled([
+          loadProfile(),
+          loadLrvDefectAccessState(true),
+        ]);
+        if (profileResult.status === 'rejected') {
           currentProfile = null;
           myWorkDraft = null;
-          setAccountNotice(error?.message || 'Signed in, but saved work could not load.', 'warn');
+          setAccountNotice(profileResult.reason?.message || 'Signed in, but saved work could not load.', 'warn');
         }
-        lrvDefectAccessLoaded = false;
-        try {
-          await loadLrvDefectAccessState(true);
-        } catch (error) {
+        if (lrvAccessResult.status === 'rejected') {
           lrvDefectAccessAllowed = false;
           lrvDefectAccessRole = '';
           lrvDefectAccessLoaded = true;
-          setAccountNotice(error?.message || 'Signed in, but LRV defect access could not load.', 'warn');
+          setAccountNotice(lrvAccessResult.reason?.message || 'Signed in, but LRV defect access could not load.', 'warn');
         }
       }
       updateAccountButton();
