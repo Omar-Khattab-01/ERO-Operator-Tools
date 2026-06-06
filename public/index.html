@@ -1210,6 +1210,57 @@
       width: 20px;
       height: 20px;
     }
+    .settings-card-head {
+      align-items: flex-start;
+      display: flex;
+      gap: 12px;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+    .settings-card-title {
+      color: var(--text);
+      font-size: 18px;
+      font-weight: 800;
+      margin-top: 2px;
+    }
+    .settings-status-pill {
+      border: 1px solid rgba(255,255,255,.2);
+      border-radius: 999px;
+      color: var(--accent-2);
+      flex: 0 0 auto;
+      font-size: 12px;
+      font-weight: 800;
+      padding: 6px 10px;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+    .settings-status-pill.is-off {
+      color: var(--muted);
+    }
+    .settings-help-list {
+      display: grid;
+      gap: 7px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+    .settings-help-list li {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+      padding-left: 17px;
+      position: relative;
+    }
+    .settings-help-list li::before {
+      content: "";
+      background: var(--accent-2);
+      border-radius: 50%;
+      height: 6px;
+      left: 2px;
+      position: absolute;
+      top: .45em;
+      width: 6px;
+    }
     .password-toggle-row {
       display: flex;
       justify-content: flex-start;
@@ -2502,37 +2553,48 @@
     }
 
     function notificationSupportMessage() {
-      if (!('Notification' in window)) return 'Notifications are not supported in this browser.';
-      if (!window.isSecureContext) return 'Open the live HTTPS site to enable notifications.';
-      if (Notification.permission === 'denied') return 'Notifications are blocked in this browser. Enable them in browser settings.';
-      if (Notification.permission === 'granted') return 'Notifications are allowed on this device.';
-      return 'Save with notifications on to allow browser notifications.';
+      if (!('Notification' in window)) return 'This browser does not support phone notifications.';
+      if (!window.isSecureContext) return 'Open the live HTTPS site to turn this on.';
+      if (Notification.permission === 'denied') return 'Notifications are blocked. Turn them back on in browser or iPhone settings.';
+      if (Notification.permission === 'granted') return 'Phone notifications are allowed on this device.';
+      return 'Turn this on and approve the notification prompt.';
     }
 
     function renderTripNotificationSettings() {
       const enabled = Boolean(tripNotificationSettings.enabled);
       const lead = [3, 5].includes(Number(tripNotificationSettings.leadMinutes)) ? Number(tripNotificationSettings.leadMinutes) : 3;
       const canRequest = 'Notification' in window && window.isSecureContext;
+      const statusLabel = enabled ? `${lead} min before` : 'Off';
       return `
         <section class="section-card">
-          <div class="field-label">Trip Notifications</div>
-          <p class="overlay-page-copy">Phone notification first: get an iPhone/browser notification before your next trip starts. Apple Watch is second target and depends on your iPhone/watch notification mirroring settings.</p>
+          <div class="settings-card-head">
+            <div>
+              <div class="field-label">Trip Notifications</div>
+              <div class="settings-card-title">Reminder before your next trip</div>
+            </div>
+            <span class="settings-status-pill ${enabled ? '' : 'is-off'}">${escapeHtml(statusLabel)}</span>
+          </div>
+          <p class="overlay-page-copy">Turn this on to get a phone notification before the next trip on your open or saved paddle starts.</p>
           <div class="stack-form" style="margin-top:12px;">
             <label class="toggle-row">
               <span>
-                <strong>Notify before trip start</strong>
+                <strong>Send trip start reminder</strong>
                 <small>${escapeHtml(notificationSupportMessage())}</small>
               </span>
               <input id="tripNotificationEnabled" type="checkbox" ${enabled ? 'checked' : ''} ${canRequest ? '' : 'disabled'}>
             </label>
             <label class="field-stack">
-              <span class="field-label">Reminder Time</span>
+              <span class="field-label">How early?</span>
               <select id="tripNotificationLead" class="select-input" ${enabled && canRequest ? '' : 'disabled'}>
                 <option value="3" ${lead === 3 ? 'selected' : ''}>3 minutes before</option>
                 <option value="5" ${lead === 5 ? 'selected' : ''}>5 minutes before</option>
               </select>
             </label>
-            <div class="muted">For iPhone, add ERO Tool to the Home Screen, open it from there, and allow notifications. This version alerts while ERO Tool is open; closed-app push is the next server-side step.</div>
+            <ul class="settings-help-list">
+              <li>Phone notification is the main target. Keep ERO Tool open for this version.</li>
+              <li>On iPhone, add ERO Tool to the Home Screen and open it from there before allowing notifications.</li>
+              <li>Apple Watch is secondary. If your watch mirrors iPhone notifications, it may show there too.</li>
+            </ul>
           </div>
         </section>
       `;
