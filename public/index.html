@@ -2350,18 +2350,20 @@
       if (!currentProfile) return;
       if (!myWorkDraft) cloneMyWorkDraftFromProfile();
       const sameWork = Boolean(myWorkDraft.sameWork);
+      const currentWeekKey = getCurrentWorkWeekKey();
       currentProfile.same_work_schedule = sameWork;
       serviceDays.forEach((day) => {
         const week1Items = [...getDraftPaddlesForDay(day.key, 'week1')];
         const week2Items = sameWork ? [...week1Items] : [...getDraftPaddlesForDay(day.key, 'week2')];
         currentProfile[weekProfileColumnForServiceDay('week1', day.key)] = week1Items;
         currentProfile[weekProfileColumnForServiceDay('week2', day.key)] = week2Items;
-        currentProfile[profileColumnForServiceDay(day.key)] = [...getSavedProfilePaddles(day.key, getCurrentWorkWeekKey())];
+        currentProfile[profileColumnForServiceDay(day.key)] = [...(sameWork || currentWeekKey === 'week1' ? week1Items : week2Items)];
       });
     }
 
     function buildProfilePayload() {
       const sameWork = isSameWorkSchedule();
+      const currentWeekKey = getCurrentWorkWeekKey();
       const payload = {
         user_id: currentUser.id,
         display_name: currentProfile.display_name || null,
@@ -2373,7 +2375,7 @@
         const week2Items = sameWork ? [...week1Items] : [...getProfileArray(weekProfileColumnForServiceDay('week2', day.key))];
         payload[weekProfileColumnForServiceDay('week1', day.key)] = week1Items;
         payload[weekProfileColumnForServiceDay('week2', day.key)] = week2Items;
-        payload[profileColumnForServiceDay(day.key)] = [...getSavedProfilePaddles(day.key, getCurrentWorkWeekKey())];
+        payload[profileColumnForServiceDay(day.key)] = [...(sameWork || currentWeekKey === 'week1' ? week1Items : week2Items)];
       });
       return payload;
     }
