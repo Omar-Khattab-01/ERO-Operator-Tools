@@ -1261,6 +1261,40 @@
       top: .45em;
       width: 6px;
     }
+    .demo-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+    .demo-card {
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      background: rgba(255,255,255,.025);
+      padding: 16px;
+    }
+    .demo-card h3 {
+      margin: 0 0 8px;
+      font-size: 18px;
+    }
+    .demo-card p {
+      color: var(--muted);
+      line-height: 1.4;
+      margin: 0 0 12px;
+    }
+    .demo-steps {
+      margin: 0;
+      padding-left: 20px;
+      color: var(--text);
+      display: grid;
+      gap: 8px;
+    }
+    .demo-steps li {
+      line-height: 1.35;
+    }
+    .demo-steps li::marker {
+      color: var(--accent-2);
+      font-weight: 800;
+    }
     .password-toggle-row {
       display: flex;
       justify-content: flex-start;
@@ -1605,6 +1639,9 @@
       .defect-page-grid {
         grid-template-columns: 1fr;
       }
+      .demo-grid {
+        grid-template-columns: 1fr;
+      }
       .board-page-meta {
         justify-content: stretch;
         display: grid;
@@ -1839,6 +1876,7 @@
           <button id="lrvDefectsBtn" class="header-btn is-primary" type="button" hidden>LRV Defects</button>
           <button id="liveMapBtn" class="header-btn is-primary" type="button">Line 1 Map</button>
           <button id="todayBoardBtn" class="header-btn is-primary" type="button">Board</button>
+          <button id="demoBtn" class="header-btn is-primary" type="button">Demo</button>
         </div>
         <div class="header-utility">
           <button id="accountBtn" class="header-btn" type="button">Account</button>
@@ -1863,6 +1901,7 @@
       <section id="myWorkView" class="tool-page-view" hidden></section>
       <section id="todaysPaddleView" class="tool-page-view" hidden></section>
       <section id="lrvDefectsView" class="tool-page-view" hidden></section>
+      <section id="demoView" class="tool-page-view" hidden></section>
       <section id="todayBoardView" class="today-board-screen" hidden></section>
       <section id="liveMapView" class="live-map-view" hidden></section>
     </main>
@@ -1915,12 +1954,14 @@
     const lrvDefectsBtn = document.getElementById('lrvDefectsBtn');
     const liveMapBtn = document.getElementById('liveMapBtn');
     const todayBoardBtn = document.getElementById('todayBoardBtn');
+    const demoBtn = document.getElementById('demoBtn');
     const accountBtn = document.getElementById('accountBtn');
     const clearBtn = document.getElementById('clearBtn');
     const statusPill = document.getElementById('statusPill');
     const ocMetaBar = document.getElementById('ocMetaBar');
     const toastStack = document.getElementById('toastStack');
     const myWorkView = document.getElementById('myWorkView');
+    const demoView = document.getElementById('demoView');
     const paddleOverlay = document.getElementById('paddleOverlay');
     const paddleTitle = document.getElementById('paddleTitle');
     const paddleMeta = document.getElementById('paddleMeta');
@@ -2033,7 +2074,7 @@
     let editingLrvReportId = '';
 
     function setActiveNav(targetId = 'homeBtn') {
-      [homeBtn, myWorkBtn, todaysPaddleBtn, lrvDefectsBtn, liveMapBtn, todayBoardBtn].forEach((button) => {
+      [homeBtn, myWorkBtn, todaysPaddleBtn, lrvDefectsBtn, liveMapBtn, todayBoardBtn, demoBtn].forEach((button) => {
         if (!button) return;
         button.classList.toggle('is-active', button.id === targetId);
       });
@@ -2068,6 +2109,7 @@
       myWorkView.hidden = true;
       todaysPaddleView.hidden = true;
       lrvDefectsView.hidden = true;
+      demoView.hidden = true;
       todayBoardView.hidden = true;
       chat.hidden = false;
       chatForm.closest('.composer').hidden = false;
@@ -2099,6 +2141,7 @@
       myWorkView.hidden = true;
       todaysPaddleView.hidden = true;
       lrvDefectsView.hidden = true;
+      demoView.hidden = true;
       todayBoardView.hidden = true;
       chat.hidden = false;
       chatForm.closest('.composer').hidden = false;
@@ -2107,6 +2150,95 @@
 
     function exitLiveMap() {
       showToolView('Ready');
+    }
+
+    function renderDemoPage() {
+      demoView.innerHTML = `
+        <div class="board-page-head">
+          <div>
+            <h2>Demo</h2>
+            <p class="overlay-page-copy">Quick examples for using the main ERO Tool features during a shift.</p>
+          </div>
+        </div>
+        <div class="demo-grid">
+          <section class="demo-card">
+            <h3>Paddle Lookup</h3>
+            <p>Use this when you need the current work for a paddle number.</p>
+            <ol class="demo-steps">
+              <li>Tap <strong>Paddle Lookup</strong>.</li>
+              <li>Enter a paddle like <strong>14</strong> or <strong>1-14</strong>.</li>
+              <li>Check the live card for the current trip, break, block, and countdown.</li>
+              <li>Tap <strong>Open Paddle</strong> to see the full paddle.</li>
+            </ol>
+          </section>
+          <section class="demo-card">
+            <h3>Radio Checks</h3>
+            <p>Use the board or paddle details to see which block needs a radio check.</p>
+            <ol class="demo-steps">
+              <li>Tap <strong>Board</strong>.</li>
+              <li>Look for blocks marked for radio checks.</li>
+              <li>Tap a paddle to open the full work and confirm the block.</li>
+            </ol>
+          </section>
+          <section class="demo-card">
+            <h3>Today's Paddle</h3>
+            <p>Keep the paddles you need today in one quick page.</p>
+            <ol class="demo-steps">
+              <li>Look up a paddle.</li>
+              <li>Tap <strong>Save to Today's Paddle</strong>.</li>
+              <li>Open <strong>Today's Paddle</strong> to see it without searching again.</li>
+              <li>Tap <strong>Remove</strong> when you no longer need it today.</li>
+            </ol>
+          </section>
+          <section class="demo-card">
+            <h3>My Work</h3>
+            <p>Save your regular work to your account by service day and OC week.</p>
+            <ol class="demo-steps">
+              <li>Sign in or create an account.</li>
+              <li>Open <strong>My Work</strong>.</li>
+              <li>Add or remove paddles. Changes save right away.</li>
+              <li>Use the Week 1 / Week 2 toggle if your work repeats both weeks.</li>
+            </ol>
+          </section>
+          <section class="demo-card">
+            <h3>Trip Notifications</h3>
+            <p>Set a phone reminder before the next trip starts.</p>
+            <ol class="demo-steps">
+              <li>Open <strong>Settings</strong>.</li>
+              <li>Turn on <strong>Send trip start reminder</strong>.</li>
+              <li>Choose <strong>5 minutes</strong> or <strong>3 minutes</strong>.</li>
+              <li>On iPhone, use the Home Screen app path and allow notifications.</li>
+            </ol>
+          </section>
+          <section class="demo-card">
+            <h3>Home Screen</h3>
+            <p>Use ERO Tool like an app from your phone home screen.</p>
+            <ol class="demo-steps">
+              <li>iPhone: open in Safari, tap Share, then Add to Home Screen.</li>
+              <li>Android: open in Chrome, tap the menu, then Add to Home screen.</li>
+              <li>Open ERO Tool from the new home screen icon.</li>
+            </ol>
+          </section>
+        </div>
+      `;
+    }
+
+    function openDemoPage() {
+      stopLiveMapRefresh();
+      stopTodayBoardRefresh();
+      closePaddleModal();
+      document.querySelector('.app')?.classList.remove('map-mode');
+      setActiveNav('demoBtn');
+      liveMapView.hidden = true;
+      myWorkView.hidden = true;
+      todaysPaddleView.hidden = true;
+      lrvDefectsView.hidden = true;
+      todayBoardView.hidden = true;
+      demoView.hidden = false;
+      chat.hidden = true;
+      chatForm.closest('.composer').hidden = true;
+      renderDemoPage();
+      setStatus('Demo ready', true);
     }
 
     function normalizePaddleId(value) {
@@ -2522,13 +2654,13 @@
     function loadTripNotificationSettings() {
       try {
         const parsed = JSON.parse(localStorage.getItem(tripNotificationStorageKey) || '{}');
-        const leadMinutes = [3, 5].includes(Number(parsed.leadMinutes)) ? Number(parsed.leadMinutes) : 3;
+        const leadMinutes = [3, 5].includes(Number(parsed.leadMinutes)) ? Number(parsed.leadMinutes) : 5;
         return {
           enabled: Boolean(parsed.enabled),
           leadMinutes,
         };
       } catch (_) {
-        return { enabled: false, leadMinutes: 3 };
+        return { enabled: false, leadMinutes: 5 };
       }
     }
 
@@ -2562,7 +2694,7 @@
 
     function renderTripNotificationSettings() {
       const enabled = Boolean(tripNotificationSettings.enabled);
-      const lead = [3, 5].includes(Number(tripNotificationSettings.leadMinutes)) ? Number(tripNotificationSettings.leadMinutes) : 3;
+      const lead = [3, 5].includes(Number(tripNotificationSettings.leadMinutes)) ? Number(tripNotificationSettings.leadMinutes) : 5;
       const canRequest = 'Notification' in window && window.isSecureContext;
       const statusLabel = enabled ? `${lead} min before` : 'Off';
       return `
@@ -2586,8 +2718,8 @@
             <label class="field-stack">
               <span class="field-label">How early?</span>
               <select id="tripNotificationLead" class="select-input" ${enabled && canRequest ? '' : 'disabled'}>
-                <option value="3" ${lead === 3 ? 'selected' : ''}>3 minutes before</option>
                 <option value="5" ${lead === 5 ? 'selected' : ''}>5 minutes before</option>
+                <option value="3" ${lead === 3 ? 'selected' : ''}>3 minutes before</option>
               </select>
             </label>
             <ul class="settings-help-list">
@@ -3947,7 +4079,7 @@
       const enabledInput = document.getElementById('tripNotificationEnabled');
       const leadInput = document.getElementById('tripNotificationLead');
       const wantsEnabled = Boolean(enabledInput?.checked);
-      const leadMinutes = [3, 5].includes(Number(leadInput?.value)) ? Number(leadInput.value) : 3;
+      const leadMinutes = [3, 5].includes(Number(leadInput?.value)) ? Number(leadInput.value) : 5;
       tripNotificationSettings.leadMinutes = leadMinutes;
       if (wantsEnabled) {
         const allowed = await requestTripNotificationPermission();
@@ -4318,6 +4450,7 @@
       liveMapView.hidden = true;
       todaysPaddleView.hidden = true;
       lrvDefectsView.hidden = true;
+      demoView.hidden = true;
       todayBoardView.hidden = true;
       chat.hidden = true;
       chatForm.closest('.composer').hidden = true;
@@ -4629,7 +4762,7 @@
 
     function checkTripStartNotifications(nowSeconds = getOttawaNowSeconds()) {
       if (!tripNotificationSettings.enabled || !('Notification' in window) || Notification.permission !== 'granted') return;
-      const leadSeconds = (Number(tripNotificationSettings.leadMinutes) || 3) * 60;
+      const leadSeconds = (Number(tripNotificationSettings.leadMinutes) || 5) * 60;
       document.querySelectorAll('[data-trip-notify-target]').forEach((node) => {
         const targetTime = node.getAttribute('data-trip-notify-target') || '';
         const targetSeconds = timeToSecondsClock(targetTime);
@@ -5039,6 +5172,7 @@
       liveMapView.hidden = true;
       myWorkView.hidden = true;
       lrvDefectsView.hidden = true;
+      demoView.hidden = true;
       todayBoardView.hidden = true;
       chat.hidden = true;
       chatForm.closest('.composer').hidden = true;
@@ -5058,6 +5192,7 @@
       liveMapView.hidden = true;
       myWorkView.hidden = true;
       todaysPaddleView.hidden = true;
+      demoView.hidden = true;
       todayBoardView.hidden = true;
       chat.hidden = true;
       chatForm.closest('.composer').hidden = true;
@@ -5315,6 +5450,7 @@
       myWorkView.hidden = true;
       todaysPaddleView.hidden = true;
       lrvDefectsView.hidden = true;
+      demoView.hidden = true;
       chat.hidden = true;
       chatForm.closest('.composer').hidden = true;
       todayBoardView.hidden = false;
@@ -5607,6 +5743,7 @@
       myWorkView.hidden = true;
       lrvDefectsView.hidden = true;
       todaysPaddleView.hidden = true;
+      demoView.hidden = true;
       todayBoardView.hidden = true;
       chatForm.closest('.composer').hidden = true;
       liveMapView.hidden = false;
@@ -5642,6 +5779,7 @@
       myWorkView.hidden = true;
       todaysPaddleView.hidden = true;
       lrvDefectsView.hidden = true;
+      demoView.hidden = true;
       todayBoardView.hidden = true;
       liveMapView.hidden = true;
       chat.hidden = false;
@@ -5759,6 +5897,8 @@
         setStatus('Board failed', false);
       }
     });
+
+    demoBtn.addEventListener('click', openDemoPage);
 
     accountBtn.addEventListener('click', () => {
       openAccountModal();
