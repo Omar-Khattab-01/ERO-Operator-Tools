@@ -3035,6 +3035,7 @@
 
     function isLrvSchemaError(error) {
       const message = String(error?.message || error?.details || error?.hint || '').toLowerCase();
+      if (message.includes('timed out')) return false;
       return message.includes('schema cache')
         || message.includes("could not find the 'role' column")
         || message.includes("could not find the 'email' column")
@@ -3545,7 +3546,8 @@
         .from('ero_lrv_defect_reports')
         .select('id, lrv_number, cab, defect_category, seat_issue_detail, thermo_king_mode, mlc_reported_at, report_status, defect_text, reported_by_email, reported_at')
         .eq('lrv_number', selectedLrvNumber)
-        .order('reported_at', { ascending: false }), 'LRV defect reports');
+        .order('reported_at', { ascending: false })
+        .limit(250), 'LRV defect reports', 30000);
       if (error) throw error;
       lrvDefectReports = Array.isArray(data) ? data : [];
       return lrvDefectReports;
@@ -3922,15 +3924,16 @@
       try {
         await loadLrvDefectReports();
       } catch (error) {
-        setLrvSchemaWarning(error);
+        const isSchemaProblem = setLrvSchemaWarning(error);
         lrvDefectsView.innerHTML = `
           <div class="board-page-head">
             <div>
               <h2>LRV Defects</h2>
-              <p class="overlay-page-copy">The page needs a Supabase schema update.</p>
+              <p class="overlay-page-copy">${isSchemaProblem ? 'The page needs a Supabase schema update.' : 'The reports could not load right now.'}</p>
             </div>
           </div>
           <div class="live-map-error">${escapeHtml(lrvDefectSchemaWarning || error.message || 'Could not load LRV defects.')}</div>
+          ${isSchemaProblem ? '' : '<div class="section-actions"><button class="btn" type="button" data-retry-lrv-defects>Retry</button></div>'}
         `;
         return;
       }
@@ -6401,6 +6404,12 @@
       const exportLrvDefectsBtn = event.target.closest('[data-export-lrv-defects]');
       if (exportLrvDefectsBtn) {
         await exportLrvDefectReports(exportLrvDefectsBtn.dataset.exportLrvDefects || 'current');
+        return;
+      }
+
+      const retryLrvDefectsBtn = event.target.closest('[data-retry-lrv-defects]');
+      if (retryLrvDefectsBtn) {
+        await renderLrvDefectsPage();
         return;
       }
 
