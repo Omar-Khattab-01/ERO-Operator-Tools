@@ -193,6 +193,65 @@
       font-weight: 900;
       color: #ffe0c2;
     }
+    .card-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.72);
+      display: grid;
+      place-items: center;
+      padding: 18px;
+      z-index: 20;
+    }
+    .modal-overlay[hidden] { display: none; }
+    .modal {
+      width: min(940px, 100%);
+      max-height: min(860px, calc(100vh - 28px));
+      overflow: auto;
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      background: #111820;
+    }
+    .modal-head {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 16px;
+      border-bottom: 1px solid var(--border);
+      background: linear-gradient(180deg, rgba(69,25,23,.96), rgba(17,24,32,.96));
+    }
+    .modal-body {
+      padding: 14px;
+      display: grid;
+      gap: 10px;
+    }
+    .trip-card {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px;
+      background: rgba(255,255,255,.03);
+    }
+    .trip-card strong {
+      display: block;
+      color: #ffe0c2;
+      margin-bottom: 6px;
+    }
+    .trip-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+      color: var(--muted);
+    }
     .empty {
       border: 1px dashed var(--border);
       border-radius: 14px;
@@ -205,6 +264,8 @@
       .filter-grid, .stats, .totals, .pieces { grid-template-columns: 1fr; }
       .piece { grid-column: span 1; }
       .actions { width: 100%; }
+      .card-actions { justify-content: flex-start; }
+      .trip-grid { grid-template-columns: 1fr; }
       .btn, .status { flex: 1; text-align: center; }
     }
   </style>
@@ -239,6 +300,19 @@
     <section id="boardList" class="board-list"></section>
   </main>
 
+  <div id="paddleOverlay" class="modal-overlay" hidden>
+    <section class="modal" role="dialog" aria-modal="true" aria-labelledby="paddleTitle">
+      <header class="modal-head">
+        <div>
+          <h2 id="paddleTitle">Paddle</h2>
+          <p id="paddleMeta" class="sub"></p>
+        </div>
+        <button id="closePaddleBtn" class="btn" type="button">Close</button>
+      </header>
+      <div id="paddleBody" class="modal-body"></div>
+    </section>
+  </div>
+
   <script>
     const statusEl = document.getElementById('status');
     const refreshBtn = document.getElementById('refreshBtn');
@@ -246,6 +320,11 @@
     const filtersEl = document.getElementById('filters');
     const boardList = document.getElementById('boardList');
     const statsEl = document.getElementById('stats');
+    const paddleOverlay = document.getElementById('paddleOverlay');
+    const paddleTitle = document.getElementById('paddleTitle');
+    const paddleMeta = document.getElementById('paddleMeta');
+    const paddleBody = document.getElementById('paddleBody');
+    const closePaddleBtn = document.getElementById('closePaddleBtn');
 
     let state = { boards: [], selectedBoardId: '', board: null };
     let filters = {
@@ -392,7 +471,7 @@
           <label>Sort
             <select data-filter="sortBy">
               <option value="board" ${filters.sortBy === 'board' ? 'selected' : ''}>Board order</option>
-              <option value="most-pay" ${filters.sortBy === 'most-pay' ? 'selected' : ''}>Most paid time</option>
+              <option value="most-pay" ${filters.sortBy === 'most-pay' ? 'selected' : ''}>Most pay</option>
               <option value="earliest-start" ${filters.sortBy === 'earliest-start' ? 'selected' : ''}>Earliest start</option>
               <option value="latest-start" ${filters.sortBy === 'latest-start' ? 'selected' : ''}>Latest start</option>
               <option value="earliest-finish" ${filters.sortBy === 'earliest-finish' ? 'selected' : ''}>Earliest finish</option>
@@ -413,6 +492,19 @@
       return `${week1} · ${week2}`;
     }
 
+    function serviceDayForBoard(boardKey) {
+      if (['mon_thu', 'friday', 'saturday', 'sunday'].includes(boardKey)) return boardKey;
+      return '';
+    }
+
+    function renderPaddleButton(entry) {
+      const serviceDay = serviceDayForBoard(entry.boardKey);
+      if (!serviceDay) {
+        return '<button class="btn" type="button" disabled>No holiday paddle link</button>';
+      }
+      return `<button class="btn" type="button" data-open-paddle="${escapeHtml(entry.workId)}" data-service-day="${escapeHtml(serviceDay)}">View Paddle</button>`;
+    }
+
     function renderEntry(entry) {
       const pieces = Array.isArray(entry.pieces) ? entry.pieces : [];
       return `
@@ -422,13 +514,16 @@
               <h3>${escapeHtml(entry.workId)}</h3>
               <p class="sub">${escapeHtml(entry.sectionLabel)} · Board page ${escapeHtml(entry.page || 'N/A')}</p>
             </div>
-            <div class="pill ${entry.taken ? 'taken' : 'open'}">${escapeHtml(weekLabel(entry))}</div>
+            <div class="card-actions">
+              <div class="pill ${entry.taken ? 'taken' : 'open'}">${escapeHtml(weekLabel(entry))}</div>
+              ${renderPaddleButton(entry)}
+            </div>
           </div>
           <div class="totals">
             <div class="total"><strong>Start</strong>${escapeHtml(entry.startLocation || 'N/A')} ${escapeHtml(entry.startTime || '')}</div>
             <div class="total"><strong>Finish</strong>${escapeHtml(entry.endLocation || 'N/A')} ${escapeHtml(entry.endTime || '')}</div>
             <div class="total"><strong>Platform</strong>${escapeHtml(entry.platformTime || 'N/A')}</div>
-            <div class="total"><strong>Paid</strong>${escapeHtml(entry.paidTime || 'N/A')}</div>
+            <div class="total"><strong>Pay</strong>${escapeHtml(entry.paidTime || 'N/A')}</div>
           </div>
           <div class="pieces" style="margin-top:8px;">
             ${pieces.map((piece, index) => `
@@ -442,6 +537,64 @@
           </div>
         </article>
       `;
+    }
+
+    function renderPaddleTrips(data) {
+      const entries = Array.isArray(data.entries) ? data.entries : [];
+      return entries.map((entry) => `
+        <article class="trip-card">
+          <strong>Trip ${escapeHtml(entry.sequence || '?')} · Block ${escapeHtml(entry.block || data.paddleId || '')}${entry.radioCheckNeeded ? ' · Radio check' : ''}</strong>
+          <div class="trip-grid">
+            <div>Report: ${escapeHtml(entry.reportTime || '--:--')} ${escapeHtml(entry.reportPlaceName || '')}</div>
+            <div>Clear: ${escapeHtml(entry.clearTime || entry.endTime || '--:--')} ${escapeHtml(entry.endPlaceName || entry.endStopName || '')}</div>
+            <div>${escapeHtml(entry.radioCheckReason ? `Radio check: ${entry.radioCheckReason}` : `Route ${entry.route || '1'}`)}</div>
+          </div>
+          ${(Array.isArray(entry.trips) && entry.trips.length) ? `
+            <div class="pieces" style="margin-top:8px;">
+              ${entry.trips.map((trip) => `
+                <section class="piece">
+                  <strong>Route ${escapeHtml(trip.route || '1')} / ${escapeHtml(trip.tripId || 'N/A')}</strong>
+                  <div class="piece-title">${escapeHtml(trip.startStop || 'Start')} to ${escapeHtml(trip.endStop || 'End')}</div>
+                  <div>${escapeHtml(trip.startTime || '--:--')} to ${escapeHtml(trip.endTime || '--:--')}</div>
+                </section>
+              `).join('')}
+            </div>
+          ` : ''}
+        </article>
+      `).join('');
+    }
+
+    async function openPaddle(paddleId, serviceDay) {
+      statusEl.textContent = 'Loading paddle...';
+      try {
+        const params = new URLSearchParams({ id: paddleId });
+        if (serviceDay) params.set('day', serviceDay);
+        const response = await fetch(`/api/paddle?${params.toString()}`);
+        const data = await response.json();
+        if (!response.ok || !data.ok) throw new Error(data.error || 'Paddle lookup failed');
+        paddleTitle.textContent = `Paddle ${data.paddleId || paddleId}`;
+        paddleMeta.textContent = `${data.serviceLabel || serviceDay || 'Service'} · ${data.dutyType || ''}`.trim();
+        paddleBody.innerHTML = `
+          <div class="totals">
+            <div class="total"><strong>Report</strong>${escapeHtml(data.firstReportTime || 'N/A')}</div>
+            <div class="total"><strong>Clear</strong>${escapeHtml(data.finalClearTime || 'N/A')}</div>
+            <div class="total"><strong>Trips</strong>${escapeHtml((data.entries || []).length)}</div>
+            <div class="total"><strong>Source</strong>${escapeHtml(data.sourceFile || 'N/A')}</div>
+          </div>
+          ${renderPaddleTrips(data) || '<div class="empty">No trip details found for this paddle.</div>'}
+        `;
+        paddleOverlay.hidden = false;
+        document.body.style.overflow = 'hidden';
+        statusEl.textContent = 'Paddle ready';
+      } catch (error) {
+        statusEl.textContent = 'Paddle failed';
+        alert(error.message || 'Paddle lookup failed.');
+      }
+    }
+
+    function closePaddle() {
+      paddleOverlay.hidden = true;
+      document.body.style.overflow = '';
     }
 
     function renderBoard() {
@@ -484,6 +637,12 @@
       loadBoard(button.dataset.boardId || '');
     });
 
+    boardList.addEventListener('click', (event) => {
+      const button = event.target.closest('[data-open-paddle]');
+      if (!button) return;
+      openPaddle(button.dataset.openPaddle || '', button.dataset.serviceDay || '');
+    });
+
     filtersEl.addEventListener('input', (event) => {
       const field = event.target.closest('[data-filter]');
       if (!field) return;
@@ -522,6 +681,10 @@
     });
 
     refreshBtn.addEventListener('click', () => loadBoard(state.selectedBoardId));
+    closePaddleBtn.addEventListener('click', closePaddle);
+    paddleOverlay.addEventListener('click', (event) => {
+      if (event.target === paddleOverlay) closePaddle();
+    });
     loadBoard();
   </script>
 </body>
