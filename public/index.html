@@ -3801,11 +3801,11 @@
           <div class="field-grid" style="margin-top:12px;">
             <label class="field-stack">
               <span class="field-label">From</span>
-              <input id="lrvExportFromDate" class="text-input" type="text" inputmode="numeric" maxlength="10" data-lrv-date-input placeholder="MM-DD-YYYY" value="${escapeHtml(dateValueToTypedLrvDate(lrvExportFromDate))}">
+              <input id="lrvExportFromDate" class="text-input" type="date" value="${escapeHtml(lrvExportFromDate)}">
             </label>
             <label class="field-stack">
               <span class="field-label">To</span>
-              <input id="lrvExportToDate" class="text-input" type="text" inputmode="numeric" maxlength="10" data-lrv-date-input placeholder="MM-DD-YYYY" value="${escapeHtml(dateValueToTypedLrvDate(lrvExportToDate))}">
+              <input id="lrvExportToDate" class="text-input" type="date" value="${escapeHtml(lrvExportToDate)}">
             </label>
             <label class="field-stack">
               <span class="field-label">Category</span>
@@ -6501,13 +6501,13 @@
         return;
       }
       if (event.target?.id === 'lrvExportFromDate') {
-        lrvExportFromDate = typedLrvDateToDateValue(event.target.value || '') || '';
+        lrvExportFromDate = event.target.value || '';
         normalizeExportDateInputs();
         refreshLrvDefectAdminPanel();
         return;
       }
       if (event.target?.id === 'lrvExportToDate') {
-        lrvExportToDate = typedLrvDateToDateValue(event.target.value || '') || '';
+        lrvExportToDate = event.target.value || '';
         normalizeExportDateInputs();
         refreshLrvDefectAdminPanel();
         return;
