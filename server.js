@@ -19,6 +19,8 @@ app.use(express.json({ limit: '1mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 let paddleIndexCache = null;
+let railBoardsCache = null;
+let railBoardsCacheMtimeMs = 0;
 
 
 const SERVICE_DAY_META = {
@@ -66,6 +68,15 @@ function loadPaddleIndex() {
     paddleIndexCache = JSON.parse(fs.readFileSync(filePath, 'utf8'));
   }
   return paddleIndexCache;
+}
+
+function loadRailBoardsData() {
+  const filePath = path.join(__dirname, 'data', 'rail_boards.json');
+  const stat = fs.statSync(filePath);
+  if (railBoardsCache && railBoardsCacheMtimeMs === stat.mtimeMs) return railBoardsCache;
+  railBoardsCache = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+  railBoardsCacheMtimeMs = stat.mtimeMs;
+  return railBoardsCache;
 }
 
 function normalizePaddleId(input) {
@@ -922,6 +933,29 @@ function buildTodayBoard() {
   };
 }
 
+function buildRailBoardsResponse(requestedBoardId = '') {
+  const data = loadRailBoardsData();
+  const boards = Array.isArray(data.boards) ? data.boards : [];
+  const summaries = boards.map((board) => ({
+    id: String(board.id || '').trim(),
+    title: String(board.title || '').trim(),
+    entryCount: Number(board.entryCount || 0) || 0,
+    openCount: Number(board.openCount || 0) || 0,
+    takenCount: Number(board.takenCount || 0) || 0,
+  }));
+  const fallbackBoardId = summaries[0]?.id || '';
+  const selectedBoardId = String(requestedBoardId || fallbackBoardId).trim();
+  const board = boards.find((item) => String(item.id || '').trim() === selectedBoardId) || null;
+  return {
+    ok: true,
+    generatedAt: String(data.generatedAt || '').trim(),
+    generatedFrom: path.basename(String(data.generatedFrom || '')),
+    boards: summaries,
+    selectedBoardId: board ? selectedBoardId : '',
+    board,
+  };
+}
+
 function getSavedPaddleOptions() {
   const index = loadPaddleIndex();
   const result = {
@@ -966,6 +1000,17 @@ app.get('/api/account-options', (_req, res) => {
 
 app.get('/api/today-board', (_req, res) => {
   res.json(buildTodayBoard());
+});
+
+app.get('/api/rail-boards', (req, res) => {
+  try {
+    res.json(buildRailBoardsResponse(req.query.board || ''));
+  } catch (error) {
+    res.status(500).json({
+      ok: false,
+      error: String(error.message || 'Rail boards failed.').slice(0, 500),
+    });
+  }
 });
 
 app.get('/api/live-map', async (_req, res) => {
@@ -1028,6 +1073,10 @@ app.get('/healthz', (_req, res) => {
       Object.entries(index.serviceDays || {}).map(([key, value]) => [key, Object.keys(value || {}).length])
     ),
   });
+});
+
+app.get('/rail-boards', (_req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'rail-boards.html'));
 });
 
 app.get('*', (_req, res) => {

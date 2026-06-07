@@ -1,0 +1,528 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Rail Booking Boards</title>
+  <style>
+    :root {
+      --bg: #0b0f14;
+      --panel: #161b22;
+      --panel-2: #1d242d;
+      --text: #f4f7fb;
+      --muted: #b9c2ce;
+      --border: rgba(255,255,255,.14);
+      --accent: #e3432f;
+      --accent-2: #ffb068;
+      --ok: #74ffad;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: linear-gradient(180deg, #17191d 0%, var(--bg) 36%);
+      color: var(--text);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    .app {
+      width: min(1180px, calc(100vw - 28px));
+      margin: 0 auto;
+      padding: 18px 0 32px;
+    }
+    .header, .page-head, .filter-panel, .board-card {
+      border: 1px solid var(--border);
+      background: rgba(20,25,32,.88);
+      border-radius: 18px;
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 16px;
+      margin-bottom: 18px;
+    }
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .badge {
+      width: 48px;
+      height: 48px;
+      border-radius: 14px;
+      display: grid;
+      place-items: center;
+      background: linear-gradient(180deg, #d73a2c, #9f1f17);
+      font-weight: 900;
+    }
+    h1, h2, h3, p { margin: 0; }
+    h1 { font-size: clamp(26px, 4vw, 42px); }
+    .brand p, .page-head p, .sub, .muted { color: var(--muted); }
+    .actions, .switcher, .filter-actions, .chips {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .btn {
+      appearance: none;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: rgba(255,255,255,.03);
+      color: var(--text);
+      padding: 10px 14px;
+      font: inherit;
+      font-weight: 800;
+      text-decoration: none;
+      cursor: pointer;
+    }
+    .btn.active {
+      border-color: rgba(255,176,104,.45);
+      background: rgba(227,67,47,.20);
+      color: #ffe2c6;
+    }
+    .status {
+      border: 1px solid rgba(116,255,173,.22);
+      color: var(--ok);
+      border-radius: 999px;
+      padding: 10px 14px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+    .page-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 18px;
+      margin-bottom: 14px;
+    }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(90px, 1fr));
+      gap: 8px;
+      min-width: min(420px, 100%);
+    }
+    .stat {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px;
+      background: rgba(255,255,255,.03);
+    }
+    .stat span { display: block; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; }
+    .stat strong { font-size: 20px; }
+    .switcher { margin: 0 0 14px; }
+    .filter-panel {
+      padding: 14px;
+      margin-bottom: 14px;
+    }
+    .filter-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(150px, 1fr));
+      gap: 10px;
+    }
+    label {
+      display: grid;
+      gap: 6px;
+      color: var(--muted);
+      font-size: 12px;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+    input, select {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--panel-2);
+      color: var(--text);
+      padding: 11px 12px;
+      font: inherit;
+      letter-spacing: 0;
+      text-transform: none;
+    }
+    .filter-actions {
+      justify-content: space-between;
+      margin-top: 12px;
+    }
+    .board-list {
+      display: grid;
+      gap: 12px;
+    }
+    .board-card {
+      padding: 14px;
+    }
+    .card-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: flex-start;
+      margin-bottom: 12px;
+    }
+    .card-head h3 { font-size: 24px; }
+    .pill {
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 7px 10px;
+      color: var(--muted);
+      font-weight: 800;
+      white-space: nowrap;
+    }
+    .pill.open { color: var(--ok); border-color: rgba(116,255,173,.25); }
+    .pill.taken { color: #ffb3a8; border-color: rgba(227,67,47,.35); }
+    .totals, .pieces {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(120px, 1fr));
+      gap: 8px;
+    }
+    .total, .piece {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: rgba(255,255,255,.03);
+      padding: 10px;
+    }
+    .total strong, .piece strong {
+      display: block;
+      color: var(--muted);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      margin-bottom: 4px;
+    }
+    .piece {
+      grid-column: span 2;
+      display: grid;
+      gap: 6px;
+    }
+    .piece-title {
+      font-weight: 900;
+      color: #ffe0c2;
+    }
+    .empty {
+      border: 1px dashed var(--border);
+      border-radius: 14px;
+      padding: 18px;
+      color: var(--muted);
+      text-align: center;
+    }
+    @media (max-width: 820px) {
+      .header, .page-head, .card-head { flex-direction: column; }
+      .filter-grid, .stats, .totals, .pieces { grid-template-columns: 1fr; }
+      .piece { grid-column: span 1; }
+      .actions { width: 100%; }
+      .btn, .status { flex: 1; text-align: center; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="header">
+      <div class="brand">
+        <div class="badge">ER</div>
+        <div>
+          <h1>Rail Booking Boards</h1>
+          <p>Filter ERO board work by day, week, start location, and report time.</p>
+        </div>
+      </div>
+      <div class="actions">
+        <a class="btn" href="/">Back to ERO Tool</a>
+        <button id="refreshBtn" class="btn" type="button">Refresh</button>
+        <div id="status" class="status">Loading</div>
+      </div>
+    </header>
+
+    <section class="page-head">
+      <div>
+        <h2>Booking Boards</h2>
+        <p>Open work and X-marked work are kept in the same board view. Use the filters to narrow the list before reviewing the pieces.</p>
+      </div>
+      <div id="stats" class="stats"></div>
+    </section>
+
+    <section id="switcher" class="switcher"></section>
+    <section id="filters" class="filter-panel"></section>
+    <section id="boardList" class="board-list"></section>
+  </main>
+
+  <script>
+    const statusEl = document.getElementById('status');
+    const refreshBtn = document.getElementById('refreshBtn');
+    const switcher = document.getElementById('switcher');
+    const filtersEl = document.getElementById('filters');
+    const boardList = document.getElementById('boardList');
+    const statsEl = document.getElementById('stats');
+
+    let state = { boards: [], selectedBoardId: '', board: null };
+    let filters = {
+      shift: '',
+      workType: 'all',
+      status: 'open',
+      week: 'any-open',
+      startBucket: '',
+      onAfter: '',
+      onBefore: '',
+      sortBy: 'board',
+    };
+
+    function escapeHtml(value) {
+      return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function timeToMinutes(value) {
+      const match = String(value || '').match(/^(\d{1,2}):(\d{2})$/);
+      if (!match) return null;
+      return Number(match[1]) * 60 + Number(match[2]);
+    }
+
+    function uniqueSorted(values) {
+      return [...new Set(values.map((value) => String(value || '').trim()).filter(Boolean))]
+        .sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
+    }
+
+    function renderOptions(values, selected) {
+      return values.map((value) => `<option value="${escapeHtml(value)}" ${value === selected ? 'selected' : ''}>${escapeHtml(value)}</option>`).join('');
+    }
+
+    function entryOpenForWeek(entry, week) {
+      if (week === 'week1') return !entry.week1Taken;
+      if (week === 'week2') return !entry.week2Taken;
+      if (week === 'both') return !entry.week1Taken && !entry.week2Taken;
+      return !entry.week1Taken || !entry.week2Taken;
+    }
+
+    function entryMatches(entry) {
+      const pieces = Array.isArray(entry.pieces) ? entry.pieces : [];
+      if (filters.shift && !String(entry.workId || '').toLowerCase().includes(filters.shift.toLowerCase())) return false;
+      if (filters.workType !== 'all' && entry.workType !== filters.workType) return false;
+      if (filters.status === 'open' && entry.taken) return false;
+      if (filters.status === 'taken' && !entry.taken) return false;
+      if (filters.week !== 'all' && !entryOpenForWeek(entry, filters.week === 'any-open' ? '' : filters.week)) return false;
+      if (filters.startBucket && !pieces.some((piece) => piece.startBucket === filters.startBucket)) return false;
+      const after = timeToMinutes(filters.onAfter);
+      const before = timeToMinutes(filters.onBefore);
+      if (after !== null && !pieces.some((piece) => {
+        const minutes = timeToMinutes(piece.startTime);
+        return minutes !== null && minutes >= after;
+      })) return false;
+      if (before !== null && !pieces.some((piece) => {
+        const minutes = timeToMinutes(piece.startTime);
+        return minutes !== null && minutes <= before;
+      })) return false;
+      return true;
+    }
+
+    function entrySortStats(entry) {
+      const pieces = Array.isArray(entry.pieces) ? entry.pieces : [];
+      const starts = pieces.map((piece) => timeToMinutes(piece.startTime)).filter((value) => value !== null);
+      const ends = pieces.map((piece) => timeToMinutes(piece.endTime)).filter((value) => value !== null);
+      const paid = timeToMinutes(entry.paidTime) ?? 0;
+      return {
+        start: starts.length ? Math.min(...starts) : Number.POSITIVE_INFINITY,
+        end: ends.length ? Math.max(...ends) : Number.POSITIVE_INFINITY,
+        paid,
+      };
+    }
+
+    function sortEntries(entries) {
+      if (filters.sortBy === 'board') return entries;
+      return entries.map((entry, index) => ({ entry, index, stats: entrySortStats(entry) }))
+        .sort((a, b) => {
+          if (filters.sortBy === 'most-pay') return b.stats.paid - a.stats.paid || a.index - b.index;
+          if (filters.sortBy === 'earliest-start') return a.stats.start - b.stats.start || a.index - b.index;
+          if (filters.sortBy === 'latest-start') return b.stats.start - a.stats.start || a.index - b.index;
+          if (filters.sortBy === 'earliest-finish') return a.stats.end - b.stats.end || a.index - b.index;
+          if (filters.sortBy === 'latest-finish') return b.stats.end - a.stats.end || a.index - b.index;
+          return a.index - b.index;
+        })
+        .map((item) => item.entry);
+    }
+
+    function renderSwitcher() {
+      switcher.innerHTML = state.boards.map((board) => `
+        <button class="btn ${board.id === state.selectedBoardId ? 'active' : ''}" type="button" data-board-id="${escapeHtml(board.id)}">
+          ${escapeHtml(board.title)} (${escapeHtml(board.entryCount)})
+        </button>
+      `).join('');
+    }
+
+    function renderFilters(entries, shownCount) {
+      const startBuckets = [
+        ['blair', 'Blair'],
+        ['tunneys', "Tunney's"],
+        ['msf', 'MSF / PHD'],
+      ].filter(([key]) => entries.some((entry) => (entry.pieces || []).some((piece) => piece.startBucket === key)));
+      filtersEl.innerHTML = `
+        <div class="filter-grid">
+          <label>Work number
+            <input type="search" value="${escapeHtml(filters.shift)}" placeholder="1-23" data-filter="shift">
+          </label>
+          <label>Work type
+            <select data-filter="workType">
+              ${renderOptions(['all', 'odd', 'relief'], filters.workType)}
+            </select>
+          </label>
+          <label>Status
+            <select data-filter="status">
+              <option value="open" ${filters.status === 'open' ? 'selected' : ''}>Open work</option>
+              <option value="all" ${filters.status === 'all' ? 'selected' : ''}>All work</option>
+              <option value="taken" ${filters.status === 'taken' ? 'selected' : ''}>Taken / X marked</option>
+            </select>
+          </label>
+          <label>Week
+            <select data-filter="week">
+              <option value="any-open" ${filters.week === 'any-open' ? 'selected' : ''}>Any open week</option>
+              <option value="both" ${filters.week === 'both' ? 'selected' : ''}>Both weeks open</option>
+              <option value="week1" ${filters.week === 'week1' ? 'selected' : ''}>Week 1 open</option>
+              <option value="week2" ${filters.week === 'week2' ? 'selected' : ''}>Week 2 open</option>
+              <option value="all" ${filters.week === 'all' ? 'selected' : ''}>All weeks</option>
+            </select>
+          </label>
+          <label>Start location
+            <select data-filter="startBucket">
+              <option value="">Any start</option>
+              ${startBuckets.map(([key, label]) => `<option value="${escapeHtml(key)}" ${filters.startBucket === key ? 'selected' : ''}>${escapeHtml(label)}</option>`).join('')}
+            </select>
+          </label>
+          <label>Start after
+            <input type="time" value="${escapeHtml(filters.onAfter)}" data-filter="onAfter">
+          </label>
+          <label>Start before
+            <input type="time" value="${escapeHtml(filters.onBefore)}" data-filter="onBefore">
+          </label>
+          <label>Sort
+            <select data-filter="sortBy">
+              <option value="board" ${filters.sortBy === 'board' ? 'selected' : ''}>Board order</option>
+              <option value="most-pay" ${filters.sortBy === 'most-pay' ? 'selected' : ''}>Most paid time</option>
+              <option value="earliest-start" ${filters.sortBy === 'earliest-start' ? 'selected' : ''}>Earliest start</option>
+              <option value="latest-start" ${filters.sortBy === 'latest-start' ? 'selected' : ''}>Latest start</option>
+              <option value="earliest-finish" ${filters.sortBy === 'earliest-finish' ? 'selected' : ''}>Earliest finish</option>
+              <option value="latest-finish" ${filters.sortBy === 'latest-finish' ? 'selected' : ''}>Latest finish</option>
+            </select>
+          </label>
+        </div>
+        <div class="filter-actions">
+          <div class="muted">${escapeHtml(shownCount)} of ${escapeHtml(entries.length)} shown</div>
+          <button class="btn" type="button" data-clear-filters>Clear filters</button>
+        </div>
+      `;
+    }
+
+    function weekLabel(entry) {
+      const week1 = entry.week1Taken ? 'Week 1 taken' : 'Week 1 open';
+      const week2 = entry.week2Taken ? 'Week 2 taken' : 'Week 2 open';
+      return `${week1} · ${week2}`;
+    }
+
+    function renderEntry(entry) {
+      const pieces = Array.isArray(entry.pieces) ? entry.pieces : [];
+      return `
+        <article class="board-card">
+          <div class="card-head">
+            <div>
+              <h3>${escapeHtml(entry.workId)}</h3>
+              <p class="sub">${escapeHtml(entry.sectionLabel)} · Board page ${escapeHtml(entry.page || 'N/A')}</p>
+            </div>
+            <div class="pill ${entry.taken ? 'taken' : 'open'}">${escapeHtml(weekLabel(entry))}</div>
+          </div>
+          <div class="totals">
+            <div class="total"><strong>Start</strong>${escapeHtml(entry.startLocation || 'N/A')} ${escapeHtml(entry.startTime || '')}</div>
+            <div class="total"><strong>Finish</strong>${escapeHtml(entry.endLocation || 'N/A')} ${escapeHtml(entry.endTime || '')}</div>
+            <div class="total"><strong>Platform</strong>${escapeHtml(entry.platformTime || 'N/A')}</div>
+            <div class="total"><strong>Paid</strong>${escapeHtml(entry.paidTime || 'N/A')}</div>
+          </div>
+          <div class="pieces" style="margin-top:8px;">
+            ${pieces.map((piece, index) => `
+              <section class="piece">
+                <strong>${entry.pieceCount > 1 ? `Piece ${index + 1}` : 'Piece'}</strong>
+                <div class="piece-title">${escapeHtml(piece.from)} to ${escapeHtml(piece.to)}</div>
+                <div>${escapeHtml(piece.startTime)} to ${escapeHtml(piece.endTime)} · ${escapeHtml(piece.duration)} platform</div>
+                <div class="muted">Start filter: ${escapeHtml(piece.startBucketLabel || 'MSF / PHD')}</div>
+              </section>
+            `).join('')}
+          </div>
+        </article>
+      `;
+    }
+
+    function renderBoard() {
+      const board = state.board;
+      const entries = Array.isArray(board?.entries) ? board.entries : [];
+      const shown = sortEntries(entries.filter(entryMatches));
+      const openCount = entries.filter((entry) => !entry.taken).length;
+      const takenCount = entries.filter((entry) => entry.taken).length;
+      statsEl.innerHTML = `
+        <div class="stat"><span>Entries</span><strong>${escapeHtml(entries.length)}</strong></div>
+        <div class="stat"><span>Open</span><strong>${escapeHtml(openCount)}</strong></div>
+        <div class="stat"><span>Taken</span><strong>${escapeHtml(takenCount)}</strong></div>
+      `;
+      renderFilters(entries, shown.length);
+      boardList.innerHTML = shown.length
+        ? shown.map(renderEntry).join('')
+        : '<div class="empty">No board work matches these filters.</div>';
+    }
+
+    async function loadBoard(boardId = '') {
+      statusEl.textContent = 'Loading...';
+      try {
+        const qs = boardId ? `?board=${encodeURIComponent(boardId)}` : '';
+        const response = await fetch(`/api/rail-boards${qs}`);
+        const data = await response.json();
+        if (!response.ok || !data.ok) throw new Error(data.error || 'Rail boards failed');
+        state = data;
+        renderSwitcher();
+        renderBoard();
+        statusEl.textContent = state.board ? 'Boards ready' : 'No board';
+      } catch (error) {
+        statusEl.textContent = 'Error';
+        boardList.innerHTML = `<div class="empty">${escapeHtml(error.message || 'Rail boards failed.')}</div>`;
+      }
+    }
+
+    switcher.addEventListener('click', (event) => {
+      const button = event.target.closest('[data-board-id]');
+      if (!button) return;
+      loadBoard(button.dataset.boardId || '');
+    });
+
+    filtersEl.addEventListener('input', (event) => {
+      const field = event.target.closest('[data-filter]');
+      if (!field) return;
+      filters[field.dataset.filter] = field.value;
+      renderBoard();
+      const next = filtersEl.querySelector(`[data-filter="${field.dataset.filter}"]`);
+      if (next) {
+        next.focus();
+        if (typeof next.setSelectionRange === 'function') {
+          const length = String(next.value || '').length;
+          next.setSelectionRange(length, length);
+        }
+      }
+    });
+
+    filtersEl.addEventListener('change', (event) => {
+      const field = event.target.closest('[data-filter]');
+      if (!field) return;
+      filters[field.dataset.filter] = field.value;
+      renderBoard();
+    });
+
+    filtersEl.addEventListener('click', (event) => {
+      if (!event.target.closest('[data-clear-filters]')) return;
+      filters = {
+        shift: '',
+        workType: 'all',
+        status: 'open',
+        week: 'any-open',
+        startBucket: '',
+        onAfter: '',
+        onBefore: '',
+        sortBy: 'board',
+      };
+      renderBoard();
+    });
+
+    refreshBtn.addEventListener('click', () => loadBoard(state.selectedBoardId));
+    loadBoard();
+  </script>
+</body>
+</html>
