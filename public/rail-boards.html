@@ -252,6 +252,292 @@
       gap: 8px;
       color: var(--muted);
     }
+    .paddle-lookup-card {
+      max-width: min(980px, 100%);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      background: rgba(17,22,28,.95);
+      overflow: hidden;
+    }
+    .paddle-lookup-card .card-head {
+      padding: 18px 18px 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 0;
+    }
+    .paddle-lookup-card .card-head h3 {
+      margin: 0;
+      font-size: 38px;
+      line-height: 1;
+      letter-spacing: -.03em;
+    }
+    .paddle-lookup-card .card-head p {
+      margin: 6px 0 0;
+      color: var(--muted);
+    }
+    .paddle-lookup-card .card-head-right {
+      display: flex;
+      justify-content: flex-end;
+      min-width: max-content;
+    }
+    .paddle-lookup-card .card-body {
+      padding: 0 18px 18px;
+    }
+    .active-box {
+      border: 1px solid rgba(255,176,104,.25);
+      background: rgba(255,176,104,.05);
+      border-radius: 16px;
+      padding: 14px 16px;
+      margin-bottom: 14px;
+    }
+    .active-box-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+    }
+    .active-box-copy {
+      flex: 1;
+      min-width: 0;
+    }
+    .active-box .title {
+      font-size: 28px;
+      font-weight: 700;
+      line-height: 1.15;
+    }
+    .action-detail {
+      margin-top: 6px;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+    .action-mimic {
+      margin-top: 14px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 180px minmax(0, 1fr);
+      gap: 14px;
+      align-items: center;
+    }
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .summary-item {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 12px;
+      background: rgba(255,255,255,.02);
+    }
+    .summary-item .k {
+      font-size: 12px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      margin-bottom: 4px;
+    }
+    .summary-item .v {
+      font-size: 15px;
+      font-weight: 600;
+    }
+    .entry-card {
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 16px;
+      background: rgba(255,255,255,.02);
+      margin-bottom: 14px;
+    }
+    .entry-card.active {
+      border-color: rgba(255,176,104,.35);
+      background: rgba(255,176,104,.06);
+    }
+    .entry-lines {
+      display: grid;
+      gap: 6px;
+      font-size: 14px;
+    }
+    .block-stack {
+      display: grid;
+      gap: 10px;
+    }
+    .entry-head {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: baseline;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .entry-head h4 {
+      justify-self: start;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin: 0;
+      font-size: 21px;
+    }
+    .entry-direction {
+      justify-self: center;
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+    .entry-block {
+      justify-self: end;
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--accent-2);
+      letter-spacing: .02em;
+    }
+    .radio-check {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 8px;
+      border-radius: 999px;
+      border: 1px solid rgba(116,255,173,.26);
+      background: rgba(116,255,173,.10);
+      color: var(--ok);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+    .trip-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 170px minmax(0, 1fr);
+      gap: 14px;
+      align-items: center;
+      padding: 12px 14px;
+      border-radius: 16px;
+      background: rgba(255,255,255,.03);
+      border: 1px solid rgba(255,255,255,.06);
+    }
+    .trip-row.active-trip {
+      border-color: rgba(255,176,104,.45);
+      background: linear-gradient(90deg, rgba(255,176,104,.08), rgba(255,255,255,.02));
+      box-shadow: 0 0 0 1px rgba(255,176,104,.12) inset;
+    }
+    .trip-side { min-width: 0; }
+    .trip-side.end { text-align: right; }
+    .trip-stop {
+      font-weight: 700;
+      font-size: 18px;
+      line-height: 1.15;
+      color: #f7f8fb;
+      overflow-wrap: anywhere;
+    }
+    .trip-time {
+      margin-top: 4px;
+      font-size: 24px;
+      font-weight: 800;
+      color: var(--accent-2);
+      letter-spacing: 0;
+    }
+    .trip-center {
+      display: grid;
+      gap: 8px;
+      justify-items: center;
+    }
+    .trip-duration {
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--muted);
+    }
+    .trip-rail {
+      position: relative;
+      width: 100%;
+      height: 18px;
+    }
+    .trip-rail::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 50%;
+      height: 3px;
+      border-radius: 999px;
+      transform: translateY(-50%);
+      background: linear-gradient(90deg, rgba(169,198,255,.18), rgba(255,176,104,.35), rgba(169,198,255,.18));
+    }
+    .trip-train {
+      position: absolute;
+      top: 50%;
+      left: var(--train-progress, 50%);
+      transform: translate(-50%, -50%);
+      filter: drop-shadow(0 0 8px rgba(255,176,104,.22));
+    }
+    .otrain-icon {
+      width: 20px;
+      height: 20px;
+      display: inline-block;
+    }
+    .trip-subtext {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+    .break-strip {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1px dashed rgba(255,255,255,.15);
+      background: rgba(255,255,255,.02);
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .break-strip.split-break {
+      justify-content: stretch;
+      border-style: solid;
+      border-color: rgba(255,176,104,.24);
+      background: linear-gradient(90deg, rgba(255,176,104,.08), rgba(255,255,255,.025));
+      border-radius: 16px;
+      padding: 12px 14px;
+      text-align: center;
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: center;
+      gap: 12px;
+    }
+    .break-pill {
+      color: var(--accent-2);
+      font-weight: 700;
+    }
+    .break-title {
+      font-weight: 800;
+      color: var(--text);
+      letter-spacing: .02em;
+    }
+    .break-detail {
+      color: var(--muted);
+      font-size: 13px;
+      margin-top: 2px;
+    }
+    .split-side { min-width: 0; }
+    .split-side.left { text-align: left; }
+    .split-side.right { text-align: right; }
+    .split-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--muted);
+      margin-bottom: 2px;
+    }
+    .split-time {
+      font-size: 20px;
+      font-weight: 800;
+      color: var(--text);
+    }
+    .split-center {
+      min-width: 170px;
+    }
     .empty {
       border: 1px dashed var(--border);
       border-radius: 14px;
@@ -266,6 +552,55 @@
       .actions { width: 100%; }
       .card-actions { justify-content: flex-start; }
       .trip-grid { grid-template-columns: 1fr; }
+      .paddle-lookup-card .card-head {
+        flex-direction: row;
+        align-items: flex-start;
+      }
+      .paddle-lookup-card .card-head h3 {
+        font-size: 34px;
+      }
+      .active-box .title {
+        font-size: 22px;
+      }
+      .action-mimic,
+      .trip-row {
+        grid-template-columns: minmax(0, 1fr) 92px minmax(0, 1fr);
+        gap: 8px;
+      }
+      .entry-head {
+        grid-template-columns: 1fr;
+      }
+      .entry-direction,
+      .entry-block {
+        justify-self: start;
+        text-align: left;
+      }
+      .trip-row {
+        padding: 10px;
+      }
+      .trip-side.end {
+        justify-self: end;
+        text-align: right;
+      }
+      .trip-stop {
+        font-size: 14px;
+      }
+      .trip-time {
+        font-size: 18px;
+      }
+      .trip-duration {
+        font-size: 11px;
+      }
+      .break-strip.split-break {
+        grid-template-columns: 1fr;
+      }
+      .split-side.left,
+      .split-side.right {
+        text-align: center;
+      }
+      .split-center {
+        min-width: 0;
+      }
       .btn, .status { flex: 1; text-align: center; }
     }
   </style>
@@ -552,29 +887,213 @@
       `;
     }
 
-    function renderPaddleTrips(data) {
-      const entries = Array.isArray(data.entries) ? data.entries : [];
-      return entries.map((entry) => `
-        <article class="trip-card">
-          <strong>Trip ${escapeHtml(entry.sequence || '?')} · Block ${escapeHtml(entry.block || data.paddleId || '')}${entry.radioCheckNeeded ? ' · Radio check' : ''}</strong>
-          <div class="trip-grid">
-            <div>Report: ${escapeHtml(entry.reportTime || '--:--')} ${escapeHtml(entry.reportPlaceName || '')}</div>
-            <div>Clear: ${escapeHtml(entry.clearTime || entry.endTime || '--:--')} ${escapeHtml(entry.endPlaceName || entry.endStopName || '')}</div>
-            <div>${escapeHtml(entry.radioCheckReason ? `Radio check: ${entry.radioCheckReason}` : `Route ${entry.route || '1'}`)}</div>
+    function formatDurationMinutes(minutes) {
+      const total = Number(minutes);
+      if (!Number.isFinite(total) || total <= 0) return '0 min';
+      const hours = Math.floor(total / 60);
+      const mins = total % 60;
+      if (!hours) return `${mins} min`;
+      return mins ? `${hours}h ${mins}m` : `${hours}h`;
+    }
+
+    function renderTrainIcon() {
+      return '<svg class="otrain-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="6" width="14" height="9" rx="2" fill="#ffb068"/><rect x="7" y="8" width="4" height="3" rx="0.8" fill="#1c2128"/><rect x="13" y="8" width="4" height="3" rx="0.8" fill="#1c2128"/><path d="M8 18h8" stroke="#ffb068" stroke-width="1.8" stroke-linecap="round"/><circle cx="9" cy="17" r="1.3" fill="#f2f4f8"/><circle cx="15" cy="17" r="1.3" fill="#f2f4f8"/></svg>';
+    }
+
+    function formatPaddleStatusPill(live) {
+      if (!live) return 'loaded';
+      if (live.kind === 'trip') return 'live';
+      if (live.kind === 'break') return live.splitBreak ? 'on split' : 'on break';
+      if (live.kind === 'complete') return 'done';
+      if (live.kind === 'clearing') return 'clearing';
+      if (live.kind === 'prestart') return 'upcoming';
+      return 'loaded';
+    }
+
+    function getNextAction(live) {
+      if (!live) return { title: 'Paddle loaded.', detail: '' };
+      if (live.kind === 'trip') {
+        const tripName = live.sequence && live.directionLabel ? `Trip ${live.sequence} - ${live.directionLabel}` : `Trip ${live.sequence || ''}`.trim();
+        return { title: tripName || 'Active trip', detail: live.block ? `Block ${live.block}` : '' };
+      }
+      if (live.kind === 'prestart') {
+        const place = live.nextStartStop || live.reportPlaceName || 'start point';
+        const time = live.nextStartTime || live.reportTime || live.targetTime || '';
+        return { title: `Depart ${place}${time ? ` at ${time}` : ''}`, detail: live.block ? `Block ${live.block}` : '' };
+      }
+      if (live.kind === 'break') {
+        const time = live.nextStartTime || live.targetTime || '';
+        return {
+          title: live.splitBreak ? `Split ends${time ? ` at ${time}` : ''}` : `Break until Trip ${live.nextSequence || ''}${time ? ` at ${time}` : ''}`.trim(),
+          detail: live.nextStartStop ? `Next start: ${live.nextStartStop}` : '',
+        };
+      }
+      if (live.kind === 'clearing') {
+        return { title: live.label || `Clear block ${live.block || ''}`.trim(), detail: live.directionLabel || '' };
+      }
+      return { title: live.label || 'Paddle loaded.', detail: '' };
+    }
+
+    function renderNextActionBox(live) {
+      if (!live) return '<div class="active-box"><div class="title">Paddle loaded.</div></div>';
+      const action = getNextAction(live);
+      const mimic = live.kind === 'trip' ? `
+        <div class="action-mimic">
+          <div class="trip-side start">
+            <div class="trip-stop">${escapeHtml(live.startStop || '')}</div>
+            <div class="trip-time">${escapeHtml(live.startTime || '')}</div>
           </div>
-          ${(Array.isArray(entry.trips) && entry.trips.length) ? `
-            <div class="pieces" style="margin-top:8px;">
-              ${entry.trips.map((trip) => `
-                <section class="piece">
-                  <strong>Route ${escapeHtml(trip.route || '1')} / ${escapeHtml(trip.tripId || 'N/A')}</strong>
-                  <div class="piece-title">${escapeHtml(trip.startStop || 'Start')} to ${escapeHtml(trip.endStop || 'End')}</div>
-                  <div>${escapeHtml(trip.startTime || '--:--')} to ${escapeHtml(trip.endTime || '--:--')}</div>
-                </section>
-              `).join('')}
+          <div class="trip-center">
+            <div class="trip-rail"><span class="trip-train">${renderTrainIcon()}</span></div>
+          </div>
+          <div class="trip-side end">
+            <div class="trip-stop">${escapeHtml(live.endStop || '')}</div>
+            <div class="trip-time">${escapeHtml(live.endTime || '')}</div>
+          </div>
+        </div>
+      ` : '';
+      return `
+        <div class="active-box">
+          <div class="active-box-head">
+            <div class="active-box-copy">
+              <div class="title">${escapeHtml(action.title)}</div>
+              ${action.detail ? `<div class="action-detail">${escapeHtml(action.detail)}</div>` : ''}
             </div>
-          ` : ''}
+          </div>
+          ${mimic}
+        </div>
+      `;
+    }
+
+    function renderPieceSummaryItems(data) {
+      const pieces = Array.isArray(data.pieceSummaries) ? data.pieceSummaries : [];
+      if (pieces.length > 1) {
+        return pieces.map((piece, index) => {
+          const label = index === 0 ? '1st piece' : index === 1 ? '2nd piece' : `${index + 1}th piece`;
+          return `
+            <div class="summary-item"><div class="k">${escapeHtml(label)} start</div><div class="v">${escapeHtml(piece.start || 'N/A')}</div></div>
+            <div class="summary-item"><div class="k">${escapeHtml(label)} clear</div><div class="v">${escapeHtml(piece.clear || 'N/A')}</div></div>
+          `;
+        }).join('');
+      }
+      return `
+        <div class="summary-item"><div class="k">Start</div><div class="v">${escapeHtml(data.firstReportTime || pieces[0]?.start || 'N/A')}</div></div>
+        <div class="summary-item"><div class="k">Clear</div><div class="v">${escapeHtml(data.finalClearTime || pieces[0]?.clear || 'N/A')}</div></div>
+      `;
+    }
+
+    function renderSplitSummaryItems(data) {
+      const splits = Array.isArray(data.splitBreaks) ? data.splitBreaks : [];
+      if (!splits.length) return '';
+      return splits.map((split, index) => {
+        const label = splits.length === 1 ? 'Split break' : `Split break ${index + 1}`;
+        const detail = `${formatDurationMinutes(split.durationMinutes)}${split.clearTime && split.backTime ? ` (${split.clearTime}-${split.backTime})` : ''}`;
+        return `<div class="summary-item"><div class="k">${escapeHtml(label)}</div><div class="v">${escapeHtml(detail)}</div></div>`;
+      }).join('');
+    }
+
+    function deriveEntryDirection(entry) {
+      const firstTrip = (entry.trips || [])[0] || null;
+      const startStop = String(firstTrip?.startStop || '').toLowerCase();
+      const endStop = String(firstTrip?.endStop || '').toLowerCase();
+      if ((startStop.includes('blair') || startStop.includes("tunney")) && (endStop.includes('pexite') || endStop.includes('pexitw'))) return 'Reduction';
+      if (startStop.includes('phnd') && endStop.includes('tremblay')) return 'Launching West';
+      if (startStop.includes('phnd') && (endStop.includes('st laurent') || endStop.includes('st-laurent'))) return 'Launching East';
+      if (endStop.includes('blair')) return 'East to Blair';
+      if (endStop.includes("tunney")) return "West to Tunney's";
+      return '';
+    }
+
+    function renderTripRow(entry, trip, live) {
+      const isActiveTrip = Boolean(live && live.kind === 'trip' && String(live.block || '') === String(entry.block || '') && String(live.tripId || '') === String(trip.tripId || ''));
+      return `
+        <div class="trip-row${isActiveTrip ? ' active-trip' : ''}">
+          <div class="trip-side start">
+            <div class="trip-stop">${escapeHtml(trip.startStop || '')}</div>
+            <div class="trip-time">${escapeHtml(trip.startTime || '')}</div>
+            <div class="trip-subtext">&nbsp;</div>
+          </div>
+          <div class="trip-center">
+            <div class="trip-duration">${typeof trip.durationMinutes === 'number' ? `${escapeHtml(trip.durationMinutes)} min` : 'In service'}</div>
+            <div class="trip-rail"><span class="trip-train">${renderTrainIcon()}</span></div>
+          </div>
+          <div class="trip-side end">
+            <div class="trip-stop">${escapeHtml(trip.endStop || '')}</div>
+            <div class="trip-time">${escapeHtml(trip.endTime || '')}</div>
+            <div class="trip-subtext">${isActiveTrip ? 'Live now' : '&nbsp;'}</div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderEntryCard(entry, live) {
+      const directionLabel = deriveEntryDirection(entry);
+      const tripRows = (entry.trips || []).map((trip) => renderTripRow(entry, trip, live)).join('');
+      const isLiveBreak = Boolean(live && live.kind === 'break' && String(live.block || '') === String(entry.block || '') && String(live.sequence || '') === String(entry.sequence || ''));
+      const isSplitBreak = typeof entry.breakAfterMinutes === 'number' && entry.breakAfterMinutes >= 90;
+      const breakStrip = typeof entry.breakAfterMinutes === 'number' && entry.breakAfterMinutes > 0
+        ? isSplitBreak
+          ? `
+            <div class="break-strip split-break${isLiveBreak ? ' active-break' : ''}">
+              <div class="split-side left">
+                <div class="split-label">Clear</div>
+                <div class="split-time">${escapeHtml(entry.clearTime || entry.endTime || '')}</div>
+              </div>
+              <div class="split-center">
+                <div class="break-title">Split break</div>
+                <div class="break-detail">${escapeHtml(formatDurationMinutes(entry.breakAfterMinutes))}</div>
+              </div>
+              <div class="split-side right">
+                <div class="split-label">Back</div>
+                <div class="split-time">${escapeHtml(entry.nextBlockReportTime || entry.nextBlockStartTime || '')}</div>
+              </div>
+            </div>
+          `
+          : `<div class="break-strip${isLiveBreak ? ' active-break' : ''}"><span class="break-pill">Break ${escapeHtml(entry.breakAfterMinutes)} min</span></div>`
+        : '';
+      return `
+        <div class="block-stack">
+          <article class="entry-card${live && live.kind === 'trip' && String(live.block || '') === String(entry.block || '') && String(live.sequence || '') === String(entry.sequence || '') ? ' active' : ''}">
+            <div class="entry-head">
+              <h4>
+                <span>Trip ${escapeHtml(entry.sequence)}</span>
+                ${entry.radioCheckNeeded ? '<span class="radio-check">Radio check required</span>' : ''}
+              </h4>
+              <div class="entry-direction">${escapeHtml(directionLabel)}</div>
+              <div class="entry-block">Block ${escapeHtml(entry.block)}</div>
+            </div>
+            <div class="entry-lines">${tripRows}</div>
+          </article>
+          ${breakStrip}
+        </div>
+      `;
+    }
+
+    function renderLookupStylePaddle(data) {
+      const live = data.liveStatus || null;
+      return `
+        <article class="paddle-lookup-card">
+          <div class="card-head">
+            <div>
+              <h3>${escapeHtml(data.paddleId)}</h3>
+              <p>${escapeHtml(data.serviceLabel)} service</p>
+            </div>
+            <div class="card-head-right">
+              <span class="pill">${escapeHtml(formatPaddleStatusPill(live))}</span>
+            </div>
+          </div>
+          <div class="card-body">
+            ${renderNextActionBox(live)}
+            <div class="summary-grid">
+              ${renderPieceSummaryItems(data)}
+              ${renderSplitSummaryItems(data)}
+              <div class="summary-item"><div class="k">Blocks</div><div class="v">${escapeHtml(data.entries?.length || 0)}</div></div>
+              <div class="summary-item"><div class="k">Effective</div><div class="v">${escapeHtml(data.effective || 'N/A')}</div></div>
+            </div>
+            ${(data.entries || []).map((entry) => renderEntryCard(entry, live)).join('')}
+          </div>
         </article>
-      `).join('');
+      `;
     }
 
     async function openPaddle(paddleId, serviceDay) {
@@ -587,15 +1106,7 @@
         if (!response.ok || !data.ok) throw new Error(data.error || 'Paddle lookup failed');
         paddleTitle.textContent = `Paddle ${data.paddleId || paddleId}`;
         paddleMeta.textContent = `${data.serviceLabel || serviceDay || 'Service'} · ${data.dutyType || ''}`.trim();
-        paddleBody.innerHTML = `
-          <div class="totals">
-            <div class="total"><strong>Report</strong>${escapeHtml(data.firstReportTime || 'N/A')}</div>
-            <div class="total"><strong>Clear</strong>${escapeHtml(data.finalClearTime || 'N/A')}</div>
-            <div class="total"><strong>Trips</strong>${escapeHtml((data.entries || []).length)}</div>
-            <div class="total"><strong>Source</strong>${escapeHtml(data.sourceFile || 'N/A')}</div>
-          </div>
-          ${renderPaddleTrips(data) || '<div class="empty">No trip details found for this paddle.</div>'}
-        `;
+        paddleBody.innerHTML = renderLookupStylePaddle(data);
         paddleOverlay.hidden = false;
         document.body.style.overflow = 'hidden';
         statusEl.textContent = 'Paddle ready';
