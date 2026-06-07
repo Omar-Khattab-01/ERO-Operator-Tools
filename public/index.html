@@ -1369,6 +1369,39 @@
       padding: 12px 14px;
       font: inherit;
     }
+    .date-input-combo {
+      position: relative;
+      display: block;
+    }
+    .date-input-combo .text-input {
+      padding-right: 54px;
+    }
+    .date-picker-button,
+    .date-picker-native {
+      position: absolute;
+      top: 1px;
+      right: 1px;
+      width: 48px;
+      height: calc(100% - 2px);
+      border: 0;
+      border-left: 1px solid var(--border);
+      border-radius: 0 13px 13px 0;
+    }
+    .date-picker-button {
+      display: grid;
+      place-items: center;
+      background: rgba(255,255,255,.03);
+      color: var(--accent-2);
+      pointer-events: none;
+    }
+    .date-picker-button svg {
+      width: 20px;
+      height: 20px;
+    }
+    .date-picker-native {
+      opacity: 0;
+      cursor: pointer;
+    }
     .text-input.input-error {
       border-color: rgba(255,120,120,.7);
       box-shadow: 0 0 0 1px rgba(255,120,120,.35);
@@ -3224,6 +3257,23 @@
       return `${match[2]}-${match[3]}-${match[1]}`;
     }
 
+    function renderLrvTypedDatePicker(inputId, typedValue = '') {
+      const pickerId = `${inputId}Picker`;
+      const pickerValue = typedLrvDateToDateValue(typedValue);
+      return `
+        <div class="date-input-combo">
+          <input id="${escapeHtml(inputId)}" class="text-input" type="text" inputmode="numeric" maxlength="10" data-lrv-date-input data-lrv-date-picker-id="${escapeHtml(pickerId)}" placeholder="MM-DD-YYYY" value="${escapeHtml(typedValue)}">
+          <span class="date-picker-button" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="4" width="18" height="18" rx="2"></rect>
+              <path d="M16 2v4M8 2v4M3 10h18"></path>
+            </svg>
+          </span>
+          <input id="${escapeHtml(pickerId)}" class="date-picker-native" type="date" data-lrv-date-picker-for="${escapeHtml(inputId)}" aria-label="Choose reported date" value="${escapeHtml(pickerValue)}">
+        </div>
+      `;
+    }
+
     function isoToLrvTimeValue(value) {
       if (!value) return '';
       const date = new Date(value);
@@ -3700,7 +3750,7 @@
           </label>
           <label class="field-stack">
             <span class="field-label">Reported to Mainline Date</span>
-            <input id="editMlcDate_${id}" class="text-input" type="text" inputmode="numeric" maxlength="10" data-lrv-date-input placeholder="MM-DD-YYYY" value="${escapeHtml(dateValueToTypedLrvDate(datetimeLocalValue(report.mlc_reported_at)))}">
+            ${renderLrvTypedDatePicker(`editMlcDate_${id}`, dateValueToTypedLrvDate(datetimeLocalValue(report.mlc_reported_at)))}
           </label>
           <label class="field-stack">
             <span class="field-label">Reported to Mainline Time</span>
@@ -3945,7 +3995,7 @@
                 </label>
                 <label class="field-stack">
                   <span class="field-label">Reported to Mainline Date</span>
-                  <input id="lrvMlcReportedDate" class="text-input" type="text" inputmode="numeric" maxlength="10" data-lrv-date-input placeholder="MM-DD-YYYY">
+                  ${renderLrvTypedDatePicker('lrvMlcReportedDate')}
                 </label>
                 <label class="field-stack">
                   <span class="field-label">Reported to Mainline Time</span>
@@ -6452,6 +6502,12 @@
     });
 
     document.addEventListener('change', async (event) => {
+      const datePicker = event.target?.closest?.('[data-lrv-date-picker-for]');
+      if (datePicker) {
+        const dateInput = document.getElementById(datePicker.dataset.lrvDatePickerFor || '');
+        if (dateInput) dateInput.value = dateValueToTypedLrvDate(datePicker.value || '');
+        return;
+      }
       const roleSelect = event.target?.closest?.('[data-update-lrv-access-role]');
       if (roleSelect) {
         await updateLrvDefectAccessRole(roleSelect.dataset.updateLrvAccessRole || '', roleSelect.value || 'reporter');
@@ -6526,6 +6582,8 @@
       if (!dateInput) return;
       const formatted = formatTypedLrvDateInput(dateInput.value);
       if (dateInput.value !== formatted) dateInput.value = formatted;
+      const picker = document.getElementById(dateInput.dataset.lrvDatePickerId || '');
+      if (picker) picker.value = typedLrvDateToDateValue(dateInput.value);
     });
 
     liveMapView.addEventListener('click', (event) => {
