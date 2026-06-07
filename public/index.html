@@ -2855,7 +2855,7 @@
       return true;
     }
 
-    function withLrvRequestTimeout(request, label = 'LRV request', timeoutMs = 15000) {
+    function withRequestTimeout(request, label = 'Request', timeoutMs = 15000) {
       return new Promise((resolve, reject) => {
         const timer = window.setTimeout(() => {
           reject(new Error(`${label} timed out. Check the connection and try again.`));
@@ -2870,6 +2870,10 @@
             reject(error);
           });
       });
+    }
+
+    function withLrvRequestTimeout(request, label = 'LRV request', timeoutMs = 15000) {
+      return withRequestTimeout(request, label, timeoutMs);
     }
 
     function normalizeLrvAccessRole(value) {
@@ -3738,7 +3742,7 @@
       if (!supabaseClient || !currentUser) return false;
       if (currentProfile) return true;
       const fallbackName = currentUser.user_metadata?.display_name || currentUser.user_metadata?.username || '';
-      const { data, error } = await supabaseClient
+      const { data, error } = await withRequestTimeout(supabaseClient
         .from('ero_user_profiles')
         .upsert({
           user_id: currentUser.id,
@@ -3746,7 +3750,7 @@
           email: currentUserEmail() || null,
         }, { onConflict: 'user_id' })
         .select('*')
-        .single();
+        .single(), 'Account profile', 15000);
       if (error || !data) {
         currentProfile = null;
         setAccountNotice(error?.message || 'Could not load your saved work.', 'warn');
@@ -3763,18 +3767,18 @@
         updateAccountButton();
         return;
       }
-      const { data, error } = await supabaseClient
+      const { data, error } = await withRequestTimeout(supabaseClient
         .from('ero_user_profiles')
         .select('*')
         .eq('user_id', currentUser.id)
-        .maybeSingle();
+        .maybeSingle(), 'Account profile', 15000);
       if (error) {
         currentProfile = null;
       } else if (data) {
         currentProfile = data;
         if (currentUserEmail() && currentProfile.email !== currentUserEmail()) {
           currentProfile.email = currentUserEmail();
-          await saveCurrentProfile();
+          await withRequestTimeout(saveCurrentProfile(), 'Account profile update', 15000);
         }
       } else {
         currentProfile = null;
@@ -3906,16 +3910,50 @@
         renderAccountModal();
         return;
       }
-      const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
-      if (error) {
+      const signInBtn = document.getElementById('signInBtn');
+      if (signInBtn) {
+        signInBtn.disabled = true;
+        signInBtn.textContent = 'Signing In...';
+      }
+      try {
+        const { data, error } = await withRequestTimeout(
+          supabaseClient.auth.signInWithPassword({ email, password }),
+          'Sign in',
+          15000
+        );
+        if (error) throw error;
+        const session = data?.session || (await withRequestTimeout(
+          supabaseClient.auth.getSession(),
+          'Account session',
+          8000
+        ))?.data?.session;
+        if (!session?.user) throw new Error('Sign in did not return an account session. Try again.');
+        currentUser = session.user;
+        updateAccountButton();
+        setAccountNotice('', '');
+        setStatus('Account signed in', true);
+        showToast('Signed in', currentUser.email || email);
+        closeAccountModal();
+        handleSession(session)
+          .then(() => setStatus('Account ready', true))
+          .catch((error) => {
+            setStatus('Account data delayed', false);
+            setAccountNotice(error?.message || 'Signed in, but account data did not finish loading. Try Retry or reload.', 'warn');
+          });
+      } catch (error) {
         markAccountFieldError('authEmail');
         markAccountFieldError('authPassword');
-        setAccountNotice(error.message || 'Sign in failed.', 'warn');
+        setAccountNotice(error?.message || 'Sign in failed.', 'warn');
+        setStatus('Sign in failed', false);
+        showToast('Sign in failed', error?.message || 'Check your email and password, then try again.');
         renderAccountModal();
-        return;
+      } finally {
+        const refreshedSignInBtn = document.getElementById('signInBtn');
+        if (refreshedSignInBtn) {
+          refreshedSignInBtn.disabled = false;
+          refreshedSignInBtn.textContent = 'Sign In';
+        }
       }
-      setAccountNotice('', '');
-      closeAccountModal();
     }
 
     async function signUpWithPassword() {
@@ -4107,8 +4145,15 @@
 
     async function signOutUser() {
       if (!supabaseClient) return;
-      await supabaseClient.auth.signOut();
+      try {
+        await withRequestTimeout(supabaseClient.auth.signOut(), 'Sign out', 10000);
+      } catch (error) {
+        setAccountNotice(error?.message || 'Sign out did not finish. Reload if your account still shows signed in.', 'warn');
+      }
+      await handleSession(null);
       setAccountNotice('Signed out.', 'ok');
+      setStatus('Signed out', true);
+      showToast('Signed out');
       closeAccountModal();
     }
 
@@ -4149,15 +4194,29 @@
       }
       supabaseClient = window.supabase.createClient(config.url, config.anonKey);
       accountRecoveryMode = isRecoveryUrl();
-      const { data } = await supabaseClient.auth.getSession();
-      await handleSession(data.session);
+      const sessionResult = await withRequestTimeout(supabaseClient.auth.getSession(), 'Account session', 8000)
+        .catch(() => ({ data: { session: null } }));
+      const bootSession = sessionResult?.data?.session || null;
+      if (bootSession?.user) {
+        currentUser = bootSession.user;
+        updateAccountButton();
+        handleSession(bootSession).catch((error) => {
+          setStatus('Account data delayed', false);
+          setAccountNotice(error?.message || 'Account data did not finish loading. Try again.', 'warn');
+        });
+      } else {
+        await handleSession(null);
+      }
       if (accountRecoveryMode) openAccountModal();
-      supabaseClient.auth.onAuthStateChange(async (event, session) => {
+      supabaseClient.auth.onAuthStateChange((event, session) => {
         if (event === 'PASSWORD_RECOVERY') {
           accountRecoveryMode = true;
           openAccountModal();
         }
-        await handleSession(session);
+        handleSession(session).catch((error) => {
+          setStatus('Account data delayed', false);
+          setAccountNotice(error?.message || 'Account data did not finish loading. Try again.', 'warn');
+        });
       });
       await maybeOpenTodaysPaddleOnBoot();
     }
