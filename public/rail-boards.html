@@ -333,6 +333,7 @@
       status: 'open',
       week: 'any-open',
       startBucket: '',
+      endBucket: '',
       onAfter: '',
       onBefore: '',
       sortBy: 'board',
@@ -377,6 +378,7 @@
       if (filters.status === 'taken' && !entry.taken) return false;
       if (filters.week !== 'all' && !entryOpenForWeek(entry, filters.week === 'any-open' ? '' : filters.week)) return false;
       if (filters.startBucket && !pieces.some((piece) => piece.startBucket === filters.startBucket)) return false;
+      if (filters.endBucket && !pieces.some((piece) => piece.endBucket === filters.endBucket)) return false;
       const after = timeToMinutes(filters.onAfter);
       const before = timeToMinutes(filters.onBefore);
       if (after !== null && !pieces.some((piece) => {
@@ -430,6 +432,11 @@
         ['tunneys', "Tunney's"],
         ['msf', 'MSF / PHD'],
       ].filter(([key]) => entries.some((entry) => (entry.pieces || []).some((piece) => piece.startBucket === key)));
+      const endBuckets = [
+        ['blair', 'Blair'],
+        ['tunneys', "Tunney's"],
+        ['msf', 'MSF / PHD'],
+      ].filter(([key]) => entries.some((entry) => (entry.pieces || []).some((piece) => piece.endBucket === key)));
       filtersEl.innerHTML = `
         <div class="filter-grid">
           <label>Work number
@@ -460,6 +467,12 @@
             <select data-filter="startBucket">
               <option value="">Any start</option>
               ${startBuckets.map(([key, label]) => `<option value="${escapeHtml(key)}" ${filters.startBucket === key ? 'selected' : ''}>${escapeHtml(label)}</option>`).join('')}
+            </select>
+          </label>
+          <label>End location
+            <select data-filter="endBucket">
+              <option value="">Any end</option>
+              ${endBuckets.map(([key, label]) => `<option value="${escapeHtml(key)}" ${filters.endBucket === key ? 'selected' : ''}>${escapeHtml(label)}</option>`).join('')}
             </select>
           </label>
           <label>Start after
@@ -531,7 +544,7 @@
                 <strong>${entry.pieceCount > 1 ? `Piece ${index + 1}` : 'Piece'}</strong>
                 <div class="piece-title">${escapeHtml(piece.from)} to ${escapeHtml(piece.to)}</div>
                 <div>${escapeHtml(piece.startTime)} to ${escapeHtml(piece.endTime)} · ${escapeHtml(piece.duration)} platform</div>
-                <div class="muted">Start filter: ${escapeHtml(piece.startBucketLabel || 'MSF / PHD')}</div>
+                <div class="muted">Start: ${escapeHtml(piece.startBucketLabel || 'MSF / PHD')} · End: ${escapeHtml(piece.endBucketLabel || 'MSF / PHD')}</div>
               </section>
             `).join('')}
           </div>
@@ -673,6 +686,7 @@
         status: 'open',
         week: 'any-open',
         startBucket: '',
+        endBucket: '',
         onAfter: '',
         onBefore: '',
         sortBy: 'board',

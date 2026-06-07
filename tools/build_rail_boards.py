@@ -52,7 +52,7 @@ def normalize_section_header(line: str) -> str:
     return value
 
 
-def start_bucket(location: str) -> str:
+def location_bucket(location: str) -> str:
     value = location.lower()
     if "blair" in value:
         return "blair"
@@ -61,7 +61,7 @@ def start_bucket(location: str) -> str:
     return "msf"
 
 
-def start_bucket_label(bucket: str) -> str:
+def location_bucket_label(bucket: str) -> str:
     return {
         "blair": "Blair",
         "tunneys": "Tunney's",
@@ -121,8 +121,10 @@ def parse_pdf(pdf_path: Path) -> dict:
             current["endTime"] = current["pieces"][-1]["endTime"]
             current["startLocation"] = current["pieces"][0]["from"]
             current["startBucket"] = current["pieces"][0]["startBucket"]
-            current["startBucketLabel"] = start_bucket_label(current["startBucket"])
+            current["startBucketLabel"] = location_bucket_label(current["startBucket"])
             current["endLocation"] = current["pieces"][-1]["to"]
+            current["endBucket"] = current["pieces"][-1]["endBucket"]
+            current["endBucketLabel"] = location_bucket_label(current["endBucket"])
             current["pieceCount"] = len(current["pieces"])
             entries.append(current)
         current = None
@@ -196,12 +198,15 @@ def parse_pdf(pdf_path: Path) -> dict:
 
             from_location = " ".join(match.group("from").split())
             to_location = " ".join(match.group("to").split())
-            bucket = start_bucket(from_location)
+            start_bucket = location_bucket(from_location)
+            end_bucket = location_bucket(to_location)
             current["pieces"].append({
                 "from": from_location,
                 "to": to_location,
-                "startBucket": bucket,
-                "startBucketLabel": start_bucket_label(bucket),
+                "startBucket": start_bucket,
+                "startBucketLabel": location_bucket_label(start_bucket),
+                "endBucket": end_bucket,
+                "endBucketLabel": location_bucket_label(end_bucket),
                 "startTime": match.group("start"),
                 "endTime": match.group("end"),
                 "duration": match.group("duration"),
