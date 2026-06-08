@@ -1163,6 +1163,19 @@
       text-transform: uppercase;
       color: var(--muted);
     }
+    .auth-form-intro {
+      color: var(--muted);
+      line-height: 1.4;
+      margin: 0;
+    }
+    .auth-password-group {
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 16px;
+      background: rgba(255,255,255,.025);
+      display: grid;
+      gap: 12px;
+      padding: 12px;
+    }
     .field-inline {
       display: flex;
       justify-content: space-between;
@@ -1359,6 +1372,9 @@
       display: flex;
       justify-content: flex-start;
       margin-top: 4px;
+    }
+    .auth-password-group .password-toggle-row {
+      margin-top: 0;
     }
     .text-input, .select-input {
       width: 100%;
@@ -2124,6 +2140,16 @@
     let accountResetMode = false;
     let accountRecoveryMode = false;
     let accountNotice = { text: '', type: '' };
+    let accountFieldErrors = new Set();
+    let accountFormDraft = {
+      displayName: '',
+      email: '',
+      password: '',
+      passwordConfirm: '',
+      resetEmail: '',
+      recoveryPassword: '',
+      recoveryPasswordConfirm: '',
+    };
     const lrvDefectAdminEmail = 'omar.hosam2000@gmail.com';
     const lrvNumbers = Array.from({ length: 67 }, (_, index) => index + 1);
     const lrvCabOptions = [
@@ -2864,6 +2890,42 @@
       return `<div class="auth-notice ${escapeHtml(accountNotice.type || '')}">${escapeHtml(accountNotice.text)}</div>`;
     }
 
+    function captureAccountFormDraft() {
+      const readVisibleValue = (id, fallback = '') => {
+        const node = document.getElementById(id);
+        return node ? node.value : fallback;
+      };
+      accountFormDraft = {
+        displayName: readVisibleValue('authDisplayName', accountFormDraft.displayName),
+        email: readVisibleValue('authEmail', accountFormDraft.email),
+        password: readVisibleValue('authPassword', accountFormDraft.password),
+        passwordConfirm: readVisibleValue('authPasswordConfirm', accountFormDraft.passwordConfirm),
+        resetEmail: readVisibleValue('resetEmail', accountFormDraft.resetEmail || accountFormDraft.email),
+        recoveryPassword: readVisibleValue('recoveryPassword', accountFormDraft.recoveryPassword),
+        recoveryPasswordConfirm: readVisibleValue('recoveryPasswordConfirm', accountFormDraft.recoveryPasswordConfirm),
+      };
+    }
+
+    function clearAccountFormDraft() {
+      accountFormDraft = {
+        displayName: '',
+        email: '',
+        password: '',
+        passwordConfirm: '',
+        resetEmail: '',
+        recoveryPassword: '',
+        recoveryPasswordConfirm: '',
+      };
+    }
+
+    function accountInputClass(id) {
+      return `text-input${accountFieldErrors.has(id) ? ' input-error' : ''}`;
+    }
+
+    function accountValue(key) {
+      return escapeHtml(accountFormDraft[key] || '');
+    }
+
     function loadTripNotificationSettings() {
       try {
         const parsed = JSON.parse(localStorage.getItem(tripNotificationStorageKey) || '{}');
@@ -3032,10 +3094,12 @@
     }
 
     function clearAccountFieldErrors() {
+      accountFieldErrors.clear();
       accountBody.querySelectorAll('.input-error').forEach((node) => node.classList.remove('input-error'));
     }
 
     function markAccountFieldError(id) {
+      accountFieldErrors.add(id);
       const node = document.getElementById(id);
       if (node) node.classList.add('input-error');
     }
@@ -4233,6 +4297,7 @@
       clearAccountFieldErrors();
       const email = document.getElementById('authEmail')?.value?.trim() || '';
       const password = document.getElementById('authPassword')?.value || '';
+      captureAccountFormDraft();
       if (!email || !password) {
         if (!email) markAccountFieldError('authEmail');
         if (!password) markAccountFieldError('authPassword');
@@ -4261,6 +4326,8 @@
         currentUser = session.user;
         updateAccountButton();
         setAccountNotice('', '');
+        clearAccountFieldErrors();
+        clearAccountFormDraft();
         setStatus('Account signed in', true);
         showToast('Signed in', currentUser.email || email);
         closeAccountModal();
@@ -4271,6 +4338,7 @@
             setAccountNotice(error?.message || 'Signed in, but account data did not finish loading. Try Retry or reload.', 'warn');
           });
       } catch (error) {
+        captureAccountFormDraft();
         markAccountFieldError('authEmail');
         markAccountFieldError('authPassword');
         setAccountNotice(error?.message || 'Sign in failed.', 'warn');
@@ -4292,6 +4360,7 @@
       const email = document.getElementById('authEmail')?.value?.trim() || '';
       const password = document.getElementById('authPassword')?.value || '';
       const passwordConfirm = document.getElementById('authPasswordConfirm')?.value || '';
+      captureAccountFormDraft();
       if (!displayName || !email || !password || !passwordConfirm) {
         if (!displayName) markAccountFieldError('authDisplayName');
         if (!email) markAccountFieldError('authEmail');
@@ -4319,6 +4388,8 @@
         },
       });
       if (error) {
+        captureAccountFormDraft();
+        markAccountFieldError('authEmail');
         setAccountNotice(error.message || 'Could not create the account.', 'warn');
         renderAccountModal();
         return;
@@ -4345,6 +4416,9 @@
         await saveCurrentProfile();
       }
       accountAuthMode = 'signin';
+      accountResetMode = false;
+      clearAccountFieldErrors();
+      clearAccountFormDraft();
       setAccountNotice('Account created. You can sign in now.', 'ok');
       renderAccountModal();
     }
@@ -4352,6 +4426,7 @@
     async function sendPasswordResetEmail() {
       clearAccountFieldErrors();
       const email = document.getElementById('resetEmail')?.value?.trim() || '';
+      captureAccountFormDraft();
       if (!email) {
         markAccountFieldError('resetEmail');
         setAccountNotice('Enter your email first.', 'warn');
@@ -4362,6 +4437,8 @@
         redirectTo: getAuthRedirectUrl(),
       });
       if (error) {
+        captureAccountFormDraft();
+        markAccountFieldError('resetEmail');
         setAccountNotice(error.message || 'Could not send reset email.', 'warn');
         renderAccountModal();
         return;
@@ -4393,6 +4470,7 @@
       clearAccountFieldErrors();
       const password = document.getElementById('recoveryPassword')?.value || '';
       const confirm = document.getElementById('recoveryPasswordConfirm')?.value || '';
+      captureAccountFormDraft();
       if (!password || !confirm) {
         if (!password) markAccountFieldError('recoveryPassword');
         if (!confirm) markAccountFieldError('recoveryPasswordConfirm');
@@ -4409,11 +4487,14 @@
       }
       const { error } = await supabaseClient.auth.updateUser({ password });
       if (error) {
+        captureAccountFormDraft();
         setAccountNotice(error.message || 'Could not update password.', 'warn');
         renderAccountModal();
         return;
       }
       accountRecoveryMode = false;
+      clearAccountFieldErrors();
+      clearAccountFormDraft();
       setAccountNotice('Password updated.', 'ok');
       closeAccountModal();
     }
@@ -4570,13 +4651,13 @@
             <div class="stack-form">
               <label class="field-stack">
                 <span class="field-label">New Password</span>
-                <input id="recoveryPassword" class="text-input" type="password" autocomplete="new-password" placeholder="Enter a new password">
-                <span class="password-toggle-row"><span class="toggle-inline"><input id="toggleRecoveryPasswords" type="checkbox"> Show password</span></span>
+                <input id="recoveryPassword" class="${accountInputClass('recoveryPassword')}" type="password" autocomplete="new-password" placeholder="Enter a new password" value="${accountValue('recoveryPassword')}">
               </label>
               <label class="field-stack">
                 <span class="field-label">Confirm Password</span>
-                <input id="recoveryPasswordConfirm" class="text-input" type="password" autocomplete="new-password" placeholder="Enter it again">
+                <input id="recoveryPasswordConfirm" class="${accountInputClass('recoveryPasswordConfirm')}" type="password" autocomplete="new-password" placeholder="Enter it again" value="${accountValue('recoveryPasswordConfirm')}">
               </label>
+              <span class="password-toggle-row"><span class="toggle-inline"><input id="toggleRecoveryPasswords" type="checkbox"> Show password</span></span>
             </div>
             <div class="section-actions">
               <button id="setNewPasswordBtn" class="btn" type="button">Set New Password</button>
@@ -4597,24 +4678,27 @@
         accountBody.innerHTML = isSignup ? `
           <section class="section-card">
             ${renderAccountNotice()}
+            <p class="auth-form-intro">Use your email and a password you can remember. Your saved paddles will stay with this account.</p>
             <div class="stack-form">
               <label class="field-stack">
                 <span class="field-label">Name</span>
-                <input id="authDisplayName" class="text-input" type="text" autocomplete="nickname" placeholder="Your name">
+                <input id="authDisplayName" class="${accountInputClass('authDisplayName')}" type="text" autocomplete="name" placeholder="Your name" value="${accountValue('displayName')}">
               </label>
               <label class="field-stack">
                 <span class="field-label">Email</span>
-                <input id="authEmail" class="text-input" type="email" autocomplete="email" placeholder="you@example.com">
+                <input id="authEmail" class="${accountInputClass('authEmail')}" type="email" autocomplete="email" inputmode="email" placeholder="you@example.com" value="${accountValue('email')}">
               </label>
-              <label class="field-stack">
-                <span class="field-label">Password</span>
-                <input id="authPassword" class="text-input" type="password" autocomplete="new-password" placeholder="Create a password">
+              <div class="auth-password-group">
+                <label class="field-stack">
+                  <span class="field-label">Password</span>
+                  <input id="authPassword" class="${accountInputClass('authPassword')}" type="password" autocomplete="new-password" placeholder="Create a password" value="${accountValue('password')}">
+                </label>
+                <label class="field-stack">
+                  <span class="field-label">Confirm Password</span>
+                  <input id="authPasswordConfirm" class="${accountInputClass('authPasswordConfirm')}" type="password" autocomplete="new-password" placeholder="Enter it again" value="${accountValue('passwordConfirm')}">
+                </label>
                 <span class="password-toggle-row"><span class="toggle-inline"><input id="toggleSignupPasswords" type="checkbox"> Show password</span></span>
-              </label>
-              <label class="field-stack">
-                <span class="field-label">Confirm Password</span>
-                <input id="authPasswordConfirm" class="text-input" type="password" autocomplete="new-password" placeholder="Enter it again">
-              </label>
+              </div>
             </div>
             <div class="section-actions">
               <button id="signUpBtn" class="btn" type="button">Create Account</button>
@@ -4627,7 +4711,7 @@
             <div class="stack-form">
               <label class="field-stack">
                 <span class="field-label">Email</span>
-                <input id="resetEmail" class="text-input" type="email" autocomplete="email" placeholder="you@example.com">
+                <input id="resetEmail" class="${accountInputClass('resetEmail')}" type="email" autocomplete="email" inputmode="email" placeholder="you@example.com" value="${accountValue('resetEmail') || accountValue('email')}">
               </label>
             </div>
             <div class="section-actions">
@@ -4641,11 +4725,11 @@
             <div class="stack-form">
               <label class="field-stack">
                 <span class="field-label">Email</span>
-                <input id="authEmail" class="text-input" type="email" autocomplete="email" placeholder="you@example.com">
+                <input id="authEmail" class="${accountInputClass('authEmail')}" type="email" autocomplete="email" inputmode="email" placeholder="you@example.com" value="${accountValue('email')}">
               </label>
               <label class="field-stack">
                 <span class="field-label">Password</span>
-                <input id="authPassword" class="text-input" type="password" autocomplete="current-password" placeholder="Password">
+                <input id="authPassword" class="${accountInputClass('authPassword')}" type="password" autocomplete="current-password" placeholder="Password" value="${accountValue('password')}">
                 <span class="password-toggle-row"><span class="toggle-inline"><input id="toggleSigninPassword" type="checkbox"> Show password</span></span>
               </label>
             </div>
@@ -4710,21 +4794,29 @@
       if (signInBtn) signInBtn.addEventListener('click', signInWithPassword);
       if (signUpBtn) signUpBtn.addEventListener('click', signUpWithPassword);
       if (switchToSignUpBtn) switchToSignUpBtn.addEventListener('click', () => {
+        captureAccountFormDraft();
+        accountFormDraft.passwordConfirm = '';
         accountAuthMode = 'signup';
         accountResetMode = false;
+        clearAccountFieldErrors();
         setAccountNotice('', '');
         renderAccountModal();
         wireAccountEvents();
       });
       if (switchToSignInBtn) switchToSignInBtn.addEventListener('click', () => {
+        captureAccountFormDraft();
         accountAuthMode = 'signin';
         accountResetMode = false;
+        clearAccountFieldErrors();
         setAccountNotice('', '');
         renderAccountModal();
         wireAccountEvents();
       });
       if (forgotPasswordBtn) forgotPasswordBtn.addEventListener('click', () => {
+        captureAccountFormDraft();
+        accountFormDraft.resetEmail = accountFormDraft.email;
         accountResetMode = true;
+        clearAccountFieldErrors();
         setAccountNotice('', '');
         renderAccountModal();
         wireAccountEvents();
