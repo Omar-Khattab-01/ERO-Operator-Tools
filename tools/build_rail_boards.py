@@ -7,7 +7,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-SOURCE_PDF = Path(os.environ.get("RAIL_BOARDS_PDF") or "/Users/omarkhattab/Downloads/2026 Summer ERO Daily Boards update.pdf")
+DEFAULT_SOURCE_PDFS = [
+    Path("/Users/omarkhattab/Downloads/2026 ERO Summer Update.pdf"),
+    Path("/Users/omarkhattab/Downloads/2026 Summer ERO Stat Boards.pdf"),
+    Path("/Users/omarkhattab/Downloads/2026 ERO Summer Spares (1).pdf"),
+]
 OUTPUT_FILE = Path(os.environ.get("RAIL_BOARDS_OUTPUT_FILE") or ROOT / "data" / "rail_boards.json")
 
 WORK_LINE_RE = re.compile(
@@ -16,6 +20,8 @@ WORK_LINE_RE = re.compile(
     r"(?P<end>\d{2}:\d{2})\s+(?P<to>.+?)\s+(?P<duration>\d{2}:\d{2})$"
 )
 TOTAL_RE = re.compile(r"Platform Time\s+(?P<platform>\d{2}:\d{2})\s+Paid Time\s+(?P<paid>\d{2}:\d{2})")
+SIMPLE_TOTAL_RE = re.compile(r"^(?P<platform>\d{2}:\d{2})\s+(?P<paid>\d{2}:\d{2})$")
+SPARE_ROW_RE = re.compile(r"\b(?P<time>\d{2}:\d{2}|Callup|EFSPM?|EFSP)\s+(?P<limit>\d+)\s+(?P<booked>\d+)\s+(?P<available>\d+)\b")
 
 SECTION_DEFS = {
     "mon_thu_odd": ("mon_thu", "Mon-Thu", "odd", "Mixed Odd Work"),
@@ -32,6 +38,43 @@ SECTION_DEFS = {
     "august_civic_relief": ("august_civic", "August Civic", "relief", "August Civic Mixed Relief Work"),
 }
 
+BOARD_TITLES = {
+    "mon_thu": "Mon-Thu Work",
+    "friday": "Friday Work",
+    "saturday": "Saturday Work",
+    "sunday": "Sunday Work",
+    "canada_day": "Canada Day",
+    "august_civic": "August Civic",
+    "daily_spares": "Daily Spares",
+    "friday_spares": "Friday Spares",
+    "saturday_spares": "Saturday Spares",
+    "sunday_spares": "Sunday Spares",
+    "canada_day_spares": "Canada Day Spares",
+    "august_civic_spares": "August Civic Spares",
+}
+
+BOARD_ORDER = [
+    "mon_thu",
+    "friday",
+    "saturday",
+    "sunday",
+    "canada_day",
+    "august_civic",
+    "daily_spares",
+    "friday_spares",
+    "saturday_spares",
+    "sunday_spares",
+    "canada_day_spares",
+    "august_civic_spares",
+]
+
+
+def source_pdfs() -> list[Path]:
+    env_value = os.environ.get("RAIL_BOARDS_PDFS") or os.environ.get("RAIL_BOARDS_PDF") or ""
+    if env_value:
+        return [Path(item).expanduser() for item in env_value.split(os.pathsep) if item.strip()]
+    return DEFAULT_SOURCE_PDFS
+
 
 def extract_layout_text(pdf_path: Path) -> str:
     import subprocess
@@ -47,9 +90,14 @@ def extract_layout_text(pdf_path: Path) -> str:
 
 def normalize_section_header(line: str) -> str:
     value = " ".join(line.split()).strip()
-    if value == "Fridays Mixed Relief Work":
-        return "Friday Mixed Relief Work"
-    return value
+    replacements = {
+        "Fridays Mixed Relief Work": "Friday Mixed Relief Work",
+        "Mixed Odd Work Saturday": "Saturday Mixed Odd Work",
+        "Mixed Relief Work Saturday": "Saturday Mixed Relief Work",
+        "Mix Odd Work Sunday": "Sunday Mixed Odd Work",
+        "Mix Relief Work Sunday": "Sunday Mixed Relief Work",
+    }
+    return replacements.get(value, value)
 
 
 def location_bucket(location: str) -> str:
@@ -77,6 +125,17 @@ def detect_week_taken(lead: str) -> tuple[bool, bool]:
     return "X" in lead[:midpoint].upper(), "X" in lead[midpoint:].upper()
 
 
+def detect_pending_week_marks(raw_line: str, header_columns: list[int]) -> tuple[bool, bool] | None:
+    x_positions = [match.start() for match in re.finditer(r"X+", raw_line.upper())]
+    if not x_positions:
+        return None
+    if len(header_columns) < 2:
+        return True, True
+    week1 = any(abs(pos - header_columns[0]) <= abs(pos - header_columns[1]) for pos in x_positions)
+    week2 = any(abs(pos - header_columns[1]) < abs(pos - header_columns[0]) for pos in x_positions)
+    return week1, week2
+
+
 def section_from_state(base_section: str, holiday: str) -> str:
     if holiday == "canada_day":
         return "canada_day_relief" if base_section == "relief" else "canada_day_odd"
@@ -85,9 +144,18 @@ def section_from_state(base_section: str, holiday: str) -> str:
     return base_section
 
 
-def make_entry(section_id: str, work_id: str, page_number: int, order: int, week1_taken: bool, week2_taken: bool) -> dict:
+def make_entry(
+    section_id: str,
+    work_id: str,
+    page_number: int,
+    order: int,
+    week1_taken: bool,
+    week2_taken: bool,
+    source_file: str,
+) -> dict:
     board_key, board_label, work_type, section_label = SECTION_DEFS[section_id]
     return {
+        "kind": "work",
         "id": f"{section_id}-{work_id}-{order}",
         "workId": work_id,
         "title": work_id,
@@ -96,6 +164,7 @@ def make_entry(section_id: str, work_id: str, page_number: int, order: int, week
         "workType": work_type,
         "sectionId": section_id,
         "sectionLabel": section_label,
+        "sourceFile": source_file,
         "page": page_number,
         "pieces": [],
         "platformTime": "",
@@ -106,15 +175,18 @@ def make_entry(section_id: str, work_id: str, page_number: int, order: int, week
     }
 
 
-def parse_pdf(pdf_path: Path) -> dict:
+def parse_work_pdf(pdf_path: Path) -> list[dict]:
     pages = extract_layout_text(pdf_path).split("\f")
-    entries = []
-    current = None
+    entries: list[dict] = []
+    current: dict | None = None
     current_base = "mon_thu_odd"
     current_holiday = ""
     order = 0
+    pending_taken: tuple[bool, bool] | None = None
+    header_columns: list[int] = []
+    booked_section = False
 
-    def flush_current():
+    def flush_current() -> None:
         nonlocal current
         if current and current["pieces"]:
             current["startTime"] = current["pieces"][0]["startTime"]
@@ -133,10 +205,23 @@ def parse_pdf(pdf_path: Path) -> dict:
         for raw_line in page.splitlines():
             line = raw_line.rstrip()
             stripped = line.strip()
-            if not stripped or stripped.startswith("Page ") or stripped in {"Fri", "Sat", "Sun", "#1", "#2"}:
+            if not stripped:
+                continue
+            if stripped.startswith("Page ") or stripped in {"Fri", "Sat", "Sun", "#1", "#2", "Other Work"}:
                 continue
             if re.fullmatch(r"(Fri|Sat|Sun)\s+(Fri|Sat|Sun)", stripped):
                 continue
+            if "Daily Open Work" in stripped:
+                flush_current()
+                booked_section = False
+                current_holiday = ""
+                continue
+            if "Daily Booked Work" in stripped:
+                flush_current()
+                booked_section = True
+                current_holiday = ""
+                continue
+
             normalized_header = normalize_section_header(stripped)
             if normalized_header in {
                 "Mixed Odd Work",
@@ -155,6 +240,7 @@ def parse_pdf(pdf_path: Path) -> dict:
                     current_base = "relief" if current_holiday else "mon_thu_relief"
                 else:
                     current_holiday = ""
+                    booked_section = False
                     current_base = {
                         "Friday Mixed Odd Work": "friday_odd",
                         "Friday Mixed Relief Work": "friday_relief",
@@ -167,17 +253,35 @@ def parse_pdf(pdf_path: Path) -> dict:
             if stripped == "Canada Day":
                 flush_current()
                 current_holiday = "canada_day"
+                booked_section = False
                 continue
             if stripped == "August Civic":
                 flush_current()
                 current_holiday = "august_civic"
+                booked_section = False
                 continue
 
-            total_match = TOTAL_RE.search(stripped)
+            if any(label in raw_line for label in ("FRI1", "FRI2", "SAT1", "SAT2", "SUN1", "SUN2", "#1", "#2")):
+                header_columns = [match.start() for match in re.finditer(r"(?:FRI|SAT|SUN)?[12]|#1|#2", raw_line)]
+                continue
+            if "Daily" in stripped and not WORK_LINE_RE.match(stripped):
+                header_columns = []
+                marks = detect_pending_week_marks(raw_line, header_columns)
+                if marks:
+                    pending_taken = marks
+                continue
+            if "X" in stripped and not WORK_LINE_RE.match(stripped):
+                marks = detect_pending_week_marks(raw_line, header_columns)
+                if marks:
+                    pending_taken = marks
+                continue
+
+            total_match = TOTAL_RE.search(stripped) or SIMPLE_TOTAL_RE.match(stripped)
             if total_match and current:
                 current["platformTime"] = total_match.group("platform")
                 current["paidTime"] = total_match.group("paid")
                 flush_current()
+                pending_taken = None
                 continue
 
             match = WORK_LINE_RE.match(stripped)
@@ -187,10 +291,16 @@ def parse_pdf(pdf_path: Path) -> dict:
             section_id = section_from_state(current_base, current_holiday)
             work_id = match.group("work")
             week1_taken, week2_taken = detect_week_taken(match.group("lead"))
+            if pending_taken:
+                week1_taken = week1_taken or pending_taken[0]
+                week2_taken = week2_taken or pending_taken[1]
+            if booked_section and not pending_taken:
+                week1_taken = True
+                week2_taken = True
             if current is None or current["workId"] != work_id or current["sectionId"] != section_id:
                 flush_current()
                 order += 1
-                current = make_entry(section_id, work_id, page_number, order, week1_taken, week2_taken)
+                current = make_entry(section_id, work_id, page_number, order, week1_taken, week2_taken, pdf_path.name)
             else:
                 current["week1Taken"] = current["week1Taken"] or week1_taken
                 current["week2Taken"] = current["week2Taken"] or week2_taken
@@ -213,42 +323,140 @@ def parse_pdf(pdf_path: Path) -> dict:
                 "page": page_number,
                 "taken": week1_taken and week2_taken,
             })
+            pending_taken = None
     flush_current()
+    return entries
 
-    board_order = ["mon_thu", "friday", "saturday", "sunday", "canada_day", "august_civic"]
-    board_titles = {
-        "mon_thu": "Mon-Thu Work",
-        "friday": "Friday Work",
-        "saturday": "Saturday Work",
-        "sunday": "Sunday Work",
-        "canada_day": "Canada Day",
-        "august_civic": "August Civic",
-    }
+
+def board_for_spare_heading(line: str, current_board: str) -> str:
+    if "Friday Spare" in line:
+        return "friday_spares"
+    if "Saturday" in line and "Spare" in line:
+        return "saturday_spares"
+    if "Sunday Spare" in line:
+        return "sunday_spares"
+    if "Canada Day" in line:
+        return "canada_day_spares"
+    if "August Civic" in line:
+        return "august_civic_spares"
+    if "Daily Spare" in line or "Weekly" in line:
+        return "daily_spares"
+    return current_board
+
+
+def spare_category_for_match(category: str, index: int, count: int) -> str:
+    if count <= 1:
+        return category
+    if "Friday 1 Spare Friday 2 Spare" in category:
+        return "Friday 1 Spare" if index == 0 else "Friday 2 Spare"
+    if "Saturday 1 Spare Saturday 2 Spare" in category:
+        return "Saturday 1 Spare" if index == 0 else "Saturday 2 Spare"
+    if "Sunday 1 Spare Sunday 2 Spare" in category:
+        return "Sunday 1 Spare" if index == 0 else "Sunday 2 Spare"
+    if len(category.split()) % 2 == 0:
+        words = category.split()
+        midpoint = len(words) // 2
+        if words[:midpoint] == words[midpoint:]:
+            return f"{' '.join(words[:midpoint])} {index + 1}"
+    return f"{category} {index + 1}"
+
+
+def parse_spare_pdf(pdf_path: Path) -> list[dict]:
+    entries: list[dict] = []
+    current_board = "daily_spares"
+    current_category = "Spare"
+    order = 0
+    for page_number, page in enumerate(extract_layout_text(pdf_path).split("\f"), start=1):
+        for raw_line in page.splitlines():
+            stripped = " ".join(raw_line.split()).strip()
+            if not stripped or stripped.startswith("Page ") or "On Time" in stripped:
+                continue
+            next_board = board_for_spare_heading(stripped, current_board)
+            if next_board != current_board:
+                current_board = next_board
+                if any(label in stripped for label in ("Canada Day", "August Civic")):
+                    current_category = stripped
+            if "Spare" in stripped and not SPARE_ROW_RE.search(stripped):
+                current_category = stripped
+                continue
+            matches = list(SPARE_ROW_RE.finditer(stripped))
+            if not matches:
+                continue
+            for match_index, match in enumerate(matches):
+                order += 1
+                category = spare_category_for_match(current_category, match_index, len(matches))
+                limit = int(match.group("limit"))
+                booked = int(match.group("booked"))
+                available = int(match.group("available"))
+                title = f"{match.group('time')} {category}".strip()
+                entries.append({
+                    "kind": "spare",
+                    "id": f"{current_board}-{order}",
+                    "workId": title,
+                    "title": title,
+                    "boardKey": current_board,
+                    "boardLabel": BOARD_TITLES.get(current_board, "Spares"),
+                    "workType": "spare",
+                    "sectionId": current_board,
+                    "sectionLabel": category,
+                    "sourceFile": pdf_path.name,
+                    "page": page_number,
+                    "spareTime": match.group("time"),
+                    "limit": limit,
+                    "booked": booked,
+                    "available": available,
+                    "pieces": [],
+                    "platformTime": "",
+                    "paidTime": "",
+                    "week1Taken": available <= 0,
+                    "week2Taken": available <= 0,
+                    "taken": available <= 0,
+                })
+    return entries
+
+
+def parse_source(pdf_path: Path) -> list[dict]:
+    if "spare" in pdf_path.name.lower():
+        return parse_spare_pdf(pdf_path)
+    return parse_work_pdf(pdf_path)
+
+
+def build_payload(paths: list[Path]) -> dict:
+    entries: list[dict] = []
+    used_sources: list[str] = []
+    for path in paths:
+        if not path.exists():
+            raise FileNotFoundError(f"Missing rail board PDF: {path}")
+        used_sources.append(path.name)
+        entries.extend(parse_source(path))
+
     boards = []
-    for key in board_order:
+    for key in BOARD_ORDER:
         board_entries = [entry for entry in entries if entry["boardKey"] == key]
         if not board_entries:
             continue
         boards.append({
             "id": key,
-            "title": board_titles[key],
+            "title": BOARD_TITLES[key],
             "entries": board_entries,
             "entryCount": len(board_entries),
             "openCount": sum(1 for entry in board_entries if not entry["taken"]),
             "takenCount": sum(1 for entry in board_entries if entry["taken"]),
         })
     return {
-        "generatedFrom": pdf_path.name,
+        "generatedFrom": ", ".join(used_sources),
         "generatedAt": datetime.now(timezone.utc).isoformat(),
         "boards": boards,
     }
 
 
 def main() -> None:
-    payload = parse_pdf(SOURCE_PDF)
+    payload = build_payload(source_pdfs())
     OUTPUT_FILE.parent.mkdir(parents=True, exist_ok=True)
     OUTPUT_FILE.write_text(json.dumps(payload, indent=2), encoding="utf-8")
     print(f"Wrote {OUTPUT_FILE} with {sum(board['entryCount'] for board in payload['boards'])} entries")
+    for board in payload["boards"]:
+        print(f"  {board['id']}: {board['entryCount']} entries ({board['openCount']} open, {board['takenCount']} taken)")
 
 
 if __name__ == "__main__":

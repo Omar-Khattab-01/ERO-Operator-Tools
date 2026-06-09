@@ -762,6 +762,7 @@
     }
 
     function renderFilters(entries, shownCount) {
+      const workTypes = uniqueSorted(entries.map((entry) => entry.workType)).filter(Boolean);
       const startBuckets = [
         ['blair', 'Blair'],
         ['tunneys', "Tunney's"],
@@ -779,7 +780,7 @@
           </label>
           <label>Work type
             <select data-filter="workType">
-              ${renderOptions(['all', 'odd', 'relief'], filters.workType)}
+              ${renderOptions(['all', ...workTypes], filters.workType)}
             </select>
           </label>
           <label>Status
@@ -846,6 +847,7 @@
     }
 
     function renderPaddleButton(entry) {
+      if (entry.kind === 'spare') return '';
       const serviceDay = serviceDayForBoard(entry.boardKey);
       if (!serviceDay) {
         return '<button class="btn" type="button" disabled>No holiday paddle link</button>';
@@ -853,7 +855,31 @@
       return `<button class="btn" type="button" data-open-paddle="${escapeHtml(entry.workId)}" data-service-day="${escapeHtml(serviceDay)}">View Paddle</button>`;
     }
 
+    function renderSpareEntry(entry) {
+      const available = Number(entry.available || 0);
+      return `
+        <article class="board-card">
+          <div class="card-head">
+            <div>
+              <h3>${escapeHtml(entry.spareTime || entry.workId)}</h3>
+              <p class="sub">${escapeHtml(entry.sectionLabel)} · Source page ${escapeHtml(entry.page || 'N/A')}</p>
+            </div>
+            <div class="card-actions">
+              <div class="pill ${available > 0 ? 'open' : 'taken'}">${available > 0 ? `${escapeHtml(available)} available` : 'Full'}</div>
+            </div>
+          </div>
+          <div class="totals">
+            <div class="total"><strong>Limit</strong>${escapeHtml(entry.limit ?? 'N/A')}</div>
+            <div class="total"><strong>Booked</strong>${escapeHtml(entry.booked ?? 'N/A')}</div>
+            <div class="total"><strong>Available</strong>${escapeHtml(entry.available ?? 'N/A')}</div>
+            <div class="total"><strong>Source</strong>${escapeHtml(entry.sourceFile || 'N/A')}</div>
+          </div>
+        </article>
+      `;
+    }
+
     function renderEntry(entry) {
+      if (entry.kind === 'spare') return renderSpareEntry(entry);
       const pieces = Array.isArray(entry.pieces) ? entry.pieces : [];
       return `
         <article class="board-card">
@@ -1211,6 +1237,9 @@
       if (event.target === paddleOverlay) closePaddle();
     });
     loadBoard();
+  </script>
+  <script>
+    window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
   </script>
   <script defer src="/_vercel/insights/script.js"></script>
 </body>
