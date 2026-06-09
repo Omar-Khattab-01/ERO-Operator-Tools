@@ -193,6 +193,69 @@
       font-weight: 900;
       color: #ffe0c2;
     }
+    .spare-group {
+      display: grid;
+      gap: 12px;
+    }
+    .spare-group-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      padding: 4px 2px 0;
+    }
+    .spare-group-title {
+      font-size: 28px;
+      line-height: 1;
+      margin: 0;
+    }
+    .spare-group-sub {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+      margin-top: 5px;
+    }
+    .spare-grid {
+      display: grid;
+      gap: 12px;
+      margin-top: 12px;
+    }
+    .spare-section-card {
+      display: grid;
+      gap: 12px;
+    }
+    .spare-section-table {
+      width: 100%;
+      border-collapse: collapse;
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 14px;
+      overflow: hidden;
+      background: rgba(12,16,21,.74);
+      table-layout: fixed;
+      font-variant-numeric: tabular-nums;
+    }
+    .spare-section-table th,
+    .spare-section-table td {
+      padding: 10px 12px;
+      text-align: left;
+      font-size: 13px;
+      border-bottom: 1px solid rgba(255,255,255,.06);
+      vertical-align: top;
+    }
+    .spare-section-table th {
+      color: var(--muted);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      background: rgba(255,255,255,.04);
+    }
+    .spare-section-table tr:last-child td {
+      border-bottom: none;
+    }
+    .value-cell, .time-cell {
+      white-space: nowrap;
+    }
     .card-actions {
       display: flex;
       align-items: center;
@@ -785,9 +848,8 @@
           </label>
           <label>Status
             <select data-filter="status">
-              <option value="open" ${filters.status === 'open' ? 'selected' : ''}>Open work</option>
-              <option value="all" ${filters.status === 'all' ? 'selected' : ''}>All work</option>
-              <option value="taken" ${filters.status === 'taken' ? 'selected' : ''}>Taken / X marked</option>
+              <option value="open" ${filters.status === 'open' ? 'selected' : ''}>Available work</option>
+              <option value="all" ${filters.status === 'all' ? 'selected' : ''}>All shown work</option>
             </select>
           </label>
           <label>Week
@@ -875,6 +937,110 @@
             <div class="total"><strong>Source</strong>${escapeHtml(entry.sourceFile || 'N/A')}</div>
           </div>
         </article>
+      `;
+    }
+
+    function buildSpareSections(entries) {
+      const sections = new Map();
+      entries.forEach((entry) => {
+        const title = String(entry.sectionLabel || 'Spare board').trim() || 'Spare board';
+        if (!sections.has(title)) {
+          sections.set(title, {
+            title,
+            page: entry.page || '',
+            sourceFile: entry.sourceFile || '',
+            slots: [],
+            limitTotal: 0,
+            bookedTotal: 0,
+            availableTotal: 0,
+          });
+        }
+        const section = sections.get(title);
+        const slot = {
+          onTime: entry.spareTime || entry.workId || 'N/A',
+          limit: Number(entry.limit || 0) || 0,
+          booked: Number(entry.booked || 0) || 0,
+          available: Number(entry.available || 0) || 0,
+        };
+        section.slots.push(slot);
+        section.limitTotal += slot.limit;
+        section.bookedTotal += slot.booked;
+        section.availableTotal += slot.available;
+      });
+      return Array.from(sections.values()).sort((a, b) => {
+        const pageDiff = (Number(a.page || 0) || 0) - (Number(b.page || 0) || 0);
+        return pageDiff || a.title.localeCompare(b.title, undefined, { numeric: true, sensitivity: 'base' });
+      });
+    }
+
+    function renderSpareBoard(board, entries) {
+      const sections = buildSpareSections(entries);
+      if (!sections.length) {
+        filtersEl.innerHTML = '';
+        boardList.innerHTML = '<div class="empty">No spare-board availability was parsed yet.</div>';
+        return;
+      }
+      const availableTotal = sections.reduce((sum, section) => sum + section.availableTotal, 0);
+      const bookedTotal = sections.reduce((sum, section) => sum + section.bookedTotal, 0);
+      const limitTotal = sections.reduce((sum, section) => sum + section.limitTotal, 0);
+      filtersEl.innerHTML = `
+        <div class="filter-actions" style="margin-top:0;">
+          <div class="muted">Spare boards are grouped by the PDF section, like the bus booking board view.</div>
+        </div>
+      `;
+      boardList.innerHTML = `
+        <section class="spare-group">
+          <div class="spare-group-head">
+            <div>
+              <h3 class="spare-group-title">${escapeHtml(board?.title || 'Spare Board')}</h3>
+              <div class="spare-group-sub">Review spare availability by section. Full sections stay visible so the booked and limit counts can be checked.</div>
+            </div>
+            <div class="totals" style="grid-template-columns: repeat(3, minmax(110px, 1fr));">
+              <div class="total"><strong>Available</strong>${escapeHtml(availableTotal)}</div>
+              <div class="total"><strong>Booked</strong>${escapeHtml(bookedTotal)}</div>
+              <div class="total"><strong>Limit</strong>${escapeHtml(limitTotal)}</div>
+            </div>
+          </div>
+          ${sections.map((section) => `
+            <article class="board-card spare-section-card">
+              <div class="card-head">
+                <div>
+                  <h3>${escapeHtml(section.title)}</h3>
+                  <p class="sub">${section.page ? `Source page ${escapeHtml(section.page)}` : 'Source page not listed'} · ${escapeHtml(section.sourceFile || 'PDF source')}</p>
+                </div>
+                <div class="card-actions">
+                  <div class="pill ${section.availableTotal > 0 ? 'open' : 'taken'}">${section.availableTotal > 0 ? `${escapeHtml(section.availableTotal)} spots open` : 'No open spots'}</div>
+                </div>
+              </div>
+              <div class="totals">
+                <div class="total"><strong>Available</strong>${escapeHtml(section.availableTotal)}</div>
+                <div class="total"><strong>Booked</strong>${escapeHtml(section.bookedTotal)}</div>
+                <div class="total"><strong>Limit</strong>${escapeHtml(section.limitTotal)}</div>
+                <div class="total"><strong>Rows</strong>${escapeHtml(section.slots.length)}</div>
+              </div>
+              <table class="spare-section-table">
+                <thead>
+                  <tr>
+                    <th class="time-cell">On Time</th>
+                    <th class="value-cell">Limit</th>
+                    <th class="value-cell">Booked</th>
+                    <th class="value-cell">Available</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${section.slots.map((slot) => `
+                    <tr>
+                      <td class="time-cell">${escapeHtml(slot.onTime)}</td>
+                      <td class="value-cell">${escapeHtml(slot.limit)}</td>
+                      <td class="value-cell">${escapeHtml(slot.booked)}</td>
+                      <td class="value-cell">${escapeHtml(slot.available)}</td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </article>
+          `).join('')}
+        </section>
       `;
     }
 
@@ -1150,13 +1316,25 @@
     function renderBoard() {
       const board = state.board;
       const entries = Array.isArray(board?.entries) ? board.entries : [];
+      const isSpareBoard = entries.some((entry) => entry.kind === 'spare' || entry.workType === 'spare');
+      if (isSpareBoard) {
+        const availableTotal = entries.reduce((sum, entry) => sum + (Number(entry.available || 0) || 0), 0);
+        const bookedTotal = entries.reduce((sum, entry) => sum + (Number(entry.booked || 0) || 0), 0);
+        statsEl.innerHTML = `
+          <div class="stat"><span>Sections</span><strong>${escapeHtml(buildSpareSections(entries).length)}</strong></div>
+          <div class="stat"><span>Available</span><strong>${escapeHtml(availableTotal)}</strong></div>
+          <div class="stat"><span>Booked</span><strong>${escapeHtml(bookedTotal)}</strong></div>
+        `;
+        renderSpareBoard(board, entries);
+        return;
+      }
       const shown = sortEntries(entries.filter(entryMatches));
       const openCount = entries.filter((entry) => !entry.taken).length;
-      const takenCount = entries.filter((entry) => entry.taken).length;
+      const partialCount = entries.filter((entry) => entry.week1Taken !== entry.week2Taken).length;
       statsEl.innerHTML = `
         <div class="stat"><span>Entries</span><strong>${escapeHtml(entries.length)}</strong></div>
-        <div class="stat"><span>Open</span><strong>${escapeHtml(openCount)}</strong></div>
-        <div class="stat"><span>Taken</span><strong>${escapeHtml(takenCount)}</strong></div>
+        <div class="stat"><span>Available</span><strong>${escapeHtml(openCount)}</strong></div>
+        <div class="stat"><span>Partly taken</span><strong>${escapeHtml(partialCount)}</strong></div>
       `;
       renderFilters(entries, shown.length);
       boardList.innerHTML = shown.length

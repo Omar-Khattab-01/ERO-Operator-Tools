@@ -79,6 +79,22 @@ function loadRailBoardsData() {
   return railBoardsCache;
 }
 
+function isVisibleRailBoardEntry(entry = {}) {
+  if (entry.kind === 'spare' || entry.workType === 'spare') return true;
+  return !(entry.week1Taken === true && entry.week2Taken === true);
+}
+
+function withVisibleRailBoardEntries(board = {}) {
+  const entries = (Array.isArray(board.entries) ? board.entries : []).filter(isVisibleRailBoardEntry);
+  return {
+    ...board,
+    entries,
+    entryCount: entries.length,
+    openCount: entries.filter((entry) => !entry.taken).length,
+    takenCount: entries.filter((entry) => entry.taken).length,
+  };
+}
+
 function normalizePaddleId(input) {
   const text = String(input || '').trim();
   const shorthand = text.match(/^\d{1,2}$/);
@@ -935,7 +951,7 @@ function buildTodayBoard() {
 
 function buildRailBoardsResponse(requestedBoardId = '') {
   const data = loadRailBoardsData();
-  const boards = Array.isArray(data.boards) ? data.boards : [];
+  const boards = (Array.isArray(data.boards) ? data.boards : []).map(withVisibleRailBoardEntries);
   const summaries = boards.map((board) => ({
     id: String(board.id || '').trim(),
     title: String(board.title || '').trim(),
