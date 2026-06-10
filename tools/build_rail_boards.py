@@ -3,14 +3,16 @@ from __future__ import annotations
 import json
 import os
 import re
+import subprocess
+import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_SOURCE_PDFS = [
-    Path("/Users/omarkhattab/Downloads/2026 ERO Summer Update.pdf"),
-    Path("/Users/omarkhattab/Downloads/2026 Summer ERO Stat Boards.pdf"),
-    Path("/Users/omarkhattab/Downloads/2026 ERO Summer Spares (1).pdf"),
+    Path("/Users/omarkhattab/Downloads/2026 ERO Summer Daily Update.pdf"),
+    Path("/Users/omarkhattab/Downloads/2026 ERO Stat Boards.pdf"),
+    Path("/Users/omarkhattab/Downloads/2026 ERO Summer Spares (2).pdf"),
 ]
 OUTPUT_FILE = Path(os.environ.get("RAIL_BOARDS_OUTPUT_FILE") or ROOT / "data" / "rail_boards.json")
 
@@ -22,6 +24,27 @@ WORK_LINE_RE = re.compile(
 TOTAL_RE = re.compile(r"Platform Time\s+(?P<platform>\d{2}:\d{2})\s+Paid Time\s+(?P<paid>\d{2}:\d{2})")
 SIMPLE_TOTAL_RE = re.compile(r"^(?P<platform>\d{2}:\d{2})\s+(?P<paid>\d{2}:\d{2})$")
 SPARE_ROW_RE = re.compile(r"\b(?P<time>\d{2}:\d{2}|Callup|EFSPM?|EFSP)\s+(?P<limit>\d+)\s+(?P<booked>\d+)\s+(?P<available>\d+)\b")
+CRYSTAL_DIGIT_MAP = {
+    "\x01": "6",
+    "\x02": "7",
+    "\x03": "5",
+    "\x04": "2",
+    "\x05": "0",
+    "\x06": "1",
+    "\x07": "3",
+    "\x08": ":",
+    "\x0b": "4",
+    "\x0c": "9",
+    "\x10": "-",
+    "\x13": "0",
+    "\x14": "1",
+    "\x15": "2",
+    "\x16": "3",
+    "\x17": "4",
+    "\x18": "5",
+    "\x19": "6",
+}
+CRYSTAL_TOKEN_MARKERS = set("$%&'()*/\\")
 
 SECTION_DEFS = {
     "mon_thu_odd": ("mon_thu", "Mon-Thu", "odd", "Mixed Odd Work"),
@@ -77,15 +100,70 @@ def source_pdfs() -> list[Path]:
 
 
 def extract_layout_text(pdf_path: Path) -> str:
-    import subprocess
-
     result = subprocess.run(
         ["pdftotext", "-layout", str(pdf_path), "-"],
         check=True,
         capture_output=True,
         text=True,
     )
-    return result.stdout
+    return decode_crystal_reports_text(result.stdout)
+
+
+def extract_ocr_text(pdf_path: Path) -> str:
+    with tempfile.TemporaryDirectory() as temp_dir:
+        prefix = Path(temp_dir) / "page"
+        subprocess.run(
+            ["pdftoppm", "-png", "-r", "300", str(pdf_path), str(prefix)],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        pages = []
+        for image_path in sorted(Path(temp_dir).glob("page-*.png")):
+            result = subprocess.run(
+                [
+                    "tesseract",
+                    str(image_path),
+                    "stdout",
+                    "--psm",
+                    "6",
+                    "-c",
+                    "preserve_interword_spaces=1",
+                ],
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+            pages.append(result.stdout)
+        return "\f".join(pages)
+
+
+def decode_crystal_token(token: str) -> str:
+    decoded = []
+    for char in token:
+        if char in CRYSTAL_DIGIT_MAP:
+            decoded.append(CRYSTAL_DIGIT_MAP[char])
+            continue
+        code = ord(char)
+        if 33 <= code <= 93:
+            decoded.append(chr(code + 29))
+        else:
+            decoded.append(char)
+    value = "".join(decoded)
+    return re.sub(r"(?<=[A-Za-z])5(?=[A-Za-z])", " ", value)
+
+
+def decode_crystal_reports_text(text: str) -> str:
+    def replace_token(match: re.Match[str]) -> str:
+        token = match.group(0)
+        has_control = any(char in CRYSTAL_DIGIT_MAP for char in token)
+        has_marker = any(char in CRYSTAL_TOKEN_MARKERS for char in token)
+        has_encoded_digit_word = any(char in "236" for char in token) and any(char.isalpha() for char in token)
+        if not has_control and not has_marker and not has_encoded_digit_word:
+            return token
+        return decode_crystal_token(token)
+
+    return re.sub(r"\S+", replace_token, text)
 
 
 def normalize_section_header(line: str) -> str:
@@ -175,8 +253,8 @@ def make_entry(
     }
 
 
-def parse_work_pdf(pdf_path: Path) -> list[dict]:
-    pages = extract_layout_text(pdf_path).split("\f")
+def parse_work_pdf(pdf_path: Path, text: str | None = None) -> list[dict]:
+    pages = (text if text is not None else extract_layout_text(pdf_path)).split("\f")
     entries: list[dict] = []
     current: dict | None = None
     current_base = "mon_thu_odd"
@@ -204,7 +282,7 @@ def parse_work_pdf(pdf_path: Path) -> list[dict]:
     for page_number, page in enumerate(pages, start=1):
         for raw_line in page.splitlines():
             line = raw_line.rstrip()
-            stripped = line.strip()
+            stripped = line.strip().replace("|", " ")
             if not stripped:
                 continue
             if stripped.startswith("Page ") or stripped in {"Fri", "Sat", "Sun", "#1", "#2", "Other Work"}:
@@ -344,6 +422,31 @@ def board_for_spare_heading(line: str, current_board: str) -> str:
     return current_board
 
 
+def normalize_spare_line(line: str, current_board: str, current_category: str) -> str:
+    value = line
+    replacements = {
+        "06: 5": "06:45",
+        "0 : 5": "04:45",
+        "0 :30": "09:30",
+        "1 :30": "14:30",
+    }
+    for source, target in replacements.items():
+        value = value.replace(source, target)
+
+    if "0 :00" not in value:
+        return value
+
+    zero_time = "04:00"
+    category = current_category.lower()
+    if current_board == "sunday_spares" and "st-laurent" in category:
+        zero_time = "07:00"
+    elif current_board == "saturday_spares" and "st-laurent" in category:
+        zero_time = "07:00"
+    elif current_board == "canada_day_spares" and "st-laurent" in category:
+        zero_time = "07:00"
+    return value.replace("0 :00", zero_time)
+
+
 def spare_category_for_match(category: str, index: int, count: int) -> str:
     if count <= 1:
         return category
@@ -376,9 +479,12 @@ def parse_spare_pdf(pdf_path: Path) -> list[dict]:
                 current_board = next_board
                 if any(label in stripped for label in ("Canada Day", "August Civic")):
                     current_category = stripped
+            if any(label in stripped for label in ("St-Laurent Complex", "AM Spare", "PM Spare", "Floating Spare", "Confed Out East")) and not SPARE_ROW_RE.search(stripped):
+                current_category = stripped
             if "Spare" in stripped and not SPARE_ROW_RE.search(stripped):
                 current_category = stripped
                 continue
+            stripped = normalize_spare_line(stripped, current_board, current_category)
             matches = list(SPARE_ROW_RE.finditer(stripped))
             if not matches:
                 continue
@@ -416,8 +522,11 @@ def parse_spare_pdf(pdf_path: Path) -> list[dict]:
 
 
 def parse_source(pdf_path: Path) -> list[dict]:
-    if "spare" in pdf_path.name.lower():
+    source_name = pdf_path.name.lower()
+    if "spare" in source_name:
         return parse_spare_pdf(pdf_path)
+    if "stat" in source_name:
+        return parse_work_pdf(pdf_path, extract_ocr_text(pdf_path))
     return parse_work_pdf(pdf_path)
 
 
