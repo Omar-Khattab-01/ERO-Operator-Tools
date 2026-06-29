@@ -2132,6 +2132,7 @@
     let myWorkDraft = null;
     const tripNotificationStorageKey = 'ero_trip_notification_settings_v1';
     const tripNotificationFiredStorageKey = 'ero_trip_notification_fired_v1';
+    const todaysPaddleOvernightCutoffSeconds = 4 * 60 * 60;
     let tripNotificationSettings = loadTripNotificationSettings();
     let tripNotificationFired = loadTripNotificationFired();
     let currentPaddleOpenSource = 'lookup';
@@ -2567,15 +2568,30 @@
       `;
     }
 
+    function calendarServiceDayKeyForWeekday(weekday) {
+      if (weekday === 'fri') return 'friday';
+      if (weekday === 'sat') return 'saturday';
+      if (weekday === 'sun') return 'sunday';
+      return 'mon_thu';
+    }
+
+    function previousServiceDayKey(serviceDay) {
+      if (serviceDay === 'saturday') return 'friday';
+      if (serviceDay === 'sunday') return 'saturday';
+      if (serviceDay === 'mon_thu') return 'sunday';
+      return 'mon_thu';
+    }
+
     function getCurrentServiceDayKey() {
       const weekday = new Intl.DateTimeFormat('en-CA', {
         timeZone,
         weekday: 'short',
       }).format(new Date()).toLowerCase();
-      if (weekday === 'fri') return 'friday';
-      if (weekday === 'sat') return 'saturday';
-      if (weekday === 'sun') return 'sunday';
-      return 'mon_thu';
+      const calendarServiceDay = calendarServiceDayKeyForWeekday(weekday);
+      if (getOttawaNowSeconds() < todaysPaddleOvernightCutoffSeconds) {
+        return previousServiceDayKey(calendarServiceDay);
+      }
+      return calendarServiceDay;
     }
 
     function getCurrentWorkWeekKey() {
@@ -2608,33 +2624,52 @@
       document.body.style.overflow = '';
     }
 
-    function getOttawaDateKey() {
+    function getOttawaDateKey(date = new Date()) {
       const parts = new Intl.DateTimeFormat('en-CA', {
         timeZone,
         year: 'numeric',
         month: '2-digit',
         day: '2-digit',
-      }).formatToParts(new Date());
+      }).formatToParts(date);
       const lookup = Object.fromEntries(parts.map((part) => [part.type, part.value]));
       return `${lookup.year}-${lookup.month}-${lookup.day}`;
+    }
+
+    function getPreviousOttawaDateKey() {
+      return getOttawaDateKey(new Date(Date.now() - msPerDay));
+    }
+
+    function getTodaysPaddleStoreDateKey() {
+      return getOttawaNowSeconds() < todaysPaddleOvernightCutoffSeconds
+        ? getPreviousOttawaDateKey()
+        : getOttawaDateKey();
     }
 
     function readTodaysPaddleStore() {
       try {
         const raw = localStorage.getItem(todaysPaddleStorageKey);
         const parsed = raw ? JSON.parse(raw) : {};
-        const today = getOttawaDateKey();
-        if (!parsed || typeof parsed !== 'object' || parsed.date !== today) {
+        const today = getTodaysPaddleStoreDateKey();
+        const calendarToday = getOttawaDateKey();
+        const acceptedDates = new Set([today, calendarToday]);
+        if (!parsed || typeof parsed !== 'object' || !acceptedDates.has(parsed.date)) {
           return { date: today, items: [], hiddenMyWorkItems: [] };
         }
         return {
-          date: today,
+          date: parsed.date,
           items: Array.isArray(parsed.items) ? parsed.items : [],
           hiddenMyWorkItems: Array.isArray(parsed.hiddenMyWorkItems) ? parsed.hiddenMyWorkItems : [],
         };
       } catch (_) {
-        return { date: getOttawaDateKey(), items: [], hiddenMyWorkItems: [] };
+        return { date: getTodaysPaddleStoreDateKey(), items: [], hiddenMyWorkItems: [] };
       }
+    }
+
+    function shouldKeepTodaysPaddleData(data, storeDate) {
+      if (storeDate === getOttawaDateKey()) return true;
+      const finalClearSeconds = timeToSecondsClock(data?.finalClearTime || '');
+      if (finalClearSeconds === null || finalClearSeconds <= 24 * 60 * 60) return false;
+      return getOttawaNowSeconds() + (24 * 60 * 60) <= finalClearSeconds;
     }
 
     function writeTodaysPaddleStore(store) {
@@ -5618,6 +5653,15 @@
         }
       }));
       const validPaddles = paddles.filter(Boolean);
+      const activePaddles = validPaddles.filter((data) => shouldKeepTodaysPaddleData(data, store.date));
+      if (activePaddles.length !== validPaddles.length) {
+        const activeKeys = new Set(activePaddles.map((data) => `${data.serviceDay}:${data.paddleId}`));
+        writeTodaysPaddleStore({
+          date: store.date,
+          items: (store.items || []).filter((item) => activeKeys.has(`${item.serviceDay}:${item.paddleId}`)),
+          hiddenMyWorkItems: store.hiddenMyWorkItems || [],
+        });
+      }
       todaysPaddleView.innerHTML = `
         <div class="board-page-head">
           <div>
@@ -5625,12 +5669,12 @@
             <p>Saved on this device for ${escapeHtml(store.date)}.</p>
           </div>
           <div class="board-page-meta" aria-label="Saved paddle counts">
-            <div class="board-stat"><span class="k">Saved</span><span class="v">${escapeHtml(validPaddles.length)}</span></div>
+            <div class="board-stat"><span class="k">Saved</span><span class="v">${escapeHtml(activePaddles.length)}</span></div>
           </div>
         </div>
-        ${validPaddles.length ? `
+        ${activePaddles.length ? `
           <div class="saved-paddles-grid">
-            ${validPaddles.map((data) => {
+            ${activePaddles.map((data) => {
               return renderFullPaddleCard(
                 data,
                 `<button class="save-btn" type="button" data-remove-todays-paddle="${escapeHtml(data.paddleId)}" data-day="${escapeHtml(data.serviceDay)}">Remove from Today's Paddle</button>`,

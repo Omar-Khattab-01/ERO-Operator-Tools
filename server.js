@@ -29,6 +29,7 @@ const SERVICE_DAY_META = {
   saturday: { label: 'Saturday', buttonLabel: 'Saturday' },
   sunday: { label: 'Sunday', buttonLabel: 'Sunday' },
 };
+const OVERNIGHT_SERVICE_CUTOFF_MINUTES = 4 * 60;
 
 const LINE_1_STATIONS = [
   { name: "Tunney's", lat: 45.40361, lon: -75.73528, offset: 0 },
@@ -126,12 +127,46 @@ function getOttawaWeekday() {
   }).format(new Date());
 }
 
-function getCurrentServiceDay() {
-  const weekday = getOttawaWeekday();
+function serviceDayFromWeekday(weekday) {
   if (weekday === 'Friday') return 'friday';
   if (weekday === 'Saturday') return 'saturday';
   if (weekday === 'Sunday') return 'sunday';
   return 'mon_thu';
+}
+
+function previousServiceDay(serviceDay) {
+  if (serviceDay === 'saturday') return 'friday';
+  if (serviceDay === 'sunday') return 'saturday';
+  if (serviceDay === 'mon_thu') return 'sunday';
+  return 'mon_thu';
+}
+
+function isRunActiveAfterMidnight(run, compareMinutes) {
+  const entries = Array.isArray(run?.entries) ? run.entries : [];
+  if (!entries.length) return false;
+  const firstEntry = entries[0];
+  const lastEntry = entries[entries.length - 1];
+  const startMinutes = timeToMinutes(firstEntry.reportTime || firstEntry.startTime);
+  const endMinutes = timeToMinutes(lastEntry.clearTime || lastEntry.endTime);
+  if (startMinutes === null || endMinutes === null || endMinutes <= 24 * 60) return false;
+  const overnightMinutes = compareMinutes + (24 * 60);
+  return startMinutes <= overnightMinutes && overnightMinutes <= endMinutes;
+}
+
+function serviceDayHasActiveOvernightRun(serviceDay, compareMinutes) {
+  const index = loadPaddleIndex();
+  const runs = Object.values(index.serviceDays?.[serviceDay] || {});
+  return runs.some((run) => isRunActiveAfterMidnight(run, compareMinutes));
+}
+
+function getCurrentServiceDay() {
+  const calendarServiceDay = serviceDayFromWeekday(getOttawaWeekday());
+  const nowMinutes = getOttawaNowMinutes();
+  if (nowMinutes < OVERNIGHT_SERVICE_CUTOFF_MINUTES) {
+    const previousDay = previousServiceDay(calendarServiceDay);
+    if (serviceDayHasActiveOvernightRun(previousDay, nowMinutes)) return previousDay;
+  }
+  return calendarServiceDay;
 }
 
 function timeToMinutes(value) {
