@@ -308,6 +308,12 @@ with check (
   and lrv_number between 1 and 99
 );
 
+drop policy if exists "Fleet managers can remove LRVs" on public.ero_lrv_fleet;
+create policy "Fleet managers can remove LRVs"
+on public.ero_lrv_fleet
+for delete
+using (public.ero_can_manage_lrv_fleet());
+
 drop policy if exists "LRV defect admins can view ERO profiles" on public.ero_user_profiles;
 create policy "LRV defect admins can view ERO profiles"
 on public.ero_user_profiles

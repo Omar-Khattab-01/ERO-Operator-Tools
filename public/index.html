@@ -4008,9 +4008,14 @@
                 <span class="field-label">New LRV Number</span>
                 <input id="newLrvNumberInput" class="text-input" type="number" min="1" max="99" step="1" value="${escapeHtml(nextLrvNumber())}">
               </label>
+              <label class="field-stack">
+                <span class="field-label">Remove LRV Number</span>
+                <select id="removeLrvNumberSelect" class="select-input">${renderLrvOptions(lrvNumbers[lrvNumbers.length - 1] || selectedLrvNumber)}</select>
+              </label>
             </div>
             <div class="section-actions">
               <button id="addLrvNumberBtn" class="btn" type="button">Add LRV</button>
+              <button id="removeLrvNumberBtn" class="linkish-btn" type="button">Remove LRV</button>
             </div>
           </section>
         ` : ''}
@@ -5958,6 +5963,40 @@
       showToast('LRV added', `LRV ${formatLrvNumber(lrvNumber)} is now available.`);
     }
 
+    async function removeLrvNumber() {
+      if (!supabaseClient || !canManageLrvFleet()) return;
+      const lrvNumber = Number(document.getElementById('removeLrvNumberSelect')?.value || 0);
+      if (!Number.isInteger(lrvNumber) || lrvNumber < 1 || lrvNumber > 99) {
+        setStatus('LRV not removed', false);
+        showToast('LRV not removed', 'Choose an LRV number to remove.');
+        return;
+      }
+      const hasReports = lrvDefectReports.some((report) => Number(report.lrv_number) === lrvNumber);
+      const confirmed = window.confirm(
+        `Remove LRV ${formatLrvNumber(lrvNumber)} from the fleet list?${hasReports ? ' Existing reports for this LRV will stay in history.' : ''}`
+      );
+      if (!confirmed) return;
+      let error = null;
+      try {
+        ({ error } = await withLrvRequestTimeout(supabaseClient
+          .from('ero_lrv_fleet')
+          .delete()
+          .eq('lrv_number', lrvNumber), 'LRV fleet remove'));
+      } catch (requestError) {
+        error = requestError;
+      }
+      if (error) {
+        setStatus('LRV remove failed', false);
+        showToast('LRV remove failed', error.message || 'Could not remove that LRV.');
+        return;
+      }
+      await loadLrvFleetNumbers();
+      if (!lrvNumbers.includes(selectedLrvNumber)) selectedLrvNumber = lrvNumbers[0] || 1;
+      await renderLrvDefectsPage();
+      setStatus('LRV removed', true);
+      showToast('LRV removed', `LRV ${formatLrvNumber(lrvNumber)} was removed from the list.`);
+    }
+
     async function revokeLrvDefectAccess(email) {
       if (!supabaseClient || !isLrvDefectAdmin()) return;
       const normalizedEmail = normalizeEmail(email);
@@ -6620,6 +6659,12 @@
       const addLrvNumberBtn = event.target.closest('#addLrvNumberBtn');
       if (addLrvNumberBtn) {
         await addLrvNumber();
+        return;
+      }
+
+      const removeLrvNumberBtn = event.target.closest('#removeLrvNumberBtn');
+      if (removeLrvNumberBtn) {
+        await removeLrvNumber();
         return;
       }
 
