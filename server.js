@@ -1132,6 +1132,10 @@ app.get('/rail-boards', (_req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'rail-boards.html'));
 });
 
+app.get('/support', (_req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'support.html'));
+});
+
 app.get('*', (_req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });

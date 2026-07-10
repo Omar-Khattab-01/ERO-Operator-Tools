@@ -210,15 +210,100 @@
     }
     .main {
       display: grid;
-      grid-template-rows: 1fr auto;
+      grid-template-rows: auto 1fr auto auto;
       min-height: 0;
     }
+    .support-banner,
+    .chat,
+    .tool-page-view,
+    .today-board-screen,
+    .live-map-view,
+    .composer,
+    .main-support-footer {
+      grid-column: 1;
+    }
+    .support-banner {
+      grid-row: 1;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 22px;
+      border-bottom: 1px solid rgba(255,176,104,.18);
+      background: linear-gradient(90deg, rgba(255,176,104,.12), rgba(17,22,28,.74));
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.4;
+    }
+    .support-banner strong {
+      display: block;
+      color: var(--text);
+      font-size: 13px;
+      margin-bottom: 1px;
+    }
+    .support-banner-actions {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      flex: none;
+    }
+    .support-banner-link,
+    .main-support-footer a {
+      color: var(--accent-2);
+      font-weight: 700;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+    .support-banner-link:hover,
+    .main-support-footer a:hover {
+      text-decoration: underline;
+    }
+    .support-banner-close {
+      appearance: none;
+      width: 28px;
+      height: 28px;
+      border: 1px solid rgba(255,255,255,.14);
+      border-radius: 999px;
+      background: rgba(10,14,20,.55);
+      color: var(--muted);
+      cursor: pointer;
+      font: inherit;
+      line-height: 1;
+    }
+    .support-banner-close:hover {
+      border-color: rgba(255,255,255,.28);
+      color: var(--text);
+    }
+    .chat,
+    .tool-page-view,
+    .today-board-screen {
+      grid-row: 2;
+    }
     .composer {
+      grid-row: 3;
       padding: 14px 22px 16px;
       border-top: 1px solid var(--border);
       background:
         linear-gradient(180deg, rgba(17,22,28,.74), rgba(17,22,28,.98)),
         radial-gradient(circle at right, rgba(217,71,47,.12), transparent 42%);
+    }
+    .main-support-footer {
+      grid-row: 4;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px 10px;
+      border-top: 1px solid rgba(255,255,255,.08);
+      background: rgba(10,14,20,.54);
+      color: rgba(188,198,212,.82);
+      font-size: 11px;
+      line-height: 1.4;
+      flex-wrap: wrap;
+    }
+    .app.map-mode .support-banner,
+    .app.map-mode .main-support-footer {
+      display: none;
     }
     .composer form {
       display: grid;
@@ -1149,6 +1234,10 @@
       background: rgba(255,255,255,.02);
       padding: 16px;
     }
+    .support-note-card {
+      border-color: rgba(255,176,104,.24);
+      background: rgba(54,38,20,.34);
+    }
     .stack-form {
       display: grid;
       gap: 12px;
@@ -1728,10 +1817,14 @@
         border-right: 0;
       }
       .header,
+      .support-banner,
       .chat,
       .composer {
         padding-left: 16px;
         padding-right: 16px;
+      }
+      .support-banner {
+        align-items: flex-start;
       }
       .composer form { grid-template-columns: 1fr; }
       .card-head h3 { font-size: 32px; }
@@ -1989,6 +2082,7 @@
           <button id="demoBtn" class="header-btn is-primary" type="button">Demo</button>
         </div>
         <div class="header-utility">
+          <button id="supportBtn" class="header-btn" type="button" onclick="window.location.href='/support'">Support</button>
           <button id="accountBtn" class="header-btn" type="button">Account</button>
           <button id="clearBtn" class="header-btn" type="button">Clear</button>
           <span id="statusPill" class="header-btn status-pill">Ready</span>
@@ -1997,6 +2091,17 @@
     </header>
 
     <main class="main">
+      <section id="supportBanner" class="support-banner" aria-label="Support ERO Operator Tools">
+        <div>
+          <strong>ERO Operator Tools is independently maintained.</strong>
+          <span>Support helps cover hosting, database costs, and new features.</span>
+        </div>
+        <div class="support-banner-actions">
+          <a class="support-banner-link" href="/support">Support</a>
+          <button id="dismissSupportBannerBtn" class="support-banner-close" type="button" aria-label="Dismiss support message">x</button>
+        </div>
+      </section>
+
       <section id="chat" class="chat">
         <div class="message intro">
           <strong>Enter a paddle number</strong>, for example <strong>14</strong> or <strong>1-14</strong>.
@@ -2014,6 +2119,10 @@
       <section id="demoView" class="tool-page-view" hidden></section>
       <section id="todayBoardView" class="today-board-screen" hidden></section>
       <section id="liveMapView" class="live-map-view" hidden></section>
+      <footer class="main-support-footer">
+        <span>Built and maintained independently.</span>
+        <a href="/support">Support the project</a>
+      </footer>
     </main>
   </div>
   <div id="toastStack" class="toast-stack" aria-live="polite" aria-atomic="true"></div>
@@ -2082,6 +2191,9 @@
     const accountMeta = document.getElementById('accountMeta');
     const accountBody = document.getElementById('accountBody');
     const closeAccountBtn = document.getElementById('closeAccountBtn');
+    const supportBanner = document.getElementById('supportBanner');
+    const dismissSupportBannerBtn = document.getElementById('dismissSupportBannerBtn');
+    const supportBannerDismissKey = 'ero-operator-tools:support-banner-dismissed:v1';
     let currentLookup = null;
     let liveMapTimer = null;
     let todayBoardTimer = null;
@@ -2929,6 +3041,44 @@
     function renderAccountNotice() {
       if (!accountNotice.text) return '';
       return `<div class="auth-notice ${escapeHtml(accountNotice.type || '')}">${escapeHtml(accountNotice.text)}</div>`;
+    }
+
+    function renderSupportNote() {
+      return `
+        <section class="section-card support-note-card">
+          <div class="field-label">Support</div>
+          <div class="muted">ERO Operator Tools is maintained independently. Support helps cover hosting, database costs, and ongoing updates.</div>
+          <div class="section-actions">
+            <a class="link-btn" href="/support">Support the project</a>
+          </div>
+        </section>
+      `;
+    }
+
+    function readLocalStorageValue(key) {
+      try {
+        return window.localStorage.getItem(key);
+      } catch (_) {
+        return null;
+      }
+    }
+
+    function writeLocalStorageValue(key, value) {
+      try {
+        window.localStorage.setItem(key, value);
+      } catch (_) {}
+    }
+
+    function initSupportBanner() {
+      if (!supportBanner || !dismissSupportBannerBtn) return;
+      if (readLocalStorageValue(supportBannerDismissKey) === '1') {
+        supportBanner.hidden = true;
+        return;
+      }
+      dismissSupportBannerBtn.addEventListener('click', () => {
+        supportBanner.hidden = true;
+        writeLocalStorageValue(supportBannerDismissKey, '1');
+      });
     }
 
     function captureAccountFormDraft() {
@@ -4870,6 +5020,7 @@
           </div>
         </section>
         ${renderTripNotificationSettings()}
+        ${renderSupportNote()}
       `;
       wireAccountEvents();
     }
@@ -5029,6 +5180,7 @@
               : workWeeks.map((week) => renderMyWorkWeekCard(week, serviceDays, paddleOptions, lookupServiceDay, lookupPaddleId)).join('')}
           </div>
         </section>
+        ${renderSupportNote()}
       `;
     }
 
@@ -6589,6 +6741,7 @@
 
     refreshCountdowns();
     renderOcMetaBar();
+    initSupportBanner();
     setInterval(refreshCountdowns, 1000);
     registerServiceWorker();
     initSupabase();

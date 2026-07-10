@@ -1,0 +1,445 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Support ERO Operator Tools</title>
+  <style>
+    :root {
+      --bg: #14171d;
+      --panel: #1c2128;
+      --panel-2: #11161c;
+      --border: rgba(255,255,255,0.11);
+      --text: #f2f4f8;
+      --muted: #bcc6d4;
+      --accent: #d9472f;
+      --accent-2: #ffb068;
+      --shadow: 0 18px 44px rgba(0,0,0,.34);
+    }
+
+    * { box-sizing: border-box; }
+
+    html {
+      width: 100%;
+      overflow-x: hidden;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--text);
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(217,71,47,.18), transparent 35%),
+        radial-gradient(circle at 90% 10%, rgba(255,176,104,.13), transparent 32%),
+        linear-gradient(180deg, #181b22 0%, #13171d 100%);
+      padding: 16px;
+    }
+
+    .app {
+      width: min(1080px, 100%);
+      min-height: calc(100vh - 32px);
+      margin: 0 auto;
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      overflow: hidden;
+      background: rgba(24,28,35,.92);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      padding: 22px;
+      border-bottom: 1px solid var(--border);
+      background: linear-gradient(180deg, rgba(71,24,18,.5), rgba(28,33,40,.92));
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      min-width: 0;
+    }
+
+    .brand-badge {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      background: linear-gradient(180deg, #c53524, #8d2418);
+      display: grid;
+      place-items: center;
+      font-weight: 800;
+      flex: none;
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: 18px;
+    }
+
+    .brand p {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.35;
+    }
+
+    .header-link,
+    .support-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid rgba(255,255,255,.14);
+      color: var(--text);
+      text-decoration: none;
+      font: inherit;
+      cursor: pointer;
+      transition: transform 120ms ease, border-color 120ms ease, background 120ms ease;
+      white-space: nowrap;
+    }
+
+    .header-link {
+      border-radius: 999px;
+      padding: 10px 14px;
+      background: rgba(10,14,20,.45);
+      font-size: 14px;
+    }
+
+    .header-link:hover {
+      border-color: rgba(255,255,255,.28);
+      background: rgba(255,255,255,.08);
+    }
+
+    .main {
+      padding: 28px;
+      display: grid;
+      gap: 24px;
+    }
+
+    .support-hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1.35fr) minmax(280px, .65fr);
+      gap: 24px;
+      align-items: start;
+    }
+
+    .intro {
+      display: grid;
+      gap: 18px;
+      min-width: 0;
+    }
+
+    h2 {
+      margin: 0;
+      max-width: 760px;
+      font-size: clamp(40px, 6vw, 72px);
+      line-height: .92;
+      letter-spacing: -.04em;
+    }
+
+    .lead {
+      max-width: 720px;
+      margin: 0;
+      color: var(--muted);
+      font-size: 18px;
+      line-height: 1.6;
+    }
+
+    .support-panel,
+    .section {
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 20px;
+      background: rgba(17,22,28,.9);
+      padding: 20px;
+      display: grid;
+      gap: 16px;
+    }
+
+    .support-panel h3,
+    .section h3 {
+      margin: 0;
+      font-size: 26px;
+      line-height: 1;
+      letter-spacing: -.02em;
+    }
+
+    .support-options {
+      display: grid;
+      gap: 10px;
+    }
+
+    .support-choice {
+      display: grid;
+      gap: 8px;
+      padding: 14px;
+      border: 1px solid rgba(255,255,255,.1);
+      border-radius: 16px;
+      background: rgba(255,255,255,.035);
+    }
+
+    .support-choice strong {
+      font-size: 15px;
+    }
+
+    .support-choice span {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .amount-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .amount-custom {
+      grid-column: 1 / -1;
+    }
+
+    .support-button {
+      min-height: 46px;
+      border-radius: 999px;
+      padding: 12px 14px;
+      background: linear-gradient(180deg, #de4a31, #bc301f);
+      border-color: rgba(255,255,255,.12);
+      box-shadow: 0 8px 22px rgba(217,71,47,.2);
+      font-weight: 700;
+    }
+
+    .support-button:hover {
+      transform: translateY(-1px);
+      border-color: rgba(255,255,255,.3);
+    }
+
+    .support-button[aria-disabled="true"] {
+      background: rgba(255,255,255,.08);
+      color: rgba(242,244,248,.72);
+      box-shadow: none;
+      cursor: not-allowed;
+    }
+
+    .support-button[aria-disabled="true"]:hover {
+      transform: none;
+      border-color: rgba(255,255,255,.14);
+    }
+
+    .setup-note,
+    .section p,
+    .fine-print {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .setup-note,
+    .fine-print {
+      font-size: 13px;
+    }
+
+    .sections {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+    }
+
+    .cost-list {
+      display: grid;
+      gap: 10px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .cost-list li {
+      display: grid;
+      grid-template-columns: 10px minmax(0, 1fr);
+      gap: 10px;
+      align-items: start;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    .cost-list li::before {
+      content: "";
+      width: 8px;
+      height: 8px;
+      margin-top: 7px;
+      border-radius: 999px;
+      background: var(--accent-2);
+    }
+
+    .fine-print {
+      border-top: 1px solid rgba(255,255,255,.1);
+      padding-top: 16px;
+    }
+
+    @media (max-width: 820px) {
+      body { padding: 0; }
+
+      .app {
+        width: 100vw;
+        min-height: 100vh;
+        border-radius: 0;
+        border-left: 0;
+        border-right: 0;
+      }
+
+      .header {
+        align-items: flex-start;
+        padding: 16px;
+      }
+
+      .support-hero,
+      .sections {
+        grid-template-columns: 1fr;
+      }
+
+      .main {
+        padding: 22px 16px 26px;
+      }
+
+      .lead {
+        font-size: 16px;
+      }
+    }
+
+    @media (max-width: 520px) {
+      .header {
+        flex-direction: column;
+      }
+
+      .header-link {
+        width: 100%;
+      }
+
+      .amount-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="header">
+      <div class="brand">
+        <div class="brand-badge">ER</div>
+        <div>
+          <h1>Support</h1>
+          <p>Help keep ERO Operator Tools running and improving.</p>
+        </div>
+      </div>
+      <a class="header-link" href="/">Back to Lookup</a>
+    </header>
+
+    <section class="main">
+      <div class="support-hero">
+        <div class="intro">
+          <h2>Support ERO Operator Tools</h2>
+          <p class="lead">
+            ERO Operator Tools is built and maintained independently by one person. I personally cover the hosting,
+            database, and maintenance costs, and I work on updates, fixes, and new features in my free time.
+          </p>
+          <p class="lead">
+            If this site helps you check ERO paddles, saved work, today&apos;s board, or Line 1 map tools more easily,
+            you can support the project with a voluntary contribution.
+          </p>
+        </div>
+
+        <aside class="support-panel" aria-labelledby="support-actions-title">
+          <h3 id="support-actions-title">Contribute</h3>
+          <div class="support-options">
+            <div class="support-choice">
+              <strong>One-time support</strong>
+              <span>Make a single contribution to help cover current operating costs.</span>
+              <div class="amount-grid">
+                <a class="support-button" data-support-link="oneTime3" href="#">$3</a>
+                <a class="support-button" data-support-link="oneTime5" href="#">$5</a>
+                <a class="support-button" data-support-link="oneTime10" href="#">$10</a>
+                <a class="support-button" data-support-link="oneTime20" href="#">$20</a>
+                <a class="support-button amount-custom" data-support-link="customAmount" href="#">Custom amount</a>
+              </div>
+            </div>
+            <div class="support-choice">
+              <strong>Monthly supporter</strong>
+              <span>Contribute monthly to help keep maintenance and improvements sustainable.</span>
+              <a class="support-button" data-support-link="monthly" href="#">Support monthly</a>
+            </div>
+          </div>
+          <p class="setup-note" id="setupNote">Secure Stripe payment link coming soon.</p>
+        </aside>
+      </div>
+
+      <div class="sections">
+        <section class="section">
+          <h3>What support helps cover</h3>
+          <ul class="cost-list">
+            <li>Database and hosting fees needed to keep the tools available.</li>
+            <li>Ongoing maintenance, bug fixes, and reliability improvements.</li>
+            <li>New features for paddle lookup, saved work, today&apos;s board, and Line 1 map workflows.</li>
+            <li>Time spent keeping operator tools easier to use.</li>
+          </ul>
+        </section>
+
+        <section class="section">
+          <h3>Free to use</h3>
+          <p>
+            Support is optional. The site remains free to use, and no feature is locked behind a contribution.
+          </p>
+          <p>
+            The goal is simply to make it easier to cover the real operating costs and continue improving the tools
+            when time is available.
+          </p>
+          <div class="fine-print">
+            ERO Operator Tools is independent and is not affiliated with, endorsed by, or operated by OC Transpo
+            or the City of Ottawa. Contributions are voluntary and are not tax-deductible charitable donations.
+          </div>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const ONE_TIME_SUPPORT_3_URL = 'https://buy.stripe.com/3cIeVd4px8nw5xh5Eo0VO02';
+    const ONE_TIME_SUPPORT_5_URL = 'https://buy.stripe.com/7sYbJ109h33c1h15Eo0VO01';
+    const ONE_TIME_SUPPORT_10_URL = 'https://buy.stripe.com/6oU28r7BJ8nwcZJd6Q0VO03';
+    const ONE_TIME_SUPPORT_20_URL = 'https://buy.stripe.com/4gM5kDaNVgU26Blgj20VO04';
+    const CUSTOM_AMOUNT_SUPPORT_URL = 'https://buy.stripe.com/4gM00j09h33cf7RaYI0VO05';
+    const MONTHLY_SUPPORT_URL = 'https://buy.stripe.com/6oU28r6xFavE7Fp3wg0VO00';
+    const supportButtons = document.querySelectorAll('.support-button');
+    const setupNote = document.getElementById('setupNote');
+
+    const supportLinks = {
+      oneTime3: ONE_TIME_SUPPORT_3_URL,
+      oneTime5: ONE_TIME_SUPPORT_5_URL,
+      oneTime10: ONE_TIME_SUPPORT_10_URL,
+      oneTime20: ONE_TIME_SUPPORT_20_URL,
+      customAmount: CUSTOM_AMOUNT_SUPPORT_URL,
+      monthly: MONTHLY_SUPPORT_URL
+    };
+
+    supportButtons.forEach((button) => {
+      const url = supportLinks[button.dataset.supportLink];
+      if (!url) {
+        button.setAttribute('aria-disabled', 'true');
+        button.addEventListener('click', (event) => event.preventDefault());
+        return;
+      }
+
+      button.href = url;
+      button.target = '_blank';
+      button.rel = 'noopener noreferrer';
+    });
+
+    if (Object.values(supportLinks).some(Boolean)) {
+      setupNote.textContent = 'Payments are processed securely by Stripe.';
+    } else {
+      setupNote.textContent = 'Add your live Stripe Payment Links to enable contributions.';
+    }
+  </script>
+</body>
+</html>
