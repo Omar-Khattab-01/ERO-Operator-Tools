@@ -114,7 +114,7 @@ on public.ero_lrv_defect_access (lower(email));
 
 create table if not exists public.ero_lrv_defect_reports (
   id uuid primary key default gen_random_uuid(),
-  lrv_number integer not null check (lrv_number between 1 and 67),
+  lrv_number integer not null check (lrv_number between 1 and 99),
   cab text not null check (cab in ('MC1', 'MC2', 'UNKNOWN')),
   defect_category text,
   seat_issue_detail text,
@@ -127,8 +127,27 @@ create table if not exists public.ero_lrv_defect_reports (
   reported_at timestamptz not null default timezone('utc', now())
 );
 
+create table if not exists public.ero_lrv_fleet (
+  lrv_number integer primary key check (lrv_number between 1 and 99),
+  added_by uuid references auth.users(id) on delete set null,
+  added_at timestamptz not null default timezone('utc', now())
+);
+
+insert into public.ero_lrv_fleet (lrv_number)
+select generate_series(1, 68)
+on conflict (lrv_number) do nothing;
+
+alter table public.ero_lrv_fleet enable row level security;
+
 alter table public.ero_lrv_defect_reports
 add column if not exists defect_category text;
+
+alter table public.ero_lrv_defect_reports
+drop constraint if exists ero_lrv_defect_reports_lrv_number_check;
+
+alter table public.ero_lrv_defect_reports
+add constraint ero_lrv_defect_reports_lrv_number_check
+check (lrv_number between 1 and 99);
 
 alter table public.ero_lrv_defect_reports
 add column if not exists seat_issue_detail text;
@@ -257,8 +276,37 @@ as $$
     );
 $$;
 
+create or replace function public.ero_can_manage_lrv_fleet()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select lower(coalesce((auth.jwt() ->> 'email'), '')) in (
+    'omar.hosam2000@gmail.com',
+    'tsmithonthego@live.com'
+  );
+$$;
+
 alter table public.ero_lrv_defect_access enable row level security;
 alter table public.ero_lrv_defect_reports enable row level security;
+alter table public.ero_lrv_fleet enable row level security;
+
+drop policy if exists "Authorized users can view LRV fleet" on public.ero_lrv_fleet;
+create policy "Authorized users can view LRV fleet"
+on public.ero_lrv_fleet
+for select
+using (public.ero_can_access_lrv_defects());
+
+drop policy if exists "Fleet managers can add LRVs" on public.ero_lrv_fleet;
+create policy "Fleet managers can add LRVs"
+on public.ero_lrv_fleet
+for insert
+with check (
+  public.ero_can_manage_lrv_fleet()
+  and lrv_number between 1 and 99
+);
 
 drop policy if exists "LRV defect admins can view ERO profiles" on public.ero_user_profiles;
 create policy "LRV defect admins can view ERO profiles"

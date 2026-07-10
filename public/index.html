@@ -2152,7 +2152,12 @@
       recoveryPasswordConfirm: '',
     };
     const lrvDefectAdminEmail = 'omar.hosam2000@gmail.com';
-    const lrvNumbers = Array.from({ length: 67 }, (_, index) => index + 1);
+    const lrvFleetManagerEmails = new Set([
+      'omar.hosam2000@gmail.com',
+      'tsmithonthego@live.com',
+    ]);
+    const defaultLrvNumbers = Array.from({ length: 67 }, (_, index) => index + 1);
+    let lrvNumbers = [...defaultLrvNumbers];
     const lrvCabOptions = [
       { key: 'MC1', label: 'MC1' },
       { key: 'MC2', label: 'MC2' },
@@ -2191,6 +2196,7 @@
     let lrvDefectAccessPendingRoles = new Map();
     let lrvDefectProfileList = [];
     let lrvDefectSchemaWarning = '';
+    let lrvFleetWarning = '';
     let selectedLrvNumber = 1;
     let selectedLrvCab = 'MC1';
     let selectedLrvDefectCategory = 'dirty_windshield';
@@ -3158,6 +3164,10 @@
       return currentUserEmail() === lrvDefectAdminEmail || lrvDefectAccessRole === 'admin';
     }
 
+    function canManageLrvFleet() {
+      return lrvFleetManagerEmails.has(currentUserEmail());
+    }
+
     function canReportLrvDefects() {
       return isLrvDefectAdmin() || lrvDefectAccessRole === 'reporter';
     }
@@ -3226,6 +3236,49 @@
 
     function formatLrvNumber(value) {
       return String(Number(value) || 1).padStart(2, '0');
+    }
+
+    function normalizeLrvFleetNumbers(values = []) {
+      const numbers = values
+        .map((value) => Number(value))
+        .filter((value) => Number.isInteger(value) && value >= 1 && value <= 99);
+      const unique = Array.from(new Set(numbers.length ? numbers : defaultLrvNumbers));
+      return unique.sort((a, b) => a - b);
+    }
+
+    function nextLrvNumber() {
+      const maxNumber = Math.max(...lrvNumbers, 0);
+      return Math.min(99, maxNumber + 1);
+    }
+
+    async function loadLrvFleetNumbers() {
+      lrvFleetWarning = '';
+      if (!supabaseClient) {
+        lrvNumbers = [...defaultLrvNumbers];
+        return;
+      }
+      let data = null;
+      let error = null;
+      try {
+        ({ data, error } = await withLrvRequestTimeout(supabaseClient
+          .from('ero_lrv_fleet')
+          .select('lrv_number')
+          .order('lrv_number', { ascending: true }), 'LRV fleet load'));
+      } catch (requestError) {
+        error = requestError;
+      }
+      if (error) {
+        lrvNumbers = [...defaultLrvNumbers];
+        const message = String(error.message || error.details || '').toLowerCase();
+        lrvFleetWarning = message.includes('ero_lrv_fleet') || message.includes('schema cache')
+          ? 'Apply the latest Supabase schema to add and share new LRV numbers.'
+          : (error.message || 'Could not load the LRV fleet list.');
+        return;
+      }
+      lrvNumbers = normalizeLrvFleetNumbers((data || []).map((item) => item.lrv_number));
+      if (!lrvNumbers.includes(selectedLrvNumber)) {
+        selectedLrvNumber = lrvNumbers[0] || 1;
+      }
     }
 
     function formatReportDate(value) {
@@ -3945,6 +3998,22 @@
               : '<div class="work-empty">No extra accounts have access yet.</div>'}
           </div>
         </section>
+        ${canManageLrvFleet() ? `
+          <section class="section-card">
+            <div class="field-label">Fleet List</div>
+            <p class="overlay-page-copy">Add a new two-digit LRV number when a new unit enters service. Current list runs from LRV ${escapeHtml(formatLrvNumber(lrvNumbers[0] || 1))} to LRV ${escapeHtml(formatLrvNumber(lrvNumbers[lrvNumbers.length - 1] || 67))}.</p>
+            ${lrvFleetWarning ? `<div class="auth-notice warn">${escapeHtml(lrvFleetWarning)}</div>` : ''}
+            <div class="field-grid" style="margin-top:12px;">
+              <label class="field-stack">
+                <span class="field-label">New LRV Number</span>
+                <input id="newLrvNumberInput" class="text-input" type="number" min="1" max="99" step="1" value="${escapeHtml(nextLrvNumber())}">
+              </label>
+            </div>
+            <div class="section-actions">
+              <button id="addLrvNumberBtn" class="btn" type="button">Add LRV</button>
+            </div>
+          </section>
+        ` : ''}
         <section class="section-card">
           <div class="field-label">Admin Export</div>
           <p class="overlay-page-copy">Export shared defect reports as a print-ready PDF. Choose a period, or leave both dates blank to export all dates.</p>
@@ -4041,6 +4110,7 @@
         return;
       }
       try {
+        await loadLrvFleetNumbers();
         await loadLrvDefectReports();
       } catch (error) {
         setLrvSchemaWarning(error);
@@ -4062,7 +4132,7 @@
             <p class="overlay-page-copy">Approved accounts can report defects and see the shared history entered by everyone.</p>
           </div>
           <div class="board-page-meta">
-            <div class="board-stat"><span class="k">Fleet</span><span class="v">01-67</span></div>
+            <div class="board-stat"><span class="k">Fleet</span><span class="v">01-${escapeHtml(formatLrvNumber(lrvNumbers[lrvNumbers.length - 1] || 67))}</span></div>
             <div class="board-stat"><span class="k">Role</span><span class="v">${escapeHtml(formatLrvAccessRole(lrvDefectAccessRole || 'viewer'))}</span></div>
             <div class="board-stat"><span class="k">Reports</span><span class="v">${escapeHtml(lrvDefectReports.length)}</span></div>
           </div>
@@ -5860,6 +5930,34 @@
       await refreshLrvDefectAccessAfterMutation(normalizedEmail, normalizedRole);
     }
 
+    async function addLrvNumber() {
+      if (!supabaseClient || !canManageLrvFleet()) return;
+      const lrvNumber = Number(document.getElementById('newLrvNumberInput')?.value || 0);
+      if (!Number.isInteger(lrvNumber) || lrvNumber < 1 || lrvNumber > 99) {
+        setStatus('LRV not added', false);
+        showToast('LRV not added', 'Enter a two-digit LRV number from 01 to 99.');
+        return;
+      }
+      let error = null;
+      try {
+        ({ error } = await withLrvRequestTimeout(supabaseClient
+          .from('ero_lrv_fleet')
+          .insert({ lrv_number: lrvNumber, added_by: currentUser.id }), 'LRV fleet save'));
+      } catch (requestError) {
+        error = requestError;
+      }
+      if (error) {
+        setStatus('LRV add failed', false);
+        showToast('LRV add failed', error.message || 'Could not add that LRV.');
+        return;
+      }
+      selectedLrvNumber = lrvNumber;
+      await loadLrvFleetNumbers();
+      await renderLrvDefectsPage();
+      setStatus('LRV added', true);
+      showToast('LRV added', `LRV ${formatLrvNumber(lrvNumber)} is now available.`);
+    }
+
     async function revokeLrvDefectAccess(email) {
       if (!supabaseClient || !isLrvDefectAdmin()) return;
       const normalizedEmail = normalizeEmail(email);
@@ -6516,6 +6614,12 @@
       const grantLrvAccessBtn = event.target.closest('#grantLrvAccessBtn');
       if (grantLrvAccessBtn) {
         await grantLrvDefectAccess();
+        return;
+      }
+
+      const addLrvNumberBtn = event.target.closest('#addLrvNumberBtn');
+      if (addLrvNumberBtn) {
+        await addLrvNumber();
         return;
       }
 
