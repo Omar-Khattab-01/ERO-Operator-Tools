@@ -5182,6 +5182,14 @@
       `;
     }
 
+    function renderPlatformPaySummaryItems(data) {
+      if (!data?.platformTime && !data?.paidTime) return '';
+      return `
+        <div class="summary-item"><div class="k">Platform</div><div class="v">${escapeHtml(data.platformTime || 'N/A')}</div></div>
+        <div class="summary-item"><div class="k">Pay</div><div class="v">${escapeHtml(data.paidTime || 'N/A')}</div></div>
+      `;
+    }
+
     function renderSplitSummaryItems(data) {
       const splits = Array.isArray(data.splitBreaks) ? data.splitBreaks : [];
       if (!splits.length) return '';
@@ -5418,6 +5426,7 @@
           <div class="summary-item"><div class="k">Service</div><div class="v">${escapeHtml(data.serviceLabel)}</div></div>
           <div class="summary-item"><div class="k">Effective</div><div class="v">${escapeHtml(data.effective || 'N/A')}</div></div>
           ${renderPieceSummaryItems(data)}
+          ${renderPlatformPaySummaryItems(data)}
           ${renderSplitSummaryItems(data)}
         </div>
         ${entries}
@@ -5528,6 +5537,7 @@
             ${renderNextActionBox(live, inlineJumpButton)}
             <div class="summary-grid">
             ${renderPieceSummaryItems(data)}
+            ${renderPlatformPaySummaryItems(data)}
             ${renderSplitSummaryItems(data)}
             <div class="summary-item"><div class="k">Blocks</div><div class="v">${escapeHtml(data.entries?.length || 0)}</div></div>
             <div class="summary-item"><div class="k">Effective</div><div class="v">${escapeHtml(data.effective || 'N/A')}</div></div>
@@ -5558,6 +5568,7 @@
           ${renderNextActionBox(live)}
           <div class="summary-grid">
             ${renderPieceSummaryItems(data)}
+            ${renderPlatformPaySummaryItems(data)}
             ${renderSplitSummaryItems(data)}
             <div class="summary-item"><div class="k">Blocks</div><div class="v">${escapeHtml(data.entries?.length || 0)}</div></div>
             <div class="summary-item"><div class="k">Effective</div><div class="v">${escapeHtml(data.effective || 'N/A')}</div></div>

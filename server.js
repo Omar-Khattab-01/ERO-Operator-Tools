@@ -818,6 +818,8 @@ function buildPaddleResponse(paddleId, requestedDay = '') {
     dutyType: run.dutyType || '',
     effective: run.effective || '',
     sourceFile: run.sourceFile || '',
+    platformTime: run.platformTime || '',
+    paidTime: run.paidTime || '',
     activeEntry: preferredDay === getCurrentServiceDay() ? findActiveEntry({ entries }) : null,
     liveStatus,
     entries,

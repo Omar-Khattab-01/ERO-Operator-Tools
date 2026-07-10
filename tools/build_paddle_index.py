@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -8,11 +9,20 @@ from typing import Any
 
 from pypdf import PdfReader
 
+try:
+    from build_rail_boards import parse_work_pdf
+except ModuleNotFoundError:
+    from tools.build_rail_boards import parse_work_pdf
+
 
 ROOT = Path(__file__).resolve().parents[1]
 PADDLES_DIR = ROOT / "Paddles" / "Spring"
 OUTPUT_DIR = ROOT / "data"
 OUTPUT_PATH = OUTPUT_DIR / "paddles.index.json"
+TOTALS_SOURCE_PDF = Path(
+    os.environ.get("PADDLE_TOTALS_PDF")
+    or "/Users/omarkhattab/Downloads/2026 Summer ERO Daily Boards update (1).pdf"
+)
 
 SOURCES = [
     ("MonToThu.pdf", "mon_thu", "Mon-Thu"),
@@ -251,13 +261,32 @@ def parse_page(text: str, service_day: str, service_label: str, filename: str, p
         "effective": effective,
         "sourceFile": filename,
         "pageNumber": page_number,
+        "platformTime": "",
+        "paidTime": "",
         "entries": entries,
     }
+
+
+def build_platform_pay_totals(pdf_path: Path) -> dict[tuple[str, str], dict[str, str]]:
+    if not pdf_path.exists():
+        return {}
+    totals: dict[tuple[str, str], dict[str, str]] = {}
+    for entry in parse_work_pdf(pdf_path):
+        board_key = entry.get("boardKey", "")
+        work_id = normalize_paddle_id(entry.get("workId", ""))
+        if board_key not in {"mon_thu", "friday", "saturday", "sunday"} or not work_id:
+            continue
+        totals[(board_key, work_id)] = {
+            "platformTime": entry.get("platformTime", ""),
+            "paidTime": entry.get("paidTime", ""),
+        }
+    return totals
 
 
 def build_index() -> dict[str, Any]:
     service_days: dict[str, dict[str, Any]] = {key: {} for _, key, _ in SOURCES}
     sources_meta: dict[str, Any] = {}
+    platform_pay_totals = build_platform_pay_totals(TOTALS_SOURCE_PDF)
 
     for filename, service_day, service_label in SOURCES:
         pdf_path = PADDLES_DIR / filename
@@ -267,6 +296,10 @@ def build_index() -> dict[str, Any]:
             parsed = parse_page(page.extract_text() or "", service_day, service_label, filename, page_index)
             if not parsed:
                 continue
+            totals = platform_pay_totals.get((service_day, parsed["paddleId"]))
+            if totals:
+                parsed["platformTime"] = totals["platformTime"]
+                parsed["paidTime"] = totals["paidTime"]
             service_days[service_day][parsed["paddleId"]] = parsed
             parsed_count += 1
 
@@ -276,6 +309,11 @@ def build_index() -> dict[str, Any]:
             "pages": len(reader.pages),
             "parsedRuns": parsed_count,
         }
+    sources_meta["platform_pay_totals"] = {
+        "filename": TOTALS_SOURCE_PDF.name if TOTALS_SOURCE_PDF.exists() else "",
+        "path": str(TOTALS_SOURCE_PDF) if TOTALS_SOURCE_PDF.exists() else "",
+        "parsedRuns": len(platform_pay_totals),
+    }
 
     return {
         "generatedBy": "tools/build_paddle_index.py",

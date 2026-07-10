@@ -24,6 +24,11 @@
       "label": "Sunday",
       "pages": 22,
       "parsedRuns": 22
+    },
+    "platform_pay_totals": {
+      "filename": "2026 Summer ERO Daily Boards update (1).pdf",
+      "path": "/Users/omarkhattab/Downloads/2026 Summer ERO Daily Boards update (1).pdf",
+      "parsedRuns": 121
     }
   },
   "serviceDays": {
@@ -36,6 +41,8 @@
         "effective": "19/04/2026",
         "sourceFile": "MonToThu.pdf",
         "pageNumber": 1,
+        "platformTime": "07:05",
+        "paidTime": "07:39",
         "entries": [
           {
             "sequence": 1,
@@ -414,6 +421,8 @@
         "effective": "19/04/2026",
         "sourceFile": "MonToThu.pdf",
         "pageNumber": 2,
+        "platformTime": "07:20",
+        "paidTime": "08:14",
         "entries": [
           {
             "sequence": 1,
@@ -792,6 +801,8 @@
         "effective": "19/04/2026",
         "sourceFile": "MonToThu.pdf",
         "pageNumber": 3,
+        "platformTime": "07:59",
+        "paidTime": "08:38",
         "entries": [
           {
             "sequence": 1,
@@ -1209,6 +1220,8 @@
         "effective": "19/04/2026",
         "sourceFile": "MonToThu.pdf",
         "pageNumber": 4,
+        "platformTime": "07:11",
+        "paidTime": "08:00",
         "entries": [
           {
             "sequence": 1,
@@ -1587,6 +1600,8 @@
         "effective": "19/04/2026",
         "sourceFile": "MonToThu.pdf",
         "pageNumber": 5,
+        "platformTime": "08:22",
+        "paidTime": "08:22",
         "entries": [
           {
             "sequence": 1,
@@ -2005,6 +2020,8 @@
         "effective": "19/04/2026",
         "sourceFile": "MonToThu.pdf",
         "pageNumber": 6,
+        "platformTime": "07:39",
+        "paidTime": "08:14",
         "entries": [
           {
             "sequence": 1,
@@ -2422,6 +2439,8 @@
         "effective": "19/04/2026",
         "sourceFile": "MonToThu.pdf",
         "pageNumber": 7,
+        "platformTime": "06:35",
+        "paidTime": "07:30",
         "entries": [
           {
             "sequence": 1,
@@ -2800,6 +2819,8 @@
         "effective": "19/04/2026",
         "sourceFile": "MonToThu.pdf",
         "pageNumber": 8,
+        "platformTime": "08:44",
+        "paidTime": "08:44",
         "entries": [
           {
             "sequence": 1,
@@ -3241,6 +3262,8 @@
         "effective": "19/04/2026",
         "sourceFile": "MonToThu.pdf",
         "pageNumber": 9,
+        "platformTime": "08:49",
+        "paidTime": "08:49",
         "entries": [
           {
             "sequence": 1,
@@ -3721,6 +3744,8 @@
         "effective": "19/04/2026",
         "sourceFile": "MonToThu.pdf",
         "pageNumber": 10,
+        "platformTime": "07:31",
+        "paidTime": "08:08",
         "entries": [
           {
             "sequence": 1,
@@ -4122,6 +4147,8 @@
         "effective": "19/04/2026",
         "sourceFile": "MonToThu.pdf",
         "pageNumber": 11,
+        "platformTime": "07:28",
+        "paidTime": "07:30",
         "entries": [
           {
             "sequence": 1,
@@ -4540,6 +4567,8 @@
         "effective": "19/04/2026",
         "sourceFile": "MonToThu.pdf",
         "pageNumber": 12,
+        "platformTime": "08:49",
+        "paidTime": "08:49",
         "entries": [
           {
             "sequence": 1,
@@ -5036,6 +5065,8 @@
         "effective": "19/04/2026",
         "sourceFile": "MonToThu.pdf",
         "pageNumber": 13,
+        "platformTime": "08:41",
+        "paidTime": "08:41",
         "entries": [
           {
             "sequence": 1,
@@ -5532,6 +5563,8 @@
         "effective": "19/04/2026",
         "sourceFile": "MonToThu.pdf",
         "pageNumber": 14,
+        "platformTime": "07:48",
+        "paidTime": "08:00",
         "entries": [
           {
             "sequence": 1,
@@ -6005,6 +6038,8 @@
         "effective": "19/04/2026",
         "sourceFile": "MonToThu.pdf",
         "pageNumber": 15,
+        "platformTime": "08:25",
+        "paidTime": "08:25",
         "entries": [
           {
             "sequence": 1,
@@ -6501,6 +6536,8 @@
         "effective": "19/04/2026",
         "sourceFile": "MonToThu.pdf",
         "pageNumber": 16,
+        "platformTime": "08:16",
+        "paidTime": "08:16",
         "entries": [
           {
             "sequence": 1,
@@ -6997,6 +7034,8 @@
         "effective": "19/04/2026",
         "sourceFile": "MonToThu.pdf",
         "pageNumber": 17,
+        "platformTime": "08:05",
+        "paidTime": "08:05",
         "entries": [
           {
             "sequence": 1,
@@ -7493,6 +7532,8 @@
         "effective": "19/04/2026",
         "sourceFile": "MonToThu.pdf",
         "pageNumber": 18,
+        "platformTime": "08:47",
+        "paidTime": "08:47",
         "entries": [
           {
             "sequence": 1,
@@ -7989,6 +8030,8 @@
         "effective": "19/04/2026",
         "sourceFile": "MonToThu.pdf",
         "pageNumber": 19,
+        "platformTime": "07:41",
+        "paidTime": "08:00",
         "entries": [
           {
             "sequence": 1,
@@ -8446,6 +8489,8 @@
         "effective": "19/04/2026",
         "sourceFile": "MonToThu.pdf",
         "pageNumber": 20,
+        "platformTime": "08:46",
+        "paidTime": "08:46",
         "entries": [
           {
             "sequence": 1,
@@ -8981,6 +9026,8 @@
         "effective": "19/04/2026",
         "sourceFile": "MonToThu.pdf",
         "pageNumber": 21,
+        "platformTime": "07:02",
+        "paidTime": "07:55",
         "entries": [
           {
             "sequence": 1,
@@ -9382,6 +9429,8 @@
         "effective": "19/04/2026",
         "sourceFile": "MonToThu.pdf",
         "pageNumber": 22,
+        "platformTime": "06:14",
+        "paidTime": "07:30",
         "entries": [
           {
             "sequence": 1,
@@ -9744,6 +9793,8 @@
         "effective": "19/04/2026",
         "sourceFile": "MonToThu.pdf",
         "pageNumber": 23,
+        "platformTime": "08:26",
+        "paidTime": "09:10",
         "entries": [
           {
             "sequence": 1,
@@ -10200,6 +10251,8 @@
         "effective": "19/04/2026",
         "sourceFile": "MonToThu.pdf",
         "pageNumber": 24,
+        "platformTime": "08:02",
+        "paidTime": "08:41",
         "entries": [
           {
             "sequence": 1,
@@ -10640,6 +10693,8 @@
         "effective": "19/04/2026",
         "sourceFile": "MonToThu.pdf",
         "pageNumber": 25,
+        "platformTime": "08:41",
+        "paidTime": "10:49",
         "entries": [
           {
             "sequence": 1,
@@ -11119,6 +11174,8 @@
         "effective": "19/04/2026",
         "sourceFile": "MonToThu.pdf",
         "pageNumber": 26,
+        "platformTime": "07:51",
+        "paidTime": "08:30",
         "entries": [
           {
             "sequence": 1,
@@ -11559,6 +11616,8 @@
         "effective": "19/04/2026",
         "sourceFile": "MonToThu.pdf",
         "pageNumber": 27,
+        "platformTime": "07:27",
+        "paidTime": "08:00",
         "entries": [
           {
             "sequence": 1,
@@ -11960,6 +12019,8 @@
         "effective": "19/04/2026",
         "sourceFile": "MonToThu.pdf",
         "pageNumber": 28,
+        "platformTime": "06:19",
+        "paidTime": "08:03",
         "entries": [
           {
             "sequence": 1,
@@ -12322,6 +12383,8 @@
         "effective": "19/04/2026",
         "sourceFile": "MonToThu.pdf",
         "pageNumber": 29,
+        "platformTime": "08:41",
+        "paidTime": "09:20",
         "entries": [
           {
             "sequence": 1,
@@ -12801,6 +12864,8 @@
         "effective": "19/04/2026",
         "sourceFile": "MonToThu.pdf",
         "pageNumber": 30,
+        "platformTime": "07:51",
+        "paidTime": "09:30",
         "entries": [
           {
             "sequence": 1,
@@ -13241,6 +13306,8 @@
         "effective": "19/04/2026",
         "sourceFile": "MonToThu.pdf",
         "pageNumber": 31,
+        "platformTime": "08:33",
+        "paidTime": "09:11",
         "entries": [
           {
             "sequence": 1,
@@ -13681,6 +13748,8 @@
         "effective": "19/04/2026",
         "sourceFile": "MonToThu.pdf",
         "pageNumber": 32,
+        "platformTime": "08:10",
+        "paidTime": "08:47",
         "entries": [
           {
             "sequence": 1,
@@ -14098,6 +14167,8 @@
         "effective": "19/04/2026",
         "sourceFile": "MonToThu.pdf",
         "pageNumber": 33,
+        "platformTime": "07:23",
+        "paidTime": "08:12",
         "entries": [
           {
             "sequence": 1,
@@ -14478,6 +14549,8 @@
         "effective": "19/04/2026",
         "sourceFile": "Fridays.pdf",
         "pageNumber": 1,
+        "platformTime": "07:34",
+        "paidTime": "08:39",
         "entries": [
           {
             "sequence": 1,
@@ -14895,6 +14968,8 @@
         "effective": "19/04/2026",
         "sourceFile": "Fridays.pdf",
         "pageNumber": 2,
+        "platformTime": "07:14",
+        "paidTime": "07:54",
         "entries": [
           {
             "sequence": 1,
@@ -15273,6 +15348,8 @@
         "effective": "19/04/2026",
         "sourceFile": "Fridays.pdf",
         "pageNumber": 3,
+        "platformTime": "07:59",
+        "paidTime": "08:38",
         "entries": [
           {
             "sequence": 1,
@@ -15690,6 +15767,8 @@
         "effective": "19/04/2026",
         "sourceFile": "Fridays.pdf",
         "pageNumber": 4,
+        "platformTime": "06:56",
+        "paidTime": "07:30",
         "entries": [
           {
             "sequence": 1,
@@ -16068,6 +16147,8 @@
         "effective": "19/04/2026",
         "sourceFile": "Fridays.pdf",
         "pageNumber": 5,
+        "platformTime": "08:05",
+        "paidTime": "08:39",
         "entries": [
           {
             "sequence": 1,
@@ -16485,6 +16566,8 @@
         "effective": "19/04/2026",
         "sourceFile": "Fridays.pdf",
         "pageNumber": 6,
+        "platformTime": "07:39",
+        "paidTime": "09:04",
         "entries": [
           {
             "sequence": 1,
@@ -16902,6 +16985,8 @@
         "effective": "19/04/2026",
         "sourceFile": "Fridays.pdf",
         "pageNumber": 7,
+        "platformTime": "06:38",
+        "paidTime": "07:35",
         "entries": [
           {
             "sequence": 1,
@@ -17280,6 +17365,8 @@
         "effective": "19/04/2026",
         "sourceFile": "Fridays.pdf",
         "pageNumber": 8,
+        "platformTime": "08:50",
+        "paidTime": "08:50",
         "entries": [
           {
             "sequence": 1,
@@ -17760,6 +17847,8 @@
         "effective": "19/04/2026",
         "sourceFile": "Fridays.pdf",
         "pageNumber": 9,
+        "platformTime": "08:16",
+        "paidTime": "08:16",
         "entries": [
           {
             "sequence": 1,
@@ -18201,6 +18290,8 @@
         "effective": "19/04/2026",
         "sourceFile": "Fridays.pdf",
         "pageNumber": 10,
+        "platformTime": "08:52",
+        "paidTime": "08:52",
         "entries": [
           {
             "sequence": 1,
@@ -18681,6 +18772,8 @@
         "effective": "19/04/2026",
         "sourceFile": "Fridays.pdf",
         "pageNumber": 11,
+        "platformTime": "08:48",
+        "paidTime": "08:48",
         "entries": [
           {
             "sequence": 1,
@@ -19177,6 +19270,8 @@
         "effective": "19/04/2026",
         "sourceFile": "Fridays.pdf",
         "pageNumber": 12,
+        "platformTime": "08:38",
+        "paidTime": "08:38",
         "entries": [
           {
             "sequence": 1,
@@ -19634,6 +19729,8 @@
         "effective": "19/04/2026",
         "sourceFile": "Fridays.pdf",
         "pageNumber": 13,
+        "platformTime": "08:01",
+        "paidTime": "08:01",
         "entries": [
           {
             "sequence": 1,
@@ -20091,6 +20188,8 @@
         "effective": "19/04/2026",
         "sourceFile": "Fridays.pdf",
         "pageNumber": 14,
+        "platformTime": "08:45",
+        "paidTime": "08:45",
         "entries": [
           {
             "sequence": 1,
@@ -20587,6 +20686,8 @@
         "effective": "19/04/2026",
         "sourceFile": "Fridays.pdf",
         "pageNumber": 15,
+        "platformTime": "08:15",
+        "paidTime": "08:15",
         "entries": [
           {
             "sequence": 1,
@@ -21060,6 +21161,8 @@
         "effective": "19/04/2026",
         "sourceFile": "Fridays.pdf",
         "pageNumber": 16,
+        "platformTime": "08:06",
+        "paidTime": "08:06",
         "entries": [
           {
             "sequence": 1,
@@ -21556,6 +21659,8 @@
         "effective": "19/04/2026",
         "sourceFile": "Fridays.pdf",
         "pageNumber": 17,
+        "platformTime": "08:15",
+        "paidTime": "08:15",
         "entries": [
           {
             "sequence": 1,
@@ -22052,6 +22157,8 @@
         "effective": "19/04/2026",
         "sourceFile": "Fridays.pdf",
         "pageNumber": 18,
+        "platformTime": "08:09",
+        "paidTime": "08:09",
         "entries": [
           {
             "sequence": 1,
@@ -22548,6 +22655,8 @@
         "effective": "19/04/2026",
         "sourceFile": "Fridays.pdf",
         "pageNumber": 19,
+        "platformTime": "08:06",
+        "paidTime": "08:06",
         "entries": [
           {
             "sequence": 1,
@@ -23005,6 +23114,8 @@
         "effective": "19/04/2026",
         "sourceFile": "Fridays.pdf",
         "pageNumber": 20,
+        "platformTime": "08:21",
+        "paidTime": "10:17",
         "entries": [
           {
             "sequence": 1,
@@ -23484,6 +23595,8 @@
         "effective": "19/04/2026",
         "sourceFile": "Fridays.pdf",
         "pageNumber": 21,
+        "platformTime": "08:11",
+        "paidTime": "08:11",
         "entries": [
           {
             "sequence": 1,
@@ -23941,6 +24054,8 @@
         "effective": "19/04/2026",
         "sourceFile": "Fridays.pdf",
         "pageNumber": 22,
+        "platformTime": "07:12",
+        "paidTime": "07:51",
         "entries": [
           {
             "sequence": 1,
@@ -24342,6 +24457,8 @@
         "effective": "19/04/2026",
         "sourceFile": "Fridays.pdf",
         "pageNumber": 23,
+        "platformTime": "09:15",
+        "paidTime": "10:09",
         "entries": [
           {
             "sequence": 1,
@@ -24837,6 +24954,8 @@
         "effective": "19/04/2026",
         "sourceFile": "Fridays.pdf",
         "pageNumber": 24,
+        "platformTime": "08:19",
+        "paidTime": "09:06",
         "entries": [
           {
             "sequence": 1,
@@ -25277,6 +25396,8 @@
         "effective": "19/04/2026",
         "sourceFile": "Fridays.pdf",
         "pageNumber": 25,
+        "platformTime": "05:51",
+        "paidTime": "07:30",
         "entries": [
           {
             "sequence": 1,
@@ -25600,6 +25721,8 @@
         "effective": "19/04/2026",
         "sourceFile": "Fridays.pdf",
         "pageNumber": 26,
+        "platformTime": "08:44",
+        "paidTime": "10:22",
         "entries": [
           {
             "sequence": 1,
@@ -26095,6 +26218,8 @@
         "effective": "19/04/2026",
         "sourceFile": "Fridays.pdf",
         "pageNumber": 27,
+        "platformTime": "08:36",
+        "paidTime": "10:25",
         "entries": [
           {
             "sequence": 1,
@@ -26551,6 +26676,8 @@
         "effective": "19/04/2026",
         "sourceFile": "Fridays.pdf",
         "pageNumber": 28,
+        "platformTime": "08:31",
+        "paidTime": "09:41",
         "entries": [
           {
             "sequence": 1,
@@ -26991,6 +27118,8 @@
         "effective": "19/04/2026",
         "sourceFile": "Fridays.pdf",
         "pageNumber": 29,
+        "platformTime": "07:26",
+        "paidTime": "09:15",
         "entries": [
           {
             "sequence": 1,
@@ -27392,6 +27521,8 @@
         "effective": "19/04/2026",
         "sourceFile": "Fridays.pdf",
         "pageNumber": 30,
+        "platformTime": "08:27",
+        "paidTime": "09:45",
         "entries": [
           {
             "sequence": 1,
@@ -27848,6 +27979,8 @@
         "effective": "19/04/2026",
         "sourceFile": "Fridays.pdf",
         "pageNumber": 31,
+        "platformTime": "08:47",
+        "paidTime": "09:26",
         "entries": [
           {
             "sequence": 1,
@@ -28304,6 +28437,8 @@
         "effective": "19/04/2026",
         "sourceFile": "Fridays.pdf",
         "pageNumber": 32,
+        "platformTime": "08:27",
+        "paidTime": "09:45",
         "entries": [
           {
             "sequence": 1,
@@ -28760,6 +28895,8 @@
         "effective": "19/04/2026",
         "sourceFile": "Fridays.pdf",
         "pageNumber": 33,
+        "platformTime": "07:59",
+        "paidTime": "08:38",
         "entries": [
           {
             "sequence": 1,
@@ -29177,6 +29314,8 @@
         "effective": "19/04/2026",
         "sourceFile": "Fridays.pdf",
         "pageNumber": 34,
+        "platformTime": "06:18",
+        "paidTime": "07:30",
         "entries": [
           {
             "sequence": 1,
@@ -29518,6 +29657,8 @@
         "effective": "19/04/2026",
         "sourceFile": "Saturdays.pdf",
         "pageNumber": 1,
+        "platformTime": "07:53",
+        "paidTime": "08:34",
         "entries": [
           {
             "sequence": 1,
@@ -29896,6 +30037,8 @@
         "effective": "19/04/2026",
         "sourceFile": "Saturdays.pdf",
         "pageNumber": 2,
+        "platformTime": "09:06",
+        "paidTime": "10:52",
         "entries": [
           {
             "sequence": 1,
@@ -30352,6 +30495,8 @@
         "effective": "19/04/2026",
         "sourceFile": "Saturdays.pdf",
         "pageNumber": 3,
+        "platformTime": "07:56",
+        "paidTime": "08:46",
         "entries": [
           {
             "sequence": 1,
@@ -30730,6 +30875,8 @@
         "effective": "19/04/2026",
         "sourceFile": "Saturdays.pdf",
         "pageNumber": 4,
+        "platformTime": "07:44",
+        "paidTime": "08:24",
         "entries": [
           {
             "sequence": 1,
@@ -31131,6 +31278,8 @@
         "effective": "19/04/2026",
         "sourceFile": "Saturdays.pdf",
         "pageNumber": 5,
+        "platformTime": "08:03",
+        "paidTime": "08:44",
         "entries": [
           {
             "sequence": 1,
@@ -31548,6 +31697,8 @@
         "effective": "19/04/2026",
         "sourceFile": "Saturdays.pdf",
         "pageNumber": 6,
+        "platformTime": "08:38",
+        "paidTime": "09:37",
         "entries": [
           {
             "sequence": 1,
@@ -31988,6 +32139,8 @@
         "effective": "19/04/2026",
         "sourceFile": "Saturdays.pdf",
         "pageNumber": 7,
+        "platformTime": "07:04",
+        "paidTime": "09:17",
         "entries": [
           {
             "sequence": 1,
@@ -32444,6 +32597,8 @@
         "effective": "19/04/2026",
         "sourceFile": "Saturdays.pdf",
         "pageNumber": 8,
+        "platformTime": "09:09",
+        "paidTime": "10:49",
         "entries": [
           {
             "sequence": 1,
@@ -32845,6 +33000,8 @@
         "effective": "19/04/2026",
         "sourceFile": "Saturdays.pdf",
         "pageNumber": 9,
+        "platformTime": "07:10",
+        "paidTime": "09:23",
         "entries": [
           {
             "sequence": 1,
@@ -33207,6 +33364,8 @@
         "effective": "19/04/2026",
         "sourceFile": "Saturdays.pdf",
         "pageNumber": 10,
+        "platformTime": "08:08",
+        "paidTime": "10:58",
         "entries": [
           {
             "sequence": 1,
@@ -33608,6 +33767,8 @@
         "effective": "19/04/2026",
         "sourceFile": "Saturdays.pdf",
         "pageNumber": 11,
+        "platformTime": "07:51",
+        "paidTime": "10:41",
         "entries": [
           {
             "sequence": 1,
@@ -34009,6 +34170,8 @@
         "effective": "19/04/2026",
         "sourceFile": "Saturdays.pdf",
         "pageNumber": 12,
+        "platformTime": "07:50",
+        "paidTime": "10:04",
         "entries": [
           {
             "sequence": 1,
@@ -34410,6 +34573,8 @@
         "effective": "19/04/2026",
         "sourceFile": "Saturdays.pdf",
         "pageNumber": 13,
+        "platformTime": "07:50",
+        "paidTime": "09:26",
         "entries": [
           {
             "sequence": 1,
@@ -34811,6 +34976,8 @@
         "effective": "19/04/2026",
         "sourceFile": "Saturdays.pdf",
         "pageNumber": 14,
+        "platformTime": "07:50",
+        "paidTime": "08:40",
         "entries": [
           {
             "sequence": 1,
@@ -35212,6 +35379,8 @@
         "effective": "19/04/2026",
         "sourceFile": "Saturdays.pdf",
         "pageNumber": 15,
+        "platformTime": "08:23",
+        "paidTime": "09:13",
         "entries": [
           {
             "sequence": 1,
@@ -35652,6 +35821,8 @@
         "effective": "19/04/2026",
         "sourceFile": "Saturdays.pdf",
         "pageNumber": 16,
+        "platformTime": "07:42",
+        "paidTime": "08:32",
         "entries": [
           {
             "sequence": 1,
@@ -36053,6 +36224,8 @@
         "effective": "19/04/2026",
         "sourceFile": "Saturdays.pdf",
         "pageNumber": 17,
+        "platformTime": "07:42",
+        "paidTime": "08:22",
         "entries": [
           {
             "sequence": 1,
@@ -36454,6 +36627,8 @@
         "effective": "19/04/2026",
         "sourceFile": "Saturdays.pdf",
         "pageNumber": 18,
+        "platformTime": "07:23",
+        "paidTime": "10:23",
         "entries": [
           {
             "sequence": 1,
@@ -36855,6 +37030,8 @@
         "effective": "19/04/2026",
         "sourceFile": "Saturdays.pdf",
         "pageNumber": 19,
+        "platformTime": "08:36",
+        "paidTime": "10:54",
         "entries": [
           {
             "sequence": 1,
@@ -37311,6 +37488,8 @@
         "effective": "19/04/2026",
         "sourceFile": "Saturdays.pdf",
         "pageNumber": 20,
+        "platformTime": "08:08",
+        "paidTime": "09:44",
         "entries": [
           {
             "sequence": 1,
@@ -37767,6 +37946,8 @@
         "effective": "19/04/2026",
         "sourceFile": "Saturdays.pdf",
         "pageNumber": 21,
+        "platformTime": "08:50",
+        "paidTime": "09:31",
         "entries": [
           {
             "sequence": 1,
@@ -38262,6 +38443,8 @@
         "effective": "19/04/2026",
         "sourceFile": "Saturdays.pdf",
         "pageNumber": 22,
+        "platformTime": "08:25",
+        "paidTime": "09:05",
         "entries": [
           {
             "sequence": 1,
@@ -38741,6 +38924,8 @@
         "effective": "19/04/2026",
         "sourceFile": "Saturdays.pdf",
         "pageNumber": 23,
+        "platformTime": "08:24",
+        "paidTime": "08:56",
         "entries": [
           {
             "sequence": 1,
@@ -39220,6 +39405,8 @@
         "effective": "19/04/2026",
         "sourceFile": "Saturdays.pdf",
         "pageNumber": 24,
+        "platformTime": "08:03",
+        "paidTime": "08:44",
         "entries": [
           {
             "sequence": 1,
@@ -39653,6 +39840,8 @@
         "effective": "19/04/2026",
         "sourceFile": "Saturdays.pdf",
         "pageNumber": 25,
+        "platformTime": "07:24",
+        "paidTime": "08:05",
         "entries": [
           {
             "sequence": 1,
@@ -40070,6 +40259,8 @@
         "effective": "19/04/2026",
         "sourceFile": "Saturdays.pdf",
         "pageNumber": 26,
+        "platformTime": "05:45",
+        "paidTime": "07:30",
         "entries": [
           {
             "sequence": 1,
@@ -40395,6 +40586,8 @@
         "effective": "19/04/2026",
         "sourceFile": "Sundays.pdf",
         "pageNumber": 1,
+        "platformTime": "07:45",
+        "paidTime": "08:35",
         "entries": [
           {
             "sequence": 1,
@@ -40789,6 +40982,8 @@
         "effective": "19/04/2026",
         "sourceFile": "Sundays.pdf",
         "pageNumber": 2,
+        "platformTime": "07:58",
+        "paidTime": "08:48",
         "entries": [
           {
             "sequence": 1,
@@ -41167,6 +41362,8 @@
         "effective": "19/04/2026",
         "sourceFile": "Sundays.pdf",
         "pageNumber": 3,
+        "platformTime": "08:11",
+        "paidTime": "08:52",
         "entries": [
           {
             "sequence": 1,
@@ -41584,6 +41781,8 @@
         "effective": "19/04/2026",
         "sourceFile": "Sundays.pdf",
         "pageNumber": 4,
+        "platformTime": "07:43",
+        "paidTime": "08:24",
         "entries": [
           {
             "sequence": 1,
@@ -41985,6 +42184,8 @@
         "effective": "19/04/2026",
         "sourceFile": "Sundays.pdf",
         "pageNumber": 5,
+        "platformTime": "07:25",
+        "paidTime": "08:05",
         "entries": [
           {
             "sequence": 1,
@@ -42363,6 +42564,8 @@
         "effective": "19/04/2026",
         "sourceFile": "Sundays.pdf",
         "pageNumber": 6,
+        "platformTime": "07:51",
+        "paidTime": "08:32",
         "entries": [
           {
             "sequence": 1,
@@ -42764,6 +42967,8 @@
         "effective": "19/04/2026",
         "sourceFile": "Sundays.pdf",
         "pageNumber": 7,
+        "platformTime": "08:09",
+        "paidTime": "08:50",
         "entries": [
           {
             "sequence": 1,
@@ -43181,6 +43386,8 @@
         "effective": "19/04/2026",
         "sourceFile": "Sundays.pdf",
         "pageNumber": 8,
+        "platformTime": "06:18",
+        "paidTime": "07:30",
         "entries": [
           {
             "sequence": 1,
@@ -43504,6 +43711,8 @@
         "effective": "19/04/2026",
         "sourceFile": "Sundays.pdf",
         "pageNumber": 9,
+        "platformTime": "07:42",
+        "paidTime": "08:23",
         "entries": [
           {
             "sequence": 1,
@@ -43905,6 +44114,8 @@
         "effective": "19/04/2026",
         "sourceFile": "Sundays.pdf",
         "pageNumber": 10,
+        "platformTime": "08:32",
+        "paidTime": "09:32",
         "entries": [
           {
             "sequence": 1,
@@ -44345,6 +44556,8 @@
         "effective": "19/04/2026",
         "sourceFile": "Sundays.pdf",
         "pageNumber": 11,
+        "platformTime": "07:51",
+        "paidTime": "10:41",
         "entries": [
           {
             "sequence": 1,
@@ -44746,6 +44959,8 @@
         "effective": "19/04/2026",
         "sourceFile": "Sundays.pdf",
         "pageNumber": 12,
+        "platformTime": "07:18",
+        "paidTime": "10:17",
         "entries": [
           {
             "sequence": 1,
@@ -45108,6 +45323,8 @@
         "effective": "19/04/2026",
         "sourceFile": "Sundays.pdf",
         "pageNumber": 13,
+        "platformTime": "06:08",
+        "paidTime": "07:30",
         "entries": [
           {
             "sequence": 1,
@@ -45431,6 +45648,8 @@
         "effective": "19/04/2026",
         "sourceFile": "Sundays.pdf",
         "pageNumber": 14,
+        "platformTime": "07:52",
+        "paidTime": "08:32",
         "entries": [
           {
             "sequence": 1,
@@ -45871,6 +46090,8 @@
         "effective": "19/04/2026",
         "sourceFile": "Sundays.pdf",
         "pageNumber": 15,
+        "platformTime": "07:50",
+        "paidTime": "08:31",
         "entries": [
           {
             "sequence": 1,
@@ -46311,6 +46532,8 @@
         "effective": "19/04/2026",
         "sourceFile": "Sundays.pdf",
         "pageNumber": 16,
+        "platformTime": "06:28",
+        "paidTime": "08:04",
         "entries": [
           {
             "sequence": 1,
@@ -46673,6 +46896,8 @@
         "effective": "19/04/2026",
         "sourceFile": "Sundays.pdf",
         "pageNumber": 17,
+        "platformTime": "07:26",
+        "paidTime": "08:06",
         "entries": [
           {
             "sequence": 1,
@@ -47074,6 +47299,8 @@
         "effective": "19/04/2026",
         "sourceFile": "Sundays.pdf",
         "pageNumber": 18,
+        "platformTime": "07:10",
+        "paidTime": "08:00",
         "entries": [
           {
             "sequence": 1,
@@ -47475,6 +47702,8 @@
         "effective": "19/04/2026",
         "sourceFile": "Sundays.pdf",
         "pageNumber": 19,
+        "platformTime": "06:51",
+        "paidTime": "07:41",
         "entries": [
           {
             "sequence": 1,
@@ -47837,6 +48066,8 @@
         "effective": "19/04/2026",
         "sourceFile": "Sundays.pdf",
         "pageNumber": 20,
+        "platformTime": "06:09",
+        "paidTime": "07:30",
         "entries": [
           {
             "sequence": 1,
@@ -48199,6 +48430,8 @@
         "effective": "19/04/2026",
         "sourceFile": "Sundays.pdf",
         "pageNumber": 21,
+        "platformTime": "06:09",
+        "paidTime": "07:30",
         "entries": [
           {
             "sequence": 1,
@@ -48561,6 +48794,8 @@
         "effective": "19/04/2026",
         "sourceFile": "Sundays.pdf",
         "pageNumber": 22,
+        "platformTime": "05:45",
+        "paidTime": "07:30",
         "entries": [
           {
             "sequence": 1,
