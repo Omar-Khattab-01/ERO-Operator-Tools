@@ -2263,11 +2263,6 @@
       recoveryPassword: '',
       recoveryPasswordConfirm: '',
     };
-    const lrvDefectAdminEmail = 'omar.hosam2000@gmail.com';
-    const lrvFleetManagerEmails = new Set([
-      'omar.hosam2000@gmail.com',
-      'tsmithonthego@live.com',
-    ]);
     const defaultLrvNumbers = Array.from({ length: 67 }, (_, index) => index + 1);
     let lrvNumbers = [...defaultLrvNumbers];
     const lrvCabOptions = [
@@ -2302,6 +2297,7 @@
     ];
     let lrvDefectAccessAllowed = false;
     let lrvDefectAccessRole = '';
+    let lrvFleetManageAllowed = false;
     let lrvDefectAccessLoaded = false;
     let lrvDefectReports = [];
     let lrvDefectAccessList = [];
@@ -3311,11 +3307,11 @@
     }
 
     function isLrvDefectAdmin() {
-      return currentUserEmail() === lrvDefectAdminEmail || lrvDefectAccessRole === 'admin';
+      return lrvDefectAccessRole === 'admin';
     }
 
     function canManageLrvFleet() {
-      return lrvFleetManagerEmails.has(currentUserEmail());
+      return Boolean(lrvFleetManageAllowed);
     }
 
     function canReportLrvDefects() {
@@ -3336,6 +3332,7 @@
         || message.includes("could not find the 'report_status' column")
         || message.includes("could not find the 'seat_issue_detail' column")
         || message.includes("could not find the 'thermo_king_mode' column")
+        || message.includes('ero_lrv_fleet_managers')
         || message.includes('ero_lrv_defect_access');
     }
 
@@ -3693,6 +3690,7 @@
       if (!supabaseClient || !currentUser) {
         lrvDefectAccessAllowed = false;
         lrvDefectAccessRole = '';
+        lrvFleetManageAllowed = false;
         lrvDefectAccessLoaded = true;
         lrvDefectAccessList = [];
         lrvDefectAccessPendingRoles.clear();
@@ -3702,14 +3700,6 @@
         return false;
       }
       if (lrvDefectAccessLoaded && !force) return lrvDefectAccessAllowed;
-      if (currentUserEmail() === lrvDefectAdminEmail) {
-        lrvDefectAccessAllowed = true;
-        lrvDefectAccessRole = 'admin';
-        lrvDefectAccessLoaded = true;
-        await loadLrvDefectAccessList();
-        updateAccountButton();
-        return true;
-      }
       const { data, error } = await withLrvRequestTimeout(supabaseClient
         .from('ero_lrv_defect_access')
         .select('email, role')
@@ -3718,12 +3708,25 @@
       if (error && setLrvSchemaWarning(error)) {
         lrvDefectAccessRole = '';
         lrvDefectAccessAllowed = false;
+        lrvFleetManageAllowed = false;
         lrvDefectAccessLoaded = true;
         updateAccountButton();
         return false;
       }
       lrvDefectAccessRole = data && !error ? normalizeLrvAccessRole(data.role) : '';
       lrvDefectAccessAllowed = Boolean(lrvDefectAccessRole);
+      const { data: fleetManagerData, error: fleetManagerError } = await withLrvRequestTimeout(supabaseClient
+        .from('ero_lrv_fleet_managers')
+        .select('email')
+        .eq('email', currentUserEmail())
+        .maybeSingle(), 'LRV fleet manager lookup');
+      if (fleetManagerError && setLrvSchemaWarning(fleetManagerError)) {
+        lrvFleetManageAllowed = false;
+        lrvDefectAccessLoaded = true;
+        updateAccountButton();
+        return lrvDefectAccessAllowed;
+      }
+      lrvFleetManageAllowed = Boolean(fleetManagerData && !fleetManagerError);
       lrvDefectAccessLoaded = true;
       if (isLrvDefectAdmin()) await loadLrvDefectAccessList();
       updateAccountButton();
@@ -4834,6 +4837,7 @@
         currentProfile = null;
         lrvDefectAccessAllowed = false;
         lrvDefectAccessRole = '';
+        lrvFleetManageAllowed = false;
         lrvDefectAccessLoaded = true;
         lrvDefectAccessList = [];
         lrvDefectAccessPendingRoles.clear();

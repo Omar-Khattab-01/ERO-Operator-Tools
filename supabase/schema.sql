@@ -133,11 +133,35 @@ create table if not exists public.ero_lrv_fleet (
   added_at timestamptz not null default timezone('utc', now())
 );
 
+create table if not exists public.ero_lrv_fleet_managers (
+  email text primary key,
+  granted_by uuid references auth.users(id) on delete set null,
+  created_at timestamptz not null default timezone('utc', now())
+);
+
 insert into public.ero_lrv_fleet (lrv_number)
 select generate_series(1, 68)
 on conflict (lrv_number) do nothing;
 
 alter table public.ero_lrv_fleet enable row level security;
+
+update public.ero_lrv_fleet_managers
+set email = lower(trim(email));
+
+alter table public.ero_lrv_fleet_managers
+drop constraint if exists ero_lrv_fleet_managers_email_normalized;
+
+alter table public.ero_lrv_fleet_managers
+add constraint ero_lrv_fleet_managers_email_normalized
+check (email = lower(trim(email)) and length(email) > 3);
+
+drop trigger if exists ero_lrv_fleet_managers_normalize_email on public.ero_lrv_fleet_managers;
+create trigger ero_lrv_fleet_managers_normalize_email
+before insert or update on public.ero_lrv_fleet_managers
+for each row
+execute function public.ero_normalize_email();
+
+alter table public.ero_lrv_fleet_managers enable row level security;
 
 alter table public.ero_lrv_defect_reports
 add column if not exists defect_category text;
@@ -235,8 +259,7 @@ stable
 security definer
 set search_path = public
 as $$
-  select lower(coalesce((auth.jwt() ->> 'email'), '')) = 'omar.hosam2000@gmail.com'
-    or exists (
+  select exists (
       select 1
       from public.ero_lrv_defect_access access
       where access.email = lower(coalesce((auth.jwt() ->> 'email'), ''))
@@ -283,15 +306,17 @@ stable
 security definer
 set search_path = public
 as $$
-  select lower(coalesce((auth.jwt() ->> 'email'), '')) in (
-    'omar.hosam2000@gmail.com',
-    'tsmithonthego@live.com'
+  select exists (
+    select 1
+    from public.ero_lrv_fleet_managers manager
+    where manager.email = lower(coalesce((auth.jwt() ->> 'email'), ''))
   );
 $$;
 
 alter table public.ero_lrv_defect_access enable row level security;
 alter table public.ero_lrv_defect_reports enable row level security;
 alter table public.ero_lrv_fleet enable row level security;
+alter table public.ero_lrv_fleet_managers enable row level security;
 
 drop policy if exists "Authorized users can view LRV fleet" on public.ero_lrv_fleet;
 create policy "Authorized users can view LRV fleet"
@@ -313,6 +338,18 @@ create policy "Fleet managers can remove LRVs"
 on public.ero_lrv_fleet
 for delete
 using (public.ero_can_manage_lrv_fleet());
+
+drop policy if exists "Fleet managers can view their own grant" on public.ero_lrv_fleet_managers;
+create policy "Fleet managers can view their own grant"
+on public.ero_lrv_fleet_managers
+for select
+using (email = lower(coalesce((auth.jwt() ->> 'email'), '')));
+
+drop policy if exists "LRV defect admins can view fleet managers" on public.ero_lrv_fleet_managers;
+create policy "LRV defect admins can view fleet managers"
+on public.ero_lrv_fleet_managers
+for select
+using (public.ero_is_lrv_defect_admin());
 
 drop policy if exists "LRV defect admins can view ERO profiles" on public.ero_user_profiles;
 create policy "LRV defect admins can view ERO profiles"
