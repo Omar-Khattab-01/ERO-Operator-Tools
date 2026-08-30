@@ -149,6 +149,52 @@
       color: #fff5ea;
       box-shadow: inset 0 0 0 1px rgba(255,255,255,.03);
     }
+    .header-btn:disabled {
+      background: rgba(86, 91, 100, .14);
+      border-color: rgba(255,255,255,.08);
+      color: rgba(188, 198, 212, .42);
+      box-shadow: none;
+      cursor: not-allowed;
+      filter: grayscale(1);
+      opacity: .72;
+    }
+    .maintenance-panel {
+      min-height: min(520px, 64vh);
+      display: grid;
+      place-items: center;
+      padding: 48px 22px;
+      text-align: center;
+    }
+    .maintenance-card {
+      width: min(660px, 100%);
+      padding: clamp(28px, 6vw, 52px);
+      border: 1px solid rgba(255, 176, 104, .24);
+      border-radius: 24px;
+      background:
+        radial-gradient(circle at top, rgba(217,71,47,.18), transparent 54%),
+        rgba(10,14,20,.52);
+      box-shadow: 0 24px 70px rgba(0,0,0,.24);
+    }
+    .maintenance-eyebrow {
+      margin: 0 0 12px;
+      color: var(--accent-2);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+    .maintenance-card h2 {
+      margin: 0;
+      font-size: clamp(28px, 5vw, 42px);
+      line-height: 1.08;
+    }
+    .maintenance-card p:last-child {
+      max-width: 540px;
+      margin: 18px auto 0;
+      color: var(--muted);
+      font-size: 17px;
+      line-height: 1.6;
+    }
     .status-pill {
       border-color: rgba(116, 255, 173, .22);
       color: #74ffad;
@@ -2078,7 +2124,6 @@
           <button id="lrvDefectsBtn" class="header-btn is-primary" type="button" hidden>LRV Defects</button>
           <button id="liveMapBtn" class="header-btn is-primary" type="button">Line 1 Map</button>
           <button id="todayBoardBtn" class="header-btn is-primary" type="button">Board</button>
-          <button id="railBoardsBtn" class="header-btn is-primary" type="button" onclick="window.location.href='/rail-boards'">Booking Boards</button>
           <button id="demoBtn" class="header-btn is-primary" type="button">Demo</button>
         </div>
         <div class="header-utility">
@@ -2102,12 +2147,20 @@
         </div>
       </section>
 
-      <section id="chat" class="chat">
+      <section id="maintenanceView" class="maintenance-panel" role="status" aria-live="polite">
+        <div class="maintenance-card">
+          <p class="maintenance-eyebrow">Temporary service notice</p>
+          <h2>Site maintenance in progress</h2>
+          <p>Paddle information is being finalized. All paddle tools are temporarily unavailable. Please check back soon.</p>
+        </div>
+      </section>
+
+      <section id="chat" class="chat" hidden>
         <div class="message intro">
           <strong>Enter a paddle number</strong>, for example <strong>14</strong> or <strong>1-14</strong>.
         </div>
       </section>
-      <section class="composer" aria-label="Search paddles">
+      <section class="composer" aria-label="Search paddles" hidden>
         <form id="chatForm">
           <input id="chatInput" type="text" placeholder="Enter a paddle number, for example 14 or 1-14.">
           <button class="search-btn" type="submit">Search</button>
@@ -2161,6 +2214,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script>
     const chat = document.getElementById('chat');
+    const maintenanceView = document.getElementById('maintenanceView');
     const liveMapView = document.getElementById('liveMapView');
     const todaysPaddleView = document.getElementById('todaysPaddleView');
     const lrvDefectsView = document.getElementById('lrvDefectsView');
@@ -2195,6 +2249,7 @@
     const dismissSupportBannerBtn = document.getElementById('dismissSupportBannerBtn');
     const supportBannerDismissKey = 'ero-operator-tools:support-banner-dismissed:v1';
     let currentLookup = null;
+    const siteMaintenanceActive = true;
     let liveMapTimer = null;
     let todayBoardTimer = null;
     let liveMapZoom = 1;
@@ -2327,6 +2382,44 @@
         if (!button) return;
         button.classList.toggle('is-active', button.id === targetId);
       });
+    }
+
+    function showMaintenanceView() {
+      stopLiveMapRefresh();
+      stopTodayBoardRefresh();
+      closePaddleModal();
+      document.querySelector('.app')?.classList.remove('map-mode');
+      setActiveNav('');
+      liveMapView.hidden = true;
+      myWorkView.hidden = true;
+      todaysPaddleView.hidden = true;
+      lrvDefectsView.hidden = true;
+      demoView.hidden = true;
+      todayBoardView.hidden = true;
+      chat.hidden = true;
+      chatForm.closest('.composer').hidden = true;
+      maintenanceView.hidden = false;
+      setStatus('Maintenance', false);
+    }
+
+    function updateFeatureAvailability() {
+      const disabledTools = [homeBtn, myWorkBtn, todaysPaddleBtn, liveMapBtn, todayBoardBtn, demoBtn, clearBtn];
+      disabledTools.forEach((button) => {
+        if (!button) return;
+        button.disabled = siteMaintenanceActive;
+        button.setAttribute('aria-disabled', String(siteMaintenanceActive));
+        button.title = siteMaintenanceActive ? 'Temporarily unavailable while paddle information is finalized' : '';
+      });
+
+      const lrvAvailable = Boolean(currentUser && lrvDefectAccessAllowed);
+      lrvDefectsBtn.hidden = !siteMaintenanceActive && !lrvDefectAccessAllowed;
+      lrvDefectsBtn.disabled = !lrvAvailable;
+      lrvDefectsBtn.setAttribute('aria-disabled', String(!lrvAvailable));
+      lrvDefectsBtn.title = lrvAvailable
+        ? 'Open LRV Defects'
+        : 'Sign in with an authorized account to access LRV Defects';
+
+      if (siteMaintenanceActive && !lrvAvailable && !lrvDefectsView.hidden) showMaintenanceView();
     }
 
     function escapeHtml(value) {
@@ -2878,6 +2971,7 @@
     }
 
     async function maybeOpenTodaysPaddleOnBoot() {
+      if (siteMaintenanceActive) return;
       if (accountRecoveryMode) return;
       syncTodaysPaddleFromMyWork();
       if (!hasTodaysPaddleItems()) return;
@@ -3302,11 +3396,11 @@
       if (!supabaseEnabled) {
         accountBtn.textContent = 'Accounts Off';
         myWorkBtn.textContent = 'My Work';
-        lrvDefectsBtn.hidden = true;
+        updateFeatureAvailability();
         return;
       }
       accountBtn.textContent = currentUser ? 'Settings' : 'Account';
-      lrvDefectsBtn.hidden = !lrvDefectAccessAllowed;
+      updateFeatureAvailability();
     }
 
     function currentUserEmail() {
@@ -6060,6 +6154,10 @@
     }
 
     async function openLrvDefectsPage() {
+      if (siteMaintenanceActive && (!currentUser || !lrvDefectAccessAllowed)) {
+        showMaintenanceView();
+        return;
+      }
       stopLiveMapRefresh();
       stopTodayBoardRefresh();
       closePaddleModal();
@@ -6072,6 +6170,7 @@
       todayBoardView.hidden = true;
       chat.hidden = true;
       chatForm.closest('.composer').hidden = true;
+      maintenanceView.hidden = true;
       lrvDefectsView.hidden = false;
       setStatus('Loading defects...', true);
       await renderLrvDefectsPage();
@@ -6855,6 +6954,8 @@
     refreshCountdowns();
     renderOcMetaBar();
     initSupportBanner();
+    showMaintenanceView();
+    updateFeatureAvailability();
     setInterval(refreshCountdowns, 1000);
     registerServiceWorker();
     initSupabase();
