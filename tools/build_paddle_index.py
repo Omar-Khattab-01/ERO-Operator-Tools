@@ -16,7 +16,7 @@ except ModuleNotFoundError:
 
 
 ROOT = Path(__file__).resolve().parents[1]
-PADDLES_DIR = ROOT / "Paddles" / "Spring"
+PADDLES_DIR = ROOT / "Paddles" / "Fall"
 OUTPUT_DIR = ROOT / "data"
 OUTPUT_PATH = OUTPUT_DIR / "paddles.index.json"
 TOTALS_SOURCE_PDF = Path(
@@ -25,10 +25,10 @@ TOTALS_SOURCE_PDF = Path(
 )
 
 SOURCES = [
-    ("MonToThu.pdf", "mon_thu", "Mon-Thu"),
-    ("Fridays.pdf", "friday", "Friday"),
-    ("Saturdays.pdf", "saturday", "Saturday"),
-    ("Sundays.pdf", "sunday", "Sunday"),
+    ("MondayToThursday.pdf", "mon_thu", "Mon-Thu"),
+    ("Friday.pdf", "friday", "Friday"),
+    ("Saturday.pdf", "saturday", "Saturday"),
+    ("Sunday.pdf", "sunday", "Sunday"),
 ]
 
 PLACE_CODES = {
