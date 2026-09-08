@@ -15,22 +15,11 @@ const SUPABASE_URL = normalizeSupabaseUrl(process.env.SUPABASE_URL);
 const SUPABASE_ANON_KEY = String(process.env.SUPABASE_ANON_KEY || '').trim();
 
 const app = express();
-const MAINTENANCE_MESSAGE = 'Paddle information is being finalized. This tool is temporarily unavailable.';
 
 app.use(express.json({ limit: '1mb' }));
 
 app.use(['/rail-boards', '/rail-boards.html'], (_req, res) => {
   res.status(410).type('text').send('Booking Boards is no longer available.');
-});
-
-app.use([
-  '/api/account-options',
-  '/api/today-board',
-  '/api/live-map',
-  '/api/paddle',
-  '/api/chat',
-], (_req, res) => {
-  res.status(503).json({ ok: false, maintenance: true, error: MAINTENANCE_MESSAGE });
 });
 
 app.use('/api/rail-boards', (_req, res) => {
