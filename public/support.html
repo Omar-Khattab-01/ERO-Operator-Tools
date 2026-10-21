@@ -322,9 +322,11 @@
       }
     }
   </style>
+  <link rel="stylesheet" href="/supporters.css" />
 </head>
 <body>
   <main class="app">
+    <div class="supporter-slot"></div>
     <header class="header">
       <div class="brand">
         <div class="brand-badge">ER</div>
@@ -337,6 +339,11 @@
     </header>
 
     <section class="main">
+      <section id="supporterReceipt" aria-live="polite" hidden>
+        <h3 id="supporterReceiptTitle"></h3>
+        <p id="supporterReceiptMessage"></p>
+      </section>
+
       <div class="support-hero">
         <div class="intro">
           <h2>Support ERO Operator Tools</h2>
@@ -399,9 +406,28 @@
           </div>
         </section>
       </div>
+      <section class="support-management" aria-labelledby="manageSupportTitle">
+        <h3 id="manageSupportTitle">Already a supporter?</h3>
+        <p>Thank you. Manage or cancel your monthly support, update your payment method, or view your receipts.</p>
+        <div class="support-management-actions">
+          <a class="support-button" id="manageSupportButton" href="https://billing.stripe.com/p/login/6oU28r6xFavE7Fp3wg0VO00">Manage or cancel monthly support</a>
+          <button class="support-button" id="showSupporterBannerButton" type="button" hidden>Show thank-you banner</button>
+        </div>
+        <p>Already supported OC Operators Tools or using another device? Verify your payment email to recognize your support here too. One contribution supports both sites. No password needed.</p>
+        <form class="support-restore-form" id="restoreSupportForm">
+          <label for="supporterEmail">Payment email
+            <input id="supporterEmail" name="email" type="email" autocomplete="email" required maxlength="254" />
+          </label>
+          <button class="support-button" id="restoreSupportButton" type="submit">Email me a verification link</button>
+        </form>
+        <p id="supportManagementNotice" role="status" aria-live="polite"></p>
+      </section>
     </section>
   </main>
 
+  <script src="/support-status.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="/support.js" defer></script>
   <script>
     const ONE_TIME_SUPPORT_3_URL = 'https://buy.stripe.com/3cIeVd4px8nw5xh5Eo0VO02';
     const ONE_TIME_SUPPORT_5_URL = 'https://buy.stripe.com/7sYbJ109h33c1h15Eo0VO01';
@@ -409,7 +435,7 @@
     const ONE_TIME_SUPPORT_20_URL = 'https://buy.stripe.com/4gM5kDaNVgU26Blgj20VO04';
     const CUSTOM_AMOUNT_SUPPORT_URL = 'https://buy.stripe.com/4gM00j09h33cf7RaYI0VO05';
     const MONTHLY_SUPPORT_URL = 'https://buy.stripe.com/6oU28r6xFavE7Fp3wg0VO00';
-    const supportButtons = document.querySelectorAll('.support-button');
+    const supportButtons = document.querySelectorAll('[data-support-link]');
     const setupNote = document.getElementById('setupNote');
 
     const supportLinks = {
@@ -429,7 +455,7 @@
         return;
       }
 
-      button.href = url;
+      button.href = location.protocol === 'file:' ? url : `/api/support/checkout?option=${encodeURIComponent(button.dataset.supportLink)}`;
       button.target = '_blank';
       button.rel = 'noopener noreferrer';
     });

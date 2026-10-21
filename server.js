@@ -3,6 +3,7 @@
 const fs = require('fs');
 const path = require('path');
 const express = require('express');
+const { createClient } = require('@supabase/supabase-js');
 
 const PORT = Number(process.env.PORT || 7860);
 function normalizeSupabaseUrl(value) {
@@ -15,6 +16,11 @@ const SUPABASE_URL = normalizeSupabaseUrl(process.env.SUPABASE_URL);
 const SUPABASE_ANON_KEY = String(process.env.SUPABASE_ANON_KEY || '').trim();
 
 const app = express();
+const serviceKey = String(process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
+const supportDb = SUPABASE_URL && serviceKey ? createClient(SUPABASE_URL, serviceKey, {
+  auth: { persistSession: false, autoRefreshToken: false },
+}) : null;
+app.use('/api/support', require('./lib/supporters').createSupportRouter({ db: supportDb }));
 
 app.use(express.json({ limit: '1mb' }));
 

@@ -1,0 +1,66 @@
+      .ero-supporter-banner[hidden] { display: none; }
+      .oc-is-supporter .oc-meta-bar { flex-wrap: wrap; }
+      .ero-supporter-banner {
+        display: flex;
+        flex: 1 0 100%;
+        width: 100%;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 6px 12px;
+        padding: 7px 10px;
+        border-left: 3px solid #e25d53;
+        background: #401f24;
+        color: #fff3f1;
+        font-size: 12px;
+        line-height: 1.5;
+        min-width: 0;
+        max-width: 100%;
+        overflow-wrap: anywhere;
+      }
+      .ero-supporter-banner[data-kind="monthly"] {
+        border-left-color: #e9bd5b;
+        background: #302b1e;
+        color: #fff1c9;
+      }
+      .ero-supporter-banner[data-kind="monthly"] strong { color: #f5cf7c; }
+      .ero-supporter-banner[data-kind="one-time"] {
+        border-left-color: #54c8ae;
+        background: #173c35;
+        color: #e6fff7;
+      }
+      .ero-supporter-banner strong { font-weight: 600; }
+      .ero-supporter-banner span { flex: 1 1 180px; }
+      .ero-supporter-banner a { color: inherit; text-underline-offset: 3px; }
+      .ero-supporter-since { display: block; font-size: 11px; font-weight: 400; color: inherit; }
+      .ero-supporter-dismiss {
+        flex: 0 0 28px;
+        width: 28px;
+        height: 28px;
+        padding: 0;
+        margin-left: auto;
+        border: 1px solid currentColor;
+        border-radius: 4px;
+        background: transparent;
+        color: inherit;
+        font: inherit;
+        font-size: 20px;
+        line-height: 1;
+        cursor: pointer;
+      }
+      .ero-supporter-dismiss:hover { background: rgba(255, 255, 255, .1); }
+
+
+.oc-is-supporter .support-banner,
+.oc-is-supporter .main-support-footer,
+.oc-is-supporter .support-note-card { display: none !important; }
+.supporter-slot { width: 100%; min-width: 0; }
+.app.map-mode > .supporter-slot { display: none; }
+.support-management { margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border); }
+.support-management p { line-height: 1.6; }
+.support-management-actions, .support-restore-form { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; }
+.support-restore-form label { display: grid; gap: 6px; flex: 1 1 220px; min-width: 0; }
+.support-restore-form input { width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 6px; font: inherit; }
+.support-management .support-button { font: inherit; cursor: pointer; white-space: normal; text-align: center; }
+.support-management [hidden], #supporterReceipt[hidden] { display: none !important; }
+#supporterReceipt { margin: 16px 0; }
+

@@ -44,7 +44,7 @@
       backdrop-filter: blur(10px);
       min-height: calc(100vh - 32px);
       display: grid;
-      grid-template-rows: auto auto 1fr;
+      grid-template-rows: auto auto auto 1fr;
     }
     .app.map-mode {
       width: 100vw;
@@ -2058,10 +2058,12 @@
       }
     }
   </style>
+  <link rel="stylesheet" href="/supporters.css" />
 </head>
 <body>
   <div class="app">
     <div id="ocMetaBar" class="oc-meta-bar" role="note" aria-label="OC week and pay information"></div>
+    <div class="supporter-slot"></div>
     <header class="header">
       <div class="brand">
         <div class="brand-badge">ER</div>
@@ -2157,6 +2159,7 @@
     </section>
   </div>
 
+  <script src="/support-status.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script>
     const chat = document.getElementById('chat');
@@ -3046,6 +3049,7 @@
     }
 
     function renderSupportNote() {
+      if (window.OCSupport?.status.suppressPrompts) return '';
       return `
         <section class="section-card support-note-card">
           <div class="field-label">Support</div>
@@ -4911,6 +4915,7 @@
     }
 
     async function handleSession(session) {
+      window.OCSupport?.refresh(session?.access_token || null);
       if (await enforceRequiredPasswordReset(session)) {
         currentUser = null;
         currentProfile = null;
