@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const express = require('express');
 const { createClient } = require('@supabase/supabase-js');
+const { cleanStopName, getTripDirectionLabel, getEntryDirectionLabel } = require('./public/paddle-display');
 
 const PORT = Number(process.env.PORT || 7860);
 function normalizeSupabaseUrl(value) {
@@ -80,18 +81,33 @@ const LINE_1_STATION_PATTERNS = [
   /blair/i,
 ];
 
+function readPaddleIndex(filename) {
+  const index = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', filename), 'utf8'));
+  // Existing indexes can contain PDF dot leaders; clean all named stop fields
+  // before any lookup, map, board, or live-status response uses them.
+  for (const runs of Object.values(index.serviceDays || {})) {
+    for (const run of Object.values(runs)) {
+      for (const entry of run.entries || []) {
+        for (const key of ['reportPlaceName', 'startPlaceName', 'endPlaceName', 'endStopName']) {
+          if (typeof entry[key] === 'string') entry[key] = cleanStopName(entry[key]);
+        }
+        for (const event of entry.events || []) event.stop = cleanStopName(event.stop);
+      }
+    }
+  }
+  return index;
+}
+
 function loadPaddleIndex() {
   if (!paddleIndexCache) {
-    const filePath = path.join(__dirname, 'data', 'paddles.index.json');
-    paddleIndexCache = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    paddleIndexCache = readPaddleIndex('paddles.index.json');
   }
   return paddleIndexCache;
 }
 
 function loadTrialPaddleIndex() {
   if (!trialPaddleIndexCache) {
-    const filePath = path.join(__dirname, 'data', 'trial-paddles.index.json');
-    trialPaddleIndexCache = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    trialPaddleIndexCache = readPaddleIndex('trial-paddles.index.json');
   }
   return trialPaddleIndexCache;
 }
@@ -526,22 +542,6 @@ function buildRadioCheckMap(serviceDay, index = loadPaddleIndex()) {
   return radioChecks;
 }
 
-function getEntryDirectionLabel(entry) {
-  const firstTrip = (entry.trips || [])[0] || null;
-  const startStop = String(firstTrip?.startStop || '').toLowerCase();
-  const endStop = String(firstTrip?.endStop || '').toLowerCase();
-  const startsFromPhnd = startStop.includes('phnd');
-  const startsFromTerminus = startStop.includes('blair') || startStop.includes('tunney') || startStop.includes('trim');
-  const endsAtExit = endStop.includes('pexite') || endStop.includes('pexitw');
-  if (startsFromTerminus && endsAtExit) return 'Reduction';
-  if (startsFromPhnd && endStop.includes('tremblay')) return 'Launching West';
-  if (startsFromPhnd && (endStop.includes('st laurent') || endStop.includes('st-laurent'))) return 'Launching East';
-  if (endStop.includes('blair')) return 'East to Blair';
-  if (endStop.includes('trim')) return 'East to Trim';
-  if (endStop.includes('tunney')) return "West to Tunney's";
-  return '';
-}
-
 function enrichRunEntries(run, serviceDay = '', paddleId = '', paddleIndex = loadPaddleIndex()) {
   const baseEntries = (Array.isArray(run.entries) ? run.entries : []).filter((entry) => {
     const block = String(entry?.block || '').trim();
@@ -559,6 +559,7 @@ function enrichRunEntries(run, serviceDay = '', paddleId = '', paddleIndex = loa
       const nextStartMinutes = nextTrip ? timeToMinutes(nextTrip.startTime) : null;
       return {
         ...trip,
+        directionLabel: getTripDirectionLabel(trip),
         breakAfterMinutes:
           endMinutes !== null && nextStartMinutes !== null
             ? Math.max(0, nextStartMinutes - endMinutes)
@@ -608,7 +609,7 @@ function buildLiveStatus(entries, compareMinutes = getOttawaNowMinutes()) {
     kind: 'trip',
     block: entry.block,
     sequence: entry.sequence,
-    directionLabel: getEntryDirectionLabel(entry),
+    directionLabel: getTripDirectionLabel(trip),
     tripId: trip.tripId || '',
     route: trip.route || '',
     startStop: trip.startStop || '',
@@ -617,14 +618,14 @@ function buildLiveStatus(entries, compareMinutes = getOttawaNowMinutes()) {
     endTime: trip.endTime || '',
     targetTime: trip.endTime || '',
     minutesRemaining,
-    label: `Trip ${entry.sequence || ''}${getEntryDirectionLabel(entry) ? ` - ${getEntryDirectionLabel(entry)}` : ''}`.trim(),
+    label: `Trip ${entry.sequence || ''}${getTripDirectionLabel(trip) ? ` - ${getTripDirectionLabel(trip)}` : ''}`.trim(),
   });
 
   const makeBreakStatus = (entry, nextTrip, minutesRemaining, options = {}) => ({
     kind: 'break',
     block: entry.block,
     sequence: entry.sequence,
-    directionLabel: getEntryDirectionLabel(entry),
+    directionLabel: nextTrip ? getTripDirectionLabel(nextTrip) : getEntryDirectionLabel(entry),
     splitBreak: Boolean(options.splitBreak),
     nextBlock: nextTrip?.block || entry.nextBlock || '',
     nextSequence: options.nextSequence || nextTrip?.sequence || '',
@@ -660,7 +661,7 @@ function buildLiveStatus(entries, compareMinutes = getOttawaNowMinutes()) {
           phase: 'depart',
           block: entry.block,
           sequence: entry.sequence,
-          directionLabel: getEntryDirectionLabel(entry),
+          directionLabel: getTripDirectionLabel(tripWindow.trip),
           reportTime: entry.reportTime || '',
           reportPlaceName: entry.reportPlaceName || '',
           route: tripWindow.trip.route || '',
@@ -704,7 +705,7 @@ function buildLiveStatus(entries, compareMinutes = getOttawaNowMinutes()) {
         block: entry.block,
         sequence: entry.sequence,
         finalClear: !nextEntry,
-        directionLabel: getEntryDirectionLabel(entry),
+        directionLabel: getTripDirectionLabel(lastTripWindow.trip),
         targetTime: entry.clearTime || entry.endTime || '',
         minutesRemaining: Math.max(0, entry.endMinutes - activeMinutes),
         label: `Clearing block ${entry.block}`,

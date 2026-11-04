@@ -76,6 +76,10 @@ def clean_line(text: str) -> str:
     return re.sub(r"\s+", " ", text.replace("\u00a0", " ")).strip()
 
 
+def clean_stop_name(text: str) -> str:
+    return re.sub(r"[.\u2026\s]+$", "", clean_line(text))
+
+
 def normalize_time(value: str) -> str:
     text = clean_line(value).replace(" ", "")
     match = re.match(r"^(\d{1,2}):(\d{2})$", text)
@@ -143,7 +147,7 @@ def parse_sections(lines: list[str], start_index: int) -> list[ParsedSection]:
                 "kind": "start",
                 "route": clean_line(match.group("route")),
                 "tripId": clean_line(match.group("trip_id")),
-                "stop": clean_line(match.group("stop")),
+                "stop": clean_stop_name(match.group("stop")),
                 "time": normalize_time(match.group("time")),
             })
             continue
@@ -154,7 +158,7 @@ def parse_sections(lines: list[str], start_index: int) -> list[ParsedSection]:
                 "kind": "end",
                 "route": "",
                 "tripId": "",
-                "stop": clean_line(match.group("stop")),
+                "stop": clean_stop_name(match.group("stop")),
                 "time": normalize_time(match.group("time")),
             })
             continue
@@ -165,7 +169,7 @@ def parse_sections(lines: list[str], start_index: int) -> list[ParsedSection]:
                 "kind": "stop",
                 "route": "",
                 "tripId": "",
-                "stop": clean_line(match.group("stop")),
+                "stop": clean_stop_name(match.group("stop")),
                 "time": normalize_time(match.group("time")),
             })
 

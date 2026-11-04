@@ -1036,6 +1036,12 @@
       letter-spacing: .08em;
       color: var(--muted);
     }
+    .trip-direction {
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.3;
+      text-align: center;
+    }
     .trip-rail {
       position: relative;
       width: 100%;
@@ -2166,6 +2172,7 @@
   </div>
 
   <script src="/support-status.js"></script>
+  <script src="/paddle-display.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script>
     const chat = document.getElementById('chat');
@@ -5706,6 +5713,7 @@
 
     function renderTripRow(entry, trip, live, index, showReturnJump = false) {
       const isActiveTrip = Boolean(live && live.kind === 'trip' && String(live.block || '') === String(entry.block || '') && String(live.tripId || '') === String(trip.tripId || ''));
+      const directionLabel = window.PaddleDisplay.getTripDirectionLabel(trip);
       return `
         <div class="trip-row${isActiveTrip ? ' active-trip' : ''}" data-trip-start="${escapeHtml(trip.startTime || '')}" data-trip-end="${escapeHtml(trip.endTime || '')}">
           <div class="trip-side start">
@@ -5713,6 +5721,7 @@
             <div class="trip-time">${escapeHtml(trip.startTime || '')}</div>
           </div>
           <div class="trip-center">
+            ${directionLabel ? `<div class="trip-direction">${escapeHtml(directionLabel)}</div>` : ''}
             <div class="trip-duration">${typeof trip.durationMinutes === 'number' ? `${escapeHtml(trip.durationMinutes)} min` : 'In service'}</div>
             <div class="trip-rail"><span class="trip-train"><svg class="otrain-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="6" width="14" height="9" rx="2" fill="#ffb068"/><rect x="7" y="8" width="4" height="3" rx="0.8" fill="#1c2128"/><rect x="13" y="8" width="4" height="3" rx="0.8" fill="#1c2128"/><path d="M8 18h8" stroke="#ffb068" stroke-width="1.8" stroke-linecap="round"/><circle cx="9" cy="17" r="1.3" fill="#f2f4f8"/><circle cx="15" cy="17" r="1.3" fill="#f2f4f8"/></svg></span></div>
           </div>
@@ -5727,18 +5736,7 @@
       }
 
     function deriveEntryDirection(entry) {
-      const firstTrip = (entry.trips || [])[0] || null;
-      const startStop = String(firstTrip?.startStop || '').toLowerCase();
-      const endStop = String(firstTrip?.endStop || '').toLowerCase();
-      const startsFromPhnd = startStop.includes('phnd');
-      const startsFromTerminus = startStop.includes('blair') || startStop.includes("tunney");
-      const endsAtExit = endStop.includes('pexite') || endStop.includes('pexitw');
-      if (startsFromTerminus && endsAtExit) return 'Reduction';
-      if (startsFromPhnd && endStop.includes('tremblay')) return 'Launching West';
-      if (startsFromPhnd && (endStop.includes('st laurent') || endStop.includes('st-laurent'))) return 'Launching East';
-      if (endStop.includes('blair')) return 'East to Blair';
-      if (endStop.includes("tunney")) return "West to Tunney's";
-      return '';
+      return window.PaddleDisplay.getEntryDirectionLabel(entry);
     }
 
     function renderEntryCard(entry, live, showReturnJump = false) {
