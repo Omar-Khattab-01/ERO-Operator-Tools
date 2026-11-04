@@ -5591,7 +5591,7 @@
           addPaddleCard(data);
         }
         if (refreshesOpenPaddle) {
-          openPaddleModal(data, currentPaddleOpenSource);
+          openPaddleModal(data, currentPaddleOpenSource, { preserveScroll: true });
         }
       } catch (_) {
         card.dataset.refreshing = 'false';
@@ -5606,7 +5606,7 @@
         const data = await fetchPaddleData(lookup.paddleId, lookup.serviceDay || '', lookup.paddleSet || 'regular');
         if (paddleOverlay.hidden || currentLookup !== lookup) return;
         currentLookup = data;
-        openPaddleModal(data, currentPaddleOpenSource);
+        openPaddleModal(data, currentPaddleOpenSource, { preserveScroll: true });
       } catch (_) {
         // keep existing modal state if refresh fails
       } finally {
@@ -5787,7 +5787,9 @@
       `;
     }
 
-    function openPaddleModal(data, source = 'lookup') {
+    function openPaddleModal(data, source = 'lookup', { preserveScroll = false } = {}) {
+      const modal = paddleOverlay.querySelector('.modal');
+      const scrollTop = preserveScroll ? modal.scrollTop : 0;
       currentPaddleOpenSource = source;
       paddleTitle.textContent = `${data.paddleSet === 'trial' ? 'Trial paddle' : 'Paddle'} ${data.paddleId}`;
       paddleMeta.textContent = `${data.serviceLabel} service${data.effective ? ` | effective ${data.effective}` : ''}`;
@@ -5811,6 +5813,8 @@
       jumpToCurrentBtn.title = 'Jump to current trip';
       jumpToCurrentBtn.disabled = !Boolean(findCurrentPaddleTarget(live));
       paddleOverlay.hidden = false;
+      modal.scrollTop = scrollTop;
+      modal.scrollLeft = 0;
       document.body.style.overflow = 'hidden';
       refreshCountdowns();
     }
