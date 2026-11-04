@@ -196,6 +196,10 @@
       color: #a9c6ff;
       font-size: 14px;
     }
+    .day-btn:disabled {
+      opacity: .4;
+      cursor: not-allowed;
+    }
     .saved-chip.is-work-chip {
       color: var(--text);
       border-color: rgba(255,255,255,.14);
@@ -2075,6 +2079,7 @@
       <div class="header-nav">
         <div class="header-actions">
           <button id="homeBtn" class="header-btn is-primary is-active" type="button">Paddle Lookup</button>
+          <button id="trialPaddlesBtn" class="header-btn is-primary" type="button">Trial Paddles</button>
           <button id="myWorkBtn" class="header-btn is-primary" type="button">My Work</button>
           <button id="todaysPaddleBtn" class="header-btn is-primary" type="button">Today's Paddle</button>
           <button id="lrvDefectsBtn" class="header-btn is-primary" type="button" hidden>LRV Defects</button>
@@ -2110,7 +2115,7 @@
       </section>
       <section class="composer" aria-label="Search paddles">
         <form id="chatForm">
-          <input id="chatInput" type="text" placeholder="Enter a paddle number, for example 14 or 1-14.">
+          <input id="chatInput" type="text" aria-label="Paddle number" placeholder="Enter a paddle number, for example 14 or 1-14.">
           <button class="search-btn" type="submit">Search</button>
         </form>
       </section>
@@ -2170,6 +2175,7 @@
     const chatForm = document.getElementById('chatForm');
     const chatInput = document.getElementById('chatInput');
     const homeBtn = document.getElementById('homeBtn');
+    const trialPaddlesBtn = document.getElementById('trialPaddlesBtn');
     const myWorkBtn = document.getElementById('myWorkBtn');
     const todaysPaddleBtn = document.getElementById('todaysPaddleBtn');
     const lrvDefectsBtn = document.getElementById('lrvDefectsBtn');
@@ -2197,6 +2203,8 @@
     const dismissSupportBannerBtn = document.getElementById('dismissSupportBannerBtn');
     const supportBannerDismissKey = 'ero-operator-tools:support-banner-dismissed:v1';
     let currentLookup = null;
+    let currentLookupSet = 'regular';
+    let lookupRequestVersion = 0;
     let liveMapTimer = null;
     let todayBoardTimer = null;
     let liveMapZoom = 1;
@@ -2325,7 +2333,7 @@
     let editingLrvReportId = '';
 
     function setActiveNav(targetId = 'homeBtn') {
-      [homeBtn, myWorkBtn, todaysPaddleBtn, lrvDefectsBtn, liveMapBtn, todayBoardBtn, demoBtn].forEach((button) => {
+      [homeBtn, trialPaddlesBtn, myWorkBtn, todaysPaddleBtn, lrvDefectsBtn, liveMapBtn, todayBoardBtn, demoBtn].forEach((button) => {
         if (!button) return;
         button.classList.toggle('is-active', button.id === targetId);
       });
@@ -2353,9 +2361,12 @@
     }
 
     function resetChat() {
+      lookupRequestVersion += 1;
+      stopLiveMapRefresh();
       stopTodayBoardRefresh();
+      closePaddleModal();
       document.querySelector('.app')?.classList.remove('map-mode');
-      setActiveNav('homeBtn');
+      setActiveNav(currentLookupSet === 'trial' ? 'trialPaddlesBtn' : 'homeBtn');
       liveMapView.hidden = true;
       myWorkView.hidden = true;
       todaysPaddleView.hidden = true;
@@ -2364,7 +2375,13 @@
       todayBoardView.hidden = true;
       chat.hidden = false;
       chatForm.closest('.composer').hidden = false;
-      chat.innerHTML = '<div class="message intro"><strong>Enter a paddle number</strong>, for example <strong>14</strong> or <strong>1-14</strong>.</div>';
+      const isTrial = currentLookupSet === 'trial';
+      chat.innerHTML = isTrial
+        ? '<div class="message intro"><strong>Trial Paddles</strong><br>Enter <strong>14</strong> or <strong>1-14</strong>, then choose Mon-Thu, Friday, Saturday, or Sunday.</div>'
+        : '<div class="message intro"><strong>Enter a paddle number</strong>, for example <strong>14</strong> or <strong>1-14</strong>.</div>';
+      chatInput.value = '';
+      chatInput.placeholder = isTrial ? 'Enter a Trial paddle number, for example 14 or 1-14.' : 'Enter a paddle number, for example 14 or 1-14.';
+      chatForm.closest('.composer').setAttribute('aria-label', isTrial ? 'Search Trial paddles' : 'Search paddles');
       currentLookup = null;
       setStatus('Ready', true);
     }
@@ -2383,11 +2400,15 @@
       }
     }
 
-    function showToolView(statusText = 'Ready') {
+    function showToolView(statusText = 'Ready', paddleSet = 'regular') {
+      if (currentLookupSet !== paddleSet) {
+        currentLookupSet = paddleSet;
+        resetChat();
+      }
       stopLiveMapRefresh();
       stopTodayBoardRefresh();
       document.querySelector('.app')?.classList.remove('map-mode');
-      setActiveNav('homeBtn');
+      setActiveNav(currentLookupSet === 'trial' ? 'trialPaddlesBtn' : 'homeBtn');
       liveMapView.hidden = true;
       myWorkView.hidden = true;
       todaysPaddleView.hidden = true;
@@ -5501,6 +5522,7 @@
 
     function formatPaddleStatusPill(live) {
       if (!live) return 'loaded';
+      if (live.kind === 'inactive') return 'non-current';
       if (live.kind === 'trip') return 'live';
       if (live.kind === 'break') return live.splitBreak ? 'on split' : 'on break';
       if (live.kind === 'complete') return 'Done';
@@ -5553,16 +5575,22 @@
       try {
         const params = new URLSearchParams({ id: paddleId });
         if (serviceDay) params.set('day', serviceDay);
-        const response = await fetch(`/api/paddle?${params.toString()}`);
+        const endpoint = card.dataset.paddleSet === 'trial' ? '/api/trial-paddle' : '/api/paddle';
+        const response = await fetch(`${endpoint}?${params.toString()}`);
         const data = await response.json();
         if (!response.ok || !data.ok) throw new Error(data.error || 'Paddle refresh failed.');
-        currentLookup = data;
+        if (!card.isConnected) return;
+        const refreshesOpenPaddle = !paddleOverlay.hidden
+          && currentLookup?.paddleId === data.paddleId
+          && currentLookup?.serviceDay === data.serviceDay
+          && (currentLookup?.paddleSet || 'regular') === (data.paddleSet || 'regular');
+        if (paddleOverlay.hidden || refreshesOpenPaddle) currentLookup = data;
         if (card.closest('#todaysPaddleView')) {
           await renderTodaysPaddlePage();
         } else {
           addPaddleCard(data);
         }
-        if (!paddleOverlay.hidden && currentLookup?.paddleId === data.paddleId && currentLookup?.serviceDay === data.serviceDay) {
+        if (refreshesOpenPaddle) {
           openPaddleModal(data, currentPaddleOpenSource);
         }
       } catch (_) {
@@ -5573,8 +5601,10 @@
     async function refreshOpenPaddleModal() {
       if (paddleOverlay.hidden || paddleModalRefreshInFlight || !currentLookup?.paddleId) return;
       paddleModalRefreshInFlight = true;
+      const lookup = currentLookup;
       try {
-        const data = await fetchPaddleData(currentLookup.paddleId, currentLookup.serviceDay || '');
+        const data = await fetchPaddleData(lookup.paddleId, lookup.serviceDay || '', lookup.paddleSet || 'regular');
+        if (paddleOverlay.hidden || currentLookup !== lookup) return;
         currentLookup = data;
         openPaddleModal(data, currentPaddleOpenSource);
       } catch (_) {
@@ -5632,6 +5662,7 @@
       if (!tripNotificationSettings.enabled || !('Notification' in window) || Notification.permission !== 'granted') return;
       const leadSeconds = (Number(tripNotificationSettings.leadMinutes) || 5) * 60;
       document.querySelectorAll('[data-trip-notify-target]').forEach((node) => {
+        if (node.closest('[data-paddle-set="trial"]') || (node.closest('#paddleOverlay') && currentLookup?.paddleSet === 'trial')) return;
         const targetTime = node.getAttribute('data-trip-notify-target') || '';
         const targetSeconds = timeToSecondsClock(targetTime);
         if (targetSeconds === null) return;
@@ -5758,7 +5789,7 @@
 
     function openPaddleModal(data, source = 'lookup') {
       currentPaddleOpenSource = source;
-      paddleTitle.textContent = `Paddle ${data.paddleId}`;
+      paddleTitle.textContent = `${data.paddleSet === 'trial' ? 'Trial paddle' : 'Paddle'} ${data.paddleId}`;
       paddleMeta.textContent = `${data.serviceLabel} service${data.effective ? ` | effective ${data.effective}` : ''}`;
       const live = data.liveStatus || null;
       const summaryCard = renderNextActionBox(live);
@@ -5895,15 +5926,17 @@
 
     function addPaddleCard(data) {
       const live = data.liveStatus || null;
+      const isTrial = data.paddleSet === 'trial';
       chat.querySelectorAll(`[data-paddle-card="${CSS.escape(data.paddleId)}"][data-service-day="${CSS.escape(data.serviceDay)}"]`).forEach((node) => node.remove());
       const card = document.createElement('article');
       card.className = 'card';
       card.dataset.paddleCard = data.paddleId;
       card.dataset.serviceDay = data.serviceDay;
+      card.dataset.paddleSet = data.paddleSet || 'regular';
       card.innerHTML = `
         <div class="card-head">
           <div>
-            <h3>${escapeHtml(data.paddleId)}</h3>
+            <h3>${isTrial ? 'Trial paddle ' : ''}${escapeHtml(data.paddleId)}</h3>
             <p>${escapeHtml(data.serviceLabel)} service</p>
           </div>
           <span class="pill">${escapeHtml(formatPaddleStatusPill(live))}</span>
@@ -5918,18 +5951,36 @@
             <div class="summary-item"><div class="k">Effective</div><div class="v">${escapeHtml(data.effective || 'N/A')}</div></div>
           </div>
           <div class="card-actions">
-            <button class="link-btn" type="button" data-open-paddle="${escapeHtml(data.paddleId)}" data-day="${escapeHtml(data.serviceDay)}">Open Paddle</button>
-            <button class="save-btn" type="button" data-save-todays-paddle="${escapeHtml(data.paddleId)}" data-day="${escapeHtml(data.serviceDay)}">${isSavedToTodaysPaddle(data.paddleId, data.serviceDay) ? "Saved to Today's Paddle" : "Save to Today's Paddle"}</button>
-            ${currentUser ? `<button class="save-btn" type="button" data-save-my-work="${escapeHtml(data.paddleId)}" data-day="${escapeHtml(data.serviceDay)}">${isSavedToMyWork(data.paddleId, data.serviceDay) ? 'Saved to My Work' : 'Save to My Work'}</button>` : ''}
+            <button class="link-btn" type="button" data-open-paddle="${escapeHtml(data.paddleId)}" data-day="${escapeHtml(data.serviceDay)}" data-paddle-set="${isTrial ? 'trial' : 'regular'}">Open Paddle</button>
+            ${!isTrial ? `<button class="save-btn" type="button" data-save-todays-paddle="${escapeHtml(data.paddleId)}" data-day="${escapeHtml(data.serviceDay)}">${isSavedToTodaysPaddle(data.paddleId, data.serviceDay) ? "Saved to Today's Paddle" : "Save to Today's Paddle"}</button>` : ''}
+            ${!isTrial && currentUser ? `<button class="save-btn" type="button" data-save-my-work="${escapeHtml(data.paddleId)}" data-day="${escapeHtml(data.serviceDay)}">${isSavedToMyWork(data.paddleId, data.serviceDay) ? 'Saved to My Work' : 'Save to My Work'}</button>` : ''}
           </div>
           <div class="day-actions">
-            ${(data.paddleOptions || []).map((option) => `<button class="day-btn" type="button" data-open-paddle="${escapeHtml(data.paddleId)}" data-day="${escapeHtml(option.serviceDay)}">${escapeHtml(option.buttonLabel)}</button>`).join('')}
+            ${(data.paddleOptions || []).map((option) => `<button class="day-btn" type="button" data-open-paddle="${escapeHtml(data.paddleId)}" data-day="${escapeHtml(option.serviceDay)}" data-paddle-set="${isTrial ? 'trial' : 'regular'}">${escapeHtml(option.buttonLabel)}</button>`).join('')}
           </div>
         </div>
       `;
       chat.appendChild(card);
       chat.scrollTop = chat.scrollHeight;
       refreshCountdowns();
+    }
+
+    function addTrialPaddleOptions(data) {
+      const card = document.createElement('article');
+      card.className = 'card';
+      const availableDays = new Set((data.paddleOptions || []).map((option) => option.serviceDay));
+      card.innerHTML = `
+        <div class="card-head">
+          <div><h3>Trial paddle ${escapeHtml(data.paddleId)}</h3><p>Choose a service day to open the paddle.</p></div>
+        </div>
+        <div class="card-body">
+          <div class="day-actions">
+            ${serviceDays.map((day) => `<button class="day-btn" type="button" data-open-paddle="${escapeHtml(data.paddleId)}" data-day="${escapeHtml(day.key)}" data-paddle-set="trial" ${availableDays.has(day.key) ? '' : 'disabled title="This paddle is not available for this service day"'}>${escapeHtml(day.label)}</button>`).join('')}
+          </div>
+        </div>
+      `;
+      chat.appendChild(card);
+      chat.scrollTop = chat.scrollHeight;
     }
 
     function renderBoardItem(item, statusKey = 'liveStatus') {
@@ -6715,9 +6766,11 @@
     }
 
     async function runLookup(message) {
+      const paddleSet = currentLookupSet;
+      const requestVersion = ++lookupRequestVersion;
       stopTodayBoardRefresh();
       document.querySelector('.app')?.classList.remove('map-mode');
-      setActiveNav('homeBtn');
+      setActiveNav(paddleSet === 'trial' ? 'trialPaddlesBtn' : 'homeBtn');
       myWorkView.hidden = true;
       todaysPaddleView.hidden = true;
       lrvDefectsView.hidden = true;
@@ -6727,25 +6780,34 @@
       chat.hidden = false;
       chatForm.closest('.composer').hidden = false;
       setStatus('Looking up...', true);
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message }),
-      });
+      const response = await (paddleSet === 'trial'
+        ? fetch(`/api/trial-paddle?${new URLSearchParams({ id: message })}`)
+        : fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message }),
+        }));
       const data = await response.json();
+      if (requestVersion !== lookupRequestVersion) return;
       if (!response.ok || !data.ok) {
         throw new Error(data.error || 'Lookup failed.');
       }
-      currentLookup = data;
-      addPaddleCard(data);
-      setStatus('Paddle ready', true);
+      if (paddleSet === 'trial') {
+        addTrialPaddleOptions(data);
+        setStatus('Choose a service day', true);
+      } else {
+        currentLookup = data;
+        addPaddleCard(data);
+        setStatus('Paddle ready', true);
+      }
       return data;
     }
 
-    async function fetchPaddleData(paddleId, serviceDay) {
+    async function fetchPaddleData(paddleId, serviceDay, paddleSet = 'regular') {
       const params = new URLSearchParams({ id: paddleId });
       if (serviceDay) params.set('day', serviceDay);
-      const response = await fetch(`/api/paddle?${params.toString()}`);
+      const endpoint = paddleSet === 'trial' ? '/api/trial-paddle' : '/api/paddle';
+      const response = await fetch(`${endpoint}?${params.toString()}`);
       const data = await response.json();
       if (!response.ok || !data.ok) {
         throw new Error(data.error || 'Paddle lookup failed.');
@@ -6753,8 +6815,10 @@
       return data;
     }
 
-    async function openPaddle(paddleId, serviceDay, source = 'lookup') {
-      const data = await fetchPaddleData(paddleId, serviceDay);
+    async function openPaddle(paddleId, serviceDay, source = 'lookup', paddleSet = 'regular') {
+      const requestVersion = ++lookupRequestVersion;
+      const data = await fetchPaddleData(paddleId, serviceDay, paddleSet);
+      if (requestVersion !== lookupRequestVersion) return;
       currentLookup = data;
       if (!chat.hidden) addPaddleCard(data);
       openPaddleModal(data, source);
@@ -6788,6 +6852,11 @@
 
     homeBtn.addEventListener('click', () => {
       showToolView('Ready');
+    });
+
+    trialPaddlesBtn.addEventListener('click', () => {
+      showToolView('Trial paddles ready', 'trial');
+      chatInput.focus();
     });
 
     myWorkBtn.addEventListener('click', async () => {
@@ -6899,7 +6968,8 @@
           await openPaddle(
             openPaddleBtn.dataset.openPaddle,
             openPaddleBtn.dataset.day || '',
-            openPaddleBtn.dataset.openSource || 'lookup'
+            openPaddleBtn.dataset.openSource || 'lookup',
+            openPaddleBtn.dataset.paddleSet || 'regular'
           );
         } catch (error) {
           addMessage(error.message || 'Paddle lookup failed.');

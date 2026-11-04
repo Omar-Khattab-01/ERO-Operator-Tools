@@ -35,6 +35,7 @@ app.use('/api/rail-boards', (_req, res) => {
 app.use(express.static(path.join(__dirname, 'public')));
 
 let paddleIndexCache = null;
+let trialPaddleIndexCache = null;
 let railBoardsCache = null;
 let railBoardsCacheMtimeMs = 0;
 
@@ -85,6 +86,14 @@ function loadPaddleIndex() {
     paddleIndexCache = JSON.parse(fs.readFileSync(filePath, 'utf8'));
   }
   return paddleIndexCache;
+}
+
+function loadTrialPaddleIndex() {
+  if (!trialPaddleIndexCache) {
+    const filePath = path.join(__dirname, 'data', 'trial-paddles.index.json');
+    trialPaddleIndexCache = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+  }
+  return trialPaddleIndexCache;
 }
 
 function loadRailBoardsData() {
@@ -169,18 +178,17 @@ function isRunActiveAfterMidnight(run, compareMinutes) {
   return startMinutes <= overnightMinutes && overnightMinutes <= endMinutes;
 }
 
-function serviceDayHasActiveOvernightRun(serviceDay, compareMinutes) {
-  const index = loadPaddleIndex();
+function serviceDayHasActiveOvernightRun(serviceDay, compareMinutes, index = loadPaddleIndex()) {
   const runs = Object.values(index.serviceDays?.[serviceDay] || {});
   return runs.some((run) => isRunActiveAfterMidnight(run, compareMinutes));
 }
 
-function getCurrentServiceDay() {
+function getCurrentServiceDay(index = loadPaddleIndex()) {
   const calendarServiceDay = serviceDayFromWeekday(getOttawaWeekday());
   const nowMinutes = getOttawaNowMinutes();
   if (nowMinutes < OVERNIGHT_SERVICE_CUTOFF_MINUTES) {
     const previousDay = previousServiceDay(calendarServiceDay);
-    if (serviceDayHasActiveOvernightRun(previousDay, nowMinutes)) return previousDay;
+    if (serviceDayHasActiveOvernightRun(previousDay, nowMinutes, index)) return previousDay;
   }
   return calendarServiceDay;
 }
@@ -473,8 +481,7 @@ function buildEntryKey(paddleId, index, entry) {
   ].join('|');
 }
 
-function buildRadioCheckMap(serviceDay) {
-  const index = loadPaddleIndex();
+function buildRadioCheckMap(serviceDay, index = loadPaddleIndex()) {
   const runs = index.serviceDays?.[serviceDay] || {};
   const byBlock = new Map();
 
@@ -524,23 +531,24 @@ function getEntryDirectionLabel(entry) {
   const startStop = String(firstTrip?.startStop || '').toLowerCase();
   const endStop = String(firstTrip?.endStop || '').toLowerCase();
   const startsFromPhnd = startStop.includes('phnd');
-  const startsFromTerminus = startStop.includes('blair') || startStop.includes('tunney');
+  const startsFromTerminus = startStop.includes('blair') || startStop.includes('tunney') || startStop.includes('trim');
   const endsAtExit = endStop.includes('pexite') || endStop.includes('pexitw');
   if (startsFromTerminus && endsAtExit) return 'Reduction';
   if (startsFromPhnd && endStop.includes('tremblay')) return 'Launching West';
   if (startsFromPhnd && (endStop.includes('st laurent') || endStop.includes('st-laurent'))) return 'Launching East';
   if (endStop.includes('blair')) return 'East to Blair';
+  if (endStop.includes('trim')) return 'East to Trim';
   if (endStop.includes('tunney')) return "West to Tunney's";
   return '';
 }
 
-function enrichRunEntries(run, serviceDay = '', paddleId = '') {
+function enrichRunEntries(run, serviceDay = '', paddleId = '', paddleIndex = loadPaddleIndex()) {
   const baseEntries = (Array.isArray(run.entries) ? run.entries : []).filter((entry) => {
     const block = String(entry?.block || '').trim();
     return block && block.toUpperCase() !== 'EROEXTRA';
   });
   const timeline = buildRunTimeline(baseEntries);
-  const radioChecks = serviceDay ? buildRadioCheckMap(serviceDay) : new Map();
+  const radioChecks = serviceDay ? buildRadioCheckMap(serviceDay, paddleIndex) : new Map();
 
   return timeline.map((timedEntry, index) => {
     const radioCheckReason = radioChecks.get(buildEntryKey(paddleId, index, timedEntry)) || '';
@@ -790,44 +798,47 @@ function buildSplitBreakSummaries(entries = []) {
     }));
 }
 
-function getAvailableServiceDaysForPaddle(paddleId) {
+function getAvailableServiceDaysForPaddle(paddleId, index = loadPaddleIndex()) {
   const normalized = normalizePaddleId(paddleId);
-  const index = loadPaddleIndex();
   return Object.keys(index.serviceDays || {}).filter((serviceDay) => index.serviceDays?.[serviceDay]?.[normalized]);
 }
 
-function buildPaddleOptions(paddleId) {
-  return getAvailableServiceDaysForPaddle(paddleId).map((serviceDay) => ({
+function buildPaddleOptions(paddleId, index = loadPaddleIndex()) {
+  return getAvailableServiceDaysForPaddle(paddleId, index).map((serviceDay) => ({
     serviceDay,
     buttonLabel: SERVICE_DAY_META[serviceDay]?.buttonLabel || serviceDay,
   }));
 }
 
-function buildPaddleResponse(paddleId, requestedDay = '') {
+function buildPaddleResponse(paddleId, requestedDay = '', paddleSet = 'regular') {
   const normalized = normalizePaddleId(paddleId);
-  const index = loadPaddleIndex();
-  const availableServiceDays = getAvailableServiceDaysForPaddle(normalized);
+  const index = paddleSet === 'trial' ? loadTrialPaddleIndex() : loadPaddleIndex();
+  const availableServiceDays = getAvailableServiceDaysForPaddle(normalized, index);
   if (!availableServiceDays.length) return null;
+  const currentServiceDay = getCurrentServiceDay(index);
 
   const preferredDay = requestedDay && availableServiceDays.includes(requestedDay)
     ? requestedDay
-    : availableServiceDays.includes(getCurrentServiceDay())
-      ? getCurrentServiceDay()
+    : availableServiceDays.includes(currentServiceDay)
+      ? currentServiceDay
       : availableServiceDays[0];
 
   const run = index.serviceDays?.[preferredDay]?.[normalized];
   if (!run) return null;
 
-  const entries = enrichRunEntries(run, preferredDay, normalized);
+  const entries = enrichRunEntries(run, preferredDay, normalized, index);
   const pieceSummaries = buildPieceSummaries(entries);
   const splitBreaks = buildSplitBreakSummaries(entries);
-  const liveStatus = preferredDay === getCurrentServiceDay()
+  // Trial schedules remain previews until their activation date is confirmed.
+  const isCurrentService = paddleSet !== 'trial' && preferredDay === currentServiceDay;
+  const liveStatus = isCurrentService
     ? buildLiveStatus(entries)
     : { kind: 'inactive', label: 'Viewing a non-current service day.' };
 
   return {
     ok: true,
     mode: 'paddle',
+    paddleSet,
     paddleId: normalized,
     serviceDay: preferredDay,
     serviceLabel: SERVICE_DAY_META[preferredDay]?.label || preferredDay,
@@ -836,14 +847,14 @@ function buildPaddleResponse(paddleId, requestedDay = '') {
     sourceFile: run.sourceFile || '',
     platformTime: run.platformTime || '',
     paidTime: run.paidTime || '',
-    activeEntry: preferredDay === getCurrentServiceDay() ? findActiveEntry({ entries }) : null,
+    activeEntry: isCurrentService ? findActiveEntry({ entries }) : null,
     liveStatus,
     entries,
     pieceSummaries,
     splitBreaks,
     firstReportTime: entries[0]?.reportTime || '',
     finalClearTime: entries[entries.length - 1]?.clearTime || '',
-    paddleOptions: buildPaddleOptions(normalized),
+    paddleOptions: buildPaddleOptions(normalized, index),
     reply: `Paddle ${normalized} loaded.`,
   };
 }
@@ -1111,6 +1122,30 @@ app.get('/api/paddle', (req, res) => {
   }
 
   res.json(payload);
+});
+
+app.get('/api/trial-paddle', (req, res) => {
+  const paddleId = normalizePaddleId(req.query.id || '');
+  const serviceDay = String(req.query.day || '').trim().toLowerCase();
+  if (!/^\d+-\d+$/.test(paddleId)) {
+    res.status(400).json({ ok: false, error: 'Enter a paddle number like 14 or 1-14.' });
+    return;
+  }
+  if (serviceDay && !Object.hasOwn(SERVICE_DAY_META, serviceDay)) {
+    res.status(400).json({ ok: false, error: 'Choose Mon-Thu, Friday, Saturday, or Sunday.' });
+    return;
+  }
+  const index = loadTrialPaddleIndex();
+  const paddleOptions = buildPaddleOptions(paddleId, index);
+  if (!paddleOptions.length || (serviceDay && !paddleOptions.some((option) => option.serviceDay === serviceDay))) {
+    res.status(404).json({ ok: false, error: `Trial paddle ${paddleId} is not available${serviceDay ? ` for ${SERVICE_DAY_META[serviceDay].label}` : ''}.` });
+    return;
+  }
+  if (!serviceDay) {
+    res.json({ ok: true, mode: 'paddle-options', paddleSet: 'trial', paddleId, paddleOptions });
+    return;
+  }
+  res.json(buildPaddleResponse(paddleId, serviceDay, 'trial'));
 });
 
 app.post('/api/chat', (req, res) => {

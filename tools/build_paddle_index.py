@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import argparse
 import json
 import os
 import re
+import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -31,10 +33,19 @@ SOURCES = [
     ("Sunday.pdf", "sunday", "Sunday"),
 ]
 
+TRIAL_SOURCES = [
+    ("Trial Daily Driver Cards.pdf", "mon_thu", "Mon-Thu"),
+    ("Trial Friday Driver Cards.pdf", "friday", "Friday"),
+    ("Trial Saturday Driver Cards.pdf", "saturday", "Saturday"),
+    ("Trial Sunday Driver Cards.pdf", "sunday", "Sunday"),
+]
+
 PLACE_CODES = {
     "9500": "Tunney's",
     "9595": "PHND (MSF)",
+    "9599": "PHND (MSF)",
     "9620": "Blair Station",
+    "9670": "Trim Station",
     "9307": "Bayview",
     "9308": "Bayview",
     "9450": "Bayview",
@@ -283,19 +294,38 @@ def build_platform_pay_totals(pdf_path: Path) -> dict[tuple[str, str], dict[str,
     return totals
 
 
-def build_index() -> dict[str, Any]:
-    service_days: dict[str, dict[str, Any]] = {key: {} for _, key, _ in SOURCES}
+def build_index(paddle_set: str = "fall") -> dict[str, Any]:
+    is_trial = paddle_set == "trial"
+    sources = TRIAL_SOURCES if is_trial else SOURCES
+    paddles_dir = ROOT / "Paddles" / "Trial" if is_trial else PADDLES_DIR
+    service_days: dict[str, dict[str, Any]] = {key: {} for _, key, _ in sources}
     sources_meta: dict[str, Any] = {}
-    platform_pay_totals = build_platform_pay_totals(TOTALS_SOURCE_PDF)
+    # Trial paddles must not inherit platform/pay totals from the regular schedule.
+    platform_pay_totals = {} if is_trial else build_platform_pay_totals(TOTALS_SOURCE_PDF)
 
-    for filename, service_day, service_label in SOURCES:
-        pdf_path = PADDLES_DIR / filename
+    for filename, service_day, service_label in sources:
+        pdf_path = paddles_dir / filename
         reader = PdfReader(str(pdf_path))
+        raw_pages = None
+        if is_trial:
+            # These print-to-PDF files merge lines with pypdf. Poppler's raw
+            # extraction preserves both summary rows and the two detail columns.
+            raw_pages = subprocess.run(
+                ["pdftotext", "-raw", str(pdf_path), "-"],
+                check=True, capture_output=True, text=True,
+            ).stdout.split("\f")
+            if len(raw_pages) < len(reader.pages):
+                raise ValueError(f"Could not extract every page of {filename}")
         parsed_count = 0
         for page_index, page in enumerate(reader.pages, start=1):
-            parsed = parse_page(page.extract_text() or "", service_day, service_label, filename, page_index)
+            text = raw_pages[page_index - 1] if raw_pages is not None else page.extract_text() or ""
+            parsed = parse_page(text, service_day, service_label, filename, page_index)
             if not parsed:
+                if is_trial:
+                    raise ValueError(f"Could not parse {filename}, page {page_index}")
                 continue
+            if is_trial and parsed["paddleId"] in service_days[service_day]:
+                raise ValueError(f"Duplicate paddle {parsed['paddleId']} in {filename}")
             totals = platform_pay_totals.get((service_day, parsed["paddleId"]))
             if totals:
                 parsed["platformTime"] = totals["platformTime"]
@@ -310,8 +340,8 @@ def build_index() -> dict[str, Any]:
             "parsedRuns": parsed_count,
         }
     sources_meta["platform_pay_totals"] = {
-        "filename": TOTALS_SOURCE_PDF.name if TOTALS_SOURCE_PDF.exists() else "",
-        "path": str(TOTALS_SOURCE_PDF) if TOTALS_SOURCE_PDF.exists() else "",
+        "filename": TOTALS_SOURCE_PDF.name if not is_trial and TOTALS_SOURCE_PDF.exists() else "",
+        "path": str(TOTALS_SOURCE_PDF) if not is_trial and TOTALS_SOURCE_PDF.exists() else "",
         "parsedRuns": len(platform_pay_totals),
     }
 
@@ -323,10 +353,14 @@ def build_index() -> dict[str, Any]:
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description="Build the regular or Trial paddle index.")
+    parser.add_argument("--paddle-set", choices=("fall", "trial"), default="fall")
+    args = parser.parse_args()
+    output_path = OUTPUT_DIR / "trial-paddles.index.json" if args.paddle_set == "trial" else OUTPUT_PATH
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-    index = build_index()
-    OUTPUT_PATH.write_text(json.dumps(index, indent=2), encoding="utf-8")
-    print(f"Wrote {OUTPUT_PATH}")
+    index = build_index(args.paddle_set)
+    output_path.write_text(json.dumps(index, indent=2), encoding="utf-8")
+    print(f"Wrote {output_path}")
 
 
 if __name__ == "__main__":

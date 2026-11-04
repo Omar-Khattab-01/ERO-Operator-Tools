@@ -24,6 +24,7 @@ This tool is an operator reference aid only. Operators must continue to follow o
 ## Main Areas
 
 - **Paddle Lookup**: Find a paddle and review its trips, timing, blocks, breaks, platform time, and pay time.
+- **Trial Paddles**: Look up a separate Trial paddle by full number or shorthand, choose a service day, and view its trips and timing.
 - **My Work**: Save regular paddles to an account for quick access.
 - **Today's Paddle**: Keep the current shift's paddle available through the workday, including overnight work that clears after midnight.
 - **Board**: Review current and upcoming work in a board-style view.
@@ -37,3 +38,9 @@ Core lookup and reference features are available through the site. Account-based
 ## Notes
 
 The tool is built for clarity, speed, and practical use by operators. It does not replace official systems, documents, or operating instructions.
+
+## Rebuilding Trial paddles
+
+Keep the four source PDFs in `Paddles/Trial`: `Trial Daily Driver Cards.pdf`, `Trial Friday Driver Cards.pdf`, `Trial Saturday Driver Cards.pdf`, and `Trial Sunday Driver Cards.pdf`.
+
+With `pypdf` and Poppler (`pdftotext`) installed, run `python3 tools/build_paddle_index.py --paddle-set trial` to rebuild `data/trial-paddles.index.json`. The regular Fall index is rebuilt separately with the script's default command.
