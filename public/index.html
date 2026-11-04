@@ -137,6 +137,7 @@
       padding: 10px 14px;
       font: inherit;
       cursor: pointer;
+      text-decoration: none;
     }
     .header-btn.is-primary {
       background: rgba(217, 71, 47, 0.16);
@@ -2078,8 +2079,8 @@
       </div>
       <div class="header-nav">
         <div class="header-actions">
-          <button id="homeBtn" class="header-btn is-primary is-active" type="button">Paddle Lookup</button>
-          <button id="trialPaddlesBtn" class="header-btn is-primary" type="button">Trial Paddles</button>
+          <a id="homeBtn" class="header-btn is-primary is-active" href="/">Paddle Lookup</a>
+          <a id="trialPaddlesBtn" class="header-btn is-primary" href="/trial-paddles">Trial Paddles</a>
           <button id="myWorkBtn" class="header-btn is-primary" type="button">My Work</button>
           <button id="todaysPaddleBtn" class="header-btn is-primary" type="button">Today's Paddle</button>
           <button id="lrvDefectsBtn" class="header-btn is-primary" type="button" hidden>LRV Defects</button>
@@ -2337,6 +2338,15 @@
         if (!button) return;
         button.classList.toggle('is-active', button.id === targetId);
       });
+      const isTrial = targetId === 'trialPaddlesBtn';
+      document.title = isTrial ? 'Trial Paddles | ERO Operator Tools' : 'ERO Operator Tools';
+      if (window.location.protocol !== 'file:' && isTrial !== isTrialPaddlesRoute()) {
+        window.history.pushState(null, '', isTrial ? '/trial-paddles' : '/');
+      }
+    }
+
+    function isTrialPaddlesRoute() {
+      return /^\/trial-paddles\/?$/.test(window.location.pathname);
     }
 
     function escapeHtml(value) {
@@ -2901,7 +2911,7 @@
     }
 
     async function maybeOpenTodaysPaddleOnBoot() {
-      if (accountRecoveryMode) return;
+      if (accountRecoveryMode || isTrialPaddlesRoute() || currentLookupSet === 'trial') return;
       syncTodaysPaddleFromMyWork();
       if (!hasTodaysPaddleItems()) return;
       await openTodaysPaddlePage();
@@ -6854,13 +6864,25 @@
       resetChat();
     });
 
-    homeBtn.addEventListener('click', () => {
+    homeBtn.addEventListener('click', (event) => {
+      if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      event.preventDefault();
+      closePaddleModal();
       showToolView('Ready');
     });
 
-    trialPaddlesBtn.addEventListener('click', () => {
+    trialPaddlesBtn.addEventListener('click', (event) => {
+      if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      event.preventDefault();
+      closePaddleModal();
       showToolView('Trial paddles ready', 'trial');
       chatInput.focus();
+    });
+
+    window.addEventListener('popstate', () => {
+      closePaddleModal();
+      const isTrial = isTrialPaddlesRoute();
+      showToolView(isTrial ? 'Trial paddles ready' : 'Ready', isTrial ? 'trial' : 'regular');
     });
 
     myWorkBtn.addEventListener('click', async () => {
@@ -6932,6 +6954,7 @@
     refreshCountdowns();
     renderOcMetaBar();
     initSupportBanner();
+    if (isTrialPaddlesRoute()) showToolView('Trial paddles ready', 'trial');
     setInterval(refreshCountdowns, 1000);
     registerServiceWorker();
     initSupabase();

@@ -24,7 +24,7 @@ This tool is an operator reference aid only. Operators must continue to follow o
 ## Main Areas
 
 - **Paddle Lookup**: Find a paddle and review its trips, timing, blocks, breaks, platform time, and pay time.
-- **Trial Paddles**: Look up a separate Trial paddle by full number or shorthand, choose a service day, and view its trips and timing.
+- **Trial Paddles** (`/trial-paddles`): Open the Trial lookup directly, look up a paddle by full number or shorthand, choose a service day, and view its trips and timing. This link can be shared or bookmarked.
 - **My Work**: Save regular paddles to an account for quick access.
 - **Today's Paddle**: Keep the current shift's paddle available through the workday, including overnight work that clears after midnight.
 - **Board**: Review current and upcoming work in a board-style view.
